@@ -1,0 +1,2 @@
+-- Dane startowe do demo. Wypełnia integrator po utworzeniu tabel (2. godzina).
+-- Wykonanie: Supabase -> SQL Editor -> wklej -> Run.

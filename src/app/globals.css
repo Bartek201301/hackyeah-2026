@@ -1,1 +1,39 @@
 @import "tailwindcss";
+
+/*
+ * TOKENY DESIGNU — jedyne źródło kolorów, promieni i cieni w aplikacji.
+ * Właściciel: integrator. Featury używają wyłącznie klas z tych tokenów
+ * (np. bg-brand, text-muted, border-border, rounded-card) i komponentów z @/shared/ui.
+ * Zmiana koloru marki = zmiana jednej linii: --color-brand.
+ */
+@theme {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand: oklch(0.55 0.2 264);
+  --color-brand-hover: oklch(0.48 0.2 264);
+  --color-brand-soft: oklch(0.95 0.03 264);
+  --color-on-brand: oklch(1 0 0);
+
+  --color-bg: oklch(0.985 0.002 264);
+  --color-surface: oklch(1 0 0);
+  --color-fg: oklch(0.21 0.02 264);
+  --color-muted: oklch(0.52 0.02 264);
+  --color-border: oklch(0.91 0.01 264);
+
+  --color-danger: oklch(0.58 0.21 25);
+  --color-danger-soft: oklch(0.96 0.03 25);
+  --color-success: oklch(0.6 0.15 155);
+  --color-success-soft: oklch(0.96 0.04 155);
+  --color-warning: oklch(0.72 0.15 75);
+  --color-warning-soft: oklch(0.97 0.05 85);
+
+  --radius-control: 0.5rem;
+  --radius-card: 0.875rem;
+
+  --shadow-card: 0 1px 2px oklch(0.21 0.02 264 / 0.05), 0 4px 16px oklch(0.21 0.02 264 / 0.04);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
