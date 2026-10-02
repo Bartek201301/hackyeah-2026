@@ -69,7 +69,7 @@ Odeślij mi zrzut ekranu z 4) i 5).
 ## 5. 🔴 Wyłączenie ochrony podglądów
 
 Na planie Hobby koledzy nie mogą być członkami projektu na Vercelu, więc domyślna ochrona pokazałaby im ekran logowania zamiast podglądu ich gałęzi.
-Project → **Settings** → **Deployment Protection** → **Vercel Authentication** → przełącz na **Disabled** → **Save**.
+Project → **Settings** → **Deployment Protection** → sekcja **Vercel Authentication** → wyłącz przełącznik **Require Log In** (z niebieskiego na szary; listy „Standard Protection” nie ruszaj) → **Save**.
 
 ## 6. 🔴 Potwierdzenie łańcucha publikacji
 
