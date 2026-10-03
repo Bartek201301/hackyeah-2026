@@ -15,7 +15,7 @@ npm run doctor
 
 Documentation-only validation is also available now (introduced by T00): `node scripts/validate-docs.mjs`. It validates the compatible JSON Schema assertions/examples, contract references and local documentation links; it does not run the application.
 
-`dev` serves the existing starter. `check` includes format/types/lint/module rules/tooling tests/build. `doctor` checks its existing database prerequisites; it does not prove future gateway auth/RLS/model behavior. `npm run new-feature <name>` and `npm run format -- <owned-file>` are also available now. Confirm existing scripts in package.json before use. No security/gateway suite exists until the named task introduces it.
+`dev` serves the existing starter. `check` includes format/types/lint/module rules/tooling tests/build. `doctor` checks its existing database prerequisites; it does not prove future gateway auth/RLS/model behavior. `npm run new-feature <name>` and `npm run format -- <owned-file>` are also available now. `npm run test` runs the Vitest unit tests (`src/**/*.test.ts`, including contract validators). `npm run contracts:types` regenerates `src/shared/contracts/openapi.gen.ts` from `docs/contracts/openapi.json`; `check` runs both. Confirm existing scripts in package.json before use. No security/gateway suite exists until the named task introduces it.
 
 ## Configuration contract (T01/T02/T04)
 
