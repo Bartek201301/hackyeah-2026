@@ -8,6 +8,7 @@ import { classifyActivityRead } from "../activity";
 import type { MetricsReadState } from "../metrics";
 import { classifyMetricsRead, metricsView } from "../metrics";
 import { copy } from "../copy";
+import type { ReportingScope } from "../scope";
 import { ActivityList } from "./ActivityList";
 import { DashboardStateBlock } from "./DashboardStates";
 import { ControlsPanel, ResourcesPanel, ScopeLine } from "./MetricsPanels";
@@ -22,7 +23,7 @@ type Result = { request: string; metrics: MetricsReadState; activity: ActivityRe
  * means the gateway's default window applies and the response's own `from`/`to` are displayed
  * rather than a window this screen assumed.
  */
-export function Dashboard({ scope = "own" }: { scope?: "own" | "organisation" }) {
+export function Dashboard({ scope = "own" }: { scope?: ReportingScope }) {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
 
@@ -62,6 +63,18 @@ export function Dashboard({ scope = "own" }: { scope?: "own" | "organisation" })
   // noise, not extra honesty.
   if (metrics.kind !== "ok" && activity.kind !== "ok" && metrics.kind === activity.kind) {
     return <DashboardStateBlock state={metrics} onRetry={retry} />;
+  }
+
+  // A refused organisation scope shows nothing from that scope. `GET /audit` takes no scope
+  // parameter, so its rows would be whatever the actor may see — and presenting those under the
+  // heading "Organisation activity" would be a false label on true data.
+  if (scope === "organisation" && metrics.kind === "denied") {
+    return (
+      <div className="flex flex-col gap-3">
+        <DashboardStateBlock state={metrics} onRetry={retry} />
+        <p className="text-xs text-muted">{copy.metrics.scopeDeniedHint}</p>
+      </div>
+    );
   }
 
   const view = metrics.kind === "ok" ? metricsView(metrics.metrics) : null;
