@@ -7,19 +7,19 @@ import { ProviderFailure } from "./validation";
 
 /** Manual provider capability checks through the public G2 factories, not a gateway acceptance run. */
 export async function runFactorySmoke() {
-  if (!process.env.LAYA_API_KEY) {
+  const detection = createDetectionPort();
+  const generation = createGenerationPort();
+  if (detection === null || generation === null) {
     console.error("factory smoke: LAYA_API_KEY missing; supply it privately in the process environment");
     process.exitCode = 1;
     return;
   }
   const policy = policyExample as GatewayPolicy;
   const signal = new AbortController().signal;
-  const detection = createDetectionPort();
-  const generation = createGenerationPort();
   console.log(
     JSON.stringify({ at: new Date().toISOString(), kind: "local-factory-synthetic-capability-only" }),
   );
-  async function assess(label: string, text: string) {
+  const assess = async (label: string, text: string) => {
     const result = await detection.assess(
       { call_id: randomUUID(), text, operation: "chat", audience: "public" },
       policy,
@@ -39,8 +39,8 @@ export async function runFactorySmoke() {
         adapter_findings: result.findings.length,
       }),
     );
-  }
-  async function generate(label: string, content: string) {
+  };
+  const generate = async (label: string, content: string) => {
     const input: Parameters<GenerationPort["generate"]>[0] = {
       call_id: randomUUID(),
       messages: [{ role: "user", content }],
@@ -61,7 +61,7 @@ export async function runFactorySmoke() {
       }),
     );
     return result;
-  }
+  };
   try {
     await assess("synthetic_input", "Synthetic public report: revenue increased by 12 percent.");
     const normal = await generate("short", "Reply with exactly: Synthetic hello.");

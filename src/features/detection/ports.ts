@@ -8,7 +8,9 @@ import { serializeOllama } from "./providers/ollama";
 import { inputOnly, ProviderFailure, requireValue } from "./providers/validation";
 
 /** G2 local-only port. The gateway owns deterministic findings and durable accounting. */
-export function createDetectionPort(): DetectionPort {
+export function createDetectionPort(): DetectionPort | null {
+  const bearer = process.env.LAYA_API_KEY;
+  if (!bearer?.trim()) return null;
   return {
     async parse() {
       throw new ProviderFailure("unavailable");
@@ -21,9 +23,6 @@ export function createDetectionPort(): DetectionPort {
         return { accepted: structuredClone(input), limits: structuredClone(policy.semantic) };
       });
       if (signal.aborted) throw new ProviderFailure("cancelled");
-      const bearer = process.env.LAYA_API_KEY;
-      if (!bearer) throw new ProviderFailure("unavailable");
-
       const observation = await assessLocalWindow(accepted, limits, bearer, signal);
       const fail = (code: "incomplete" | "cancelled") =>
         new ProviderFailure(code, true, observation.usage.input_tokens, observation.usage.output_tokens);
@@ -59,7 +58,8 @@ export function createDetectionPort(): DetectionPort {
 }
 
 /** G2 local-only port; reservation and at-most-once dispatch belong to the gateway. */
-export function createGenerationPort(): GenerationPort {
+export function createGenerationPort(): GenerationPort | null {
+  if (!process.env.LAYA_API_KEY?.trim()) return null;
   return {
     async generate(input, signal) {
       const accepted = inputOnly(() => {
