@@ -142,6 +142,17 @@ export interface RepositoryPort {
   /** Sources visible to this actor (sourceScope), newest first, at most `limit`. */
   listSources(actor: ActorContext, limit: number): Promise<SourceRow[]>;
   /**
+   * One page of an actor's own activity, newest first, at most `limit`. `after` is a trace id the
+   * actor may see; null means the first page. Returns null when the cursor is not one of theirs,
+   * so an unreachable cursor cannot confirm that the trace exists.
+   */
+  listActivity(input: {
+    organisationId: string;
+    actorId: string;
+    after: string | null;
+    limit: number;
+  }): Promise<ActivityRow[] | null>;
+  /**
    * Rows behind one metrics window: activity for the counters and settled usage, reservations for
    * what is still outstanding. Filtering is in the query because the gateway client bypasses RLS;
    * `ownActorId` null means the whole organisation. At most `limit` rows of each.

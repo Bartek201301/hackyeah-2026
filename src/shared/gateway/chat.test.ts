@@ -158,6 +158,11 @@ function harness(over: Partial<Opts> = {}) {
       throw new Error("not used");
     },
 
+    async listActivity() {
+      log.push("listActivity");
+      return [];
+    },
+
     async readMetricsRows() {
       log.push("readMetricsRows");
       return { activity: [], reservations: [] };
