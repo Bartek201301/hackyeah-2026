@@ -161,11 +161,11 @@ The only client-side arithmetic allowed is formatting and `completed / planned` 
 
 Three columns, never merged, in this order: **Actual** · **Reserved** · **Unknown**.
 
-| Column   | Fields                                                                                                                       | Note                                                     |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Actual   | `generation_input_tokens`, `generation_output_tokens`, `generation_ms` when non-null; `semantic_input_tokens`, `semantic_ms` | generation and Laya in separate rows                     |
-| Reserved | `reserved_generation_tokens`, `unresolved_reservation`                                                                       | retained until reconciled; a timeout is not zero usage   |
-| Unknown  | every null-valued field above                                                                                                | `Not measured`, with the reason when `state` explains it |
+| Column   | Fields                                                                                                                       | Note                                                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Actual   | `generation_input_tokens`, `generation_output_tokens`, `generation_ms` when non-null; `semantic_input_tokens`, `semantic_ms` | generation and Laya in separate rows                                                                               |
+| Reserved | `reserved_generation_tokens`, `unresolved_reservation`                                                                       | one operation's reservation, or a window's outstanding total — the caption says which; a timeout is not zero usage |
+| Unknown  | every null-valued field above                                                                                                | `Not measured`, with the reason when `state` explains it                                                           |
 
 `docs/product/technical-spec.md:75` — unknown usage stays null with unresolved reserved units, and
 cancellation or timeout does not prove the server stopped computing.

@@ -22,6 +22,14 @@ say "Not measured", not zero._ `DESIGN.md`: _"not measured" differs from zero_.
 The one legitimate zero: `usage.semantic_ms` and `usage.reserved_generation_tokens` are non-nullable
 integers, so `0` there is a real measurement and is displayed as `0`.
 
+**`reserved_generation_tokens` is class R twice over, with two different meanings, and the caption must
+say which.** On one operation it is what that run reserved, and the record keeps it after the
+reservation settles. On a window (`metrics_read`) it is what is still outstanding, summed from the
+reservations table. Live data has both at once: a settled run recording `2200` inside a day whose
+dashboard reports `0`. Neither number is wrong, so "held, not spent" is true only of the window form —
+a caption claiming a retention on the operation form describes something that already ended. The view
+takes the meaning (`usageView(usage, "operation" | "window")`) and the caption follows it.
+
 ## 2. Envelope reading
 
 - HTTP 200 alone is not approval. Read `decision` and `error` on every call
@@ -118,6 +126,8 @@ Paste into the PR body and tick honestly.
       another displayed number.
 - [ ] No `null` renders as `0`; `Not measured`, `Unknown` and `N/A` are each used correctly.
 - [ ] Generation and Laya usage are visually separate; reserved/unresolved is its own signal.
+- [ ] A reserved figure says whether it is one operation's reservation or a window's outstanding
+      total, and claims a retention only when `unresolved_reservation` is true.
 - [ ] Every money figure carries the illustrative disclaimer and the rate version.
 - [ ] `blocked_attempts` wording contains no breach/prevention claim.
 - [ ] Root request count excludes subcalls.

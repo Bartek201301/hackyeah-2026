@@ -153,7 +153,8 @@ export function metricsView(metrics: Metrics): MetricsView {
     // than vouched for: a wider window is displayed as reported, with a note.
     windowSingleDay: isSingleUtcDay(metrics.from, metrics.to),
     controls: controlCards(metrics),
-    usage: usageView(metrics.usage),
+    // A window's reserved figure is what is still outstanding, not what the window reserved.
+    usage: usageView(metrics.usage, "window"),
     money: {
       value: formatMicroUsd(metrics.usage.comparison_micro_usd),
       rateVersion: metrics.usage.comparison_rate_version,

@@ -40,6 +40,45 @@ Read from the images, not from the code:
 
 Still unmeasured: 375 px, the keyboard path end to end, and any role other than `admin`.
 
+## 1b. Checks I ran myself with a real session
+
+`scripts/dev-session.mjs` (added by the integrator in `9c4380c`) signs in with a password held in
+`.env.local` and writes **only** a cookie header file, so I could run authorised HTTP checks without
+seeing, typing or storing the password. Both session files were deleted immediately after. This is not
+browser QA — no rendering, no console, no viewport — but it is live data through the real routes.
+
+| What                                       | Result                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `metrics?scope=organisation` as `analyst`  | **403 ACCESS_DENIED**, `data: null` — the refusal carries no figures (AT10-2)                                                   |
+| `export?scope=organisation` as `analyst`   | **403**                                                                                                                         |
+| `export` with a two-day range              | **400** "Select a range inside a single UTC day."                                                                               |
+| `audit` as `analyst`                       | 200, 8 items, **one distinct actor**, no `events` key                                                                           |
+| `audit?after=<admin's trace>` as `analyst` | **400** generic invalid-cursor; the id is not echoed                                                                            |
+| `audit/{admin's trace}` as `analyst`       | **404**, not 403 — existence is not confirmed (AT10-1)                                                                          |
+| `metrics` admin own vs organisation        | 12 vs 53 root requests, 1 vs 17 blocked — the scope really widens                                                               |
+| `export` as `admin`, organisation          | 54 lines, 53 rows, **4 distinct actors**, no cell starting `=` `+` `-` `@` tab or CR, no cell containing a space (AT10-6 bytes) |
+| the four response headers                  | `text/csv; charset=utf-8`, `attachment; filename="audit-own-2026-10-03.csv"`, `no-store`, `x-trace-id`                          |
+
+The dashboard-to-export cross-check is now a committed test rather than a one-off reading:
+`src/features/audit/live-metrics.test.ts` holds the captured pair and asserts that `root_requests`
+equals the row count, that five totals equal the column sums exactly, and that
+`semantic_input_tokens` is **null** because one row never recorded it — not the 1,060 the other rows
+would add up to. That is `docs/testing/acceptance.md:63` verified through two independent endpoints
+against the real database.
+
+### The fifth defect, found the same way
+
+One settled run records `reserved_generation_tokens: 2200`; the dashboard for that same UTC day
+reports `0`. Both are correct — the row keeps what the run reserved, the window sums what is still
+outstanding from the reservations table — but it is **one contract field with two meanings**, and the
+shared caption said "Retained until the reservation is reconciled" for both. On the settled run that
+described a retention that had already ended; a judge comparing the CSV with the screen would have
+read 2,200 against 0 and called it a contradiction.
+
+`usageView` now takes what the number means (`operation` or `window`) and the caption follows:
+"Reserved for this operation…" on a trace, "Still outstanding in this window…" on the dashboard, and
+"Retained because the reservation was not reconciled…" only when one really is unresolved.
+
 ## 2. What the observations found
 
 Four defects, none of which 117 passing assertions had caught, because each was a claim about meaning

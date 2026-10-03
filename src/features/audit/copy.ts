@@ -39,7 +39,16 @@ export const copy = {
     semanticDuration: "Assessment duration (Laya)",
     reservedTokens: "Reserved generation tokens",
     unresolved: "Unresolved reservation retained",
-    reservedHint: "Retained until the reservation is reconciled. Never added to actual use.",
+    /*
+     * `reserved_generation_tokens` means two different things, so it needs two captions. On one
+     * operation it is what that run reserved, which a settled run still records. On a window it is
+     * what is still outstanding, summed from the reservations table. The same number therefore reads
+     * 2,200 on a trace and 0 on the dashboard for the same day, and only these captions explain it.
+     */
+    reservedOperation: "Reserved for this operation. A reservation is never added to actual use.",
+    reservedWindow: "Still outstanding in this window. Never added to actual use.",
+    reservedUnresolved: "Retained because the reservation was not reconciled. Never added to actual use.",
+    noReservationOperation: "No reservation was recorded for this operation.",
     noReservation: "No reservation is outstanding.",
     unknownHint: "No value was recorded. Unknown use is not zero use.",
   },
