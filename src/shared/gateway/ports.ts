@@ -135,6 +135,22 @@ export type ImportPublication = {
   }[];
   reviews: { candidate_text: string; expires_at: string }[];
 };
+/** 'actor' = the actor's own scope; 'public' = public rows only (export, judge connection). */
+export type ExcerptAudience = "actor" | "public";
+/** search/read_permitted_excerpts row: approved and visible to the actor; never deal_id or other rows. */
+export type PermittedExcerpt = {
+  id: string;
+  version: number;
+  text: string;
+  classification: "public" | "internal" | "restricted";
+  locator: string;
+  source_date: string;
+  period: string;
+  unit: string;
+  basis: "actual" | "forecast" | "proposal" | "event";
+  fact_key: string | null;
+  source_label: string;
+};
 /** Names follow protocols.md; startRun/readRun/claimRun are additions. Every method throws GatewayError
  *  carrying the RPC's ErrorCode, or STATE_UNAVAILABLE for anything else. */
 export interface RepositoryPort {
@@ -243,6 +259,41 @@ export interface RepositoryPort {
   exportActivity(input: WindowQuery): Promise<ActivityRow[]>;
   /** Imports visible to this actor (importScope), newest first, at most `limit`. */
   listImports(actor: ActorContext, limit: number): Promise<ImportRow[]>;
+  /**
+   * Approved excerpts matching `query`, best first, at most min(limit, 20). Permissions are derived in
+   * SQL from the actor's membership and deal memberships; never pass a role or deals. `dealId` only
+   * narrows restricted rows and throws NOT_FOUND unless it is one of the actor's deals.
+   */
+  searchPermittedExcerpts(
+    actor: ActorContext,
+    input: { query: string; dealId: string | null; audience: ExcerptAudience; limit: number },
+  ): Promise<PermittedExcerpt[]>;
+  /**
+   * The same SQL permission filter by ID (at most 20); never pass a role or deals. Only permitted IDs
+   * come back, so a missing and a forbidden excerpt look identical.
+   */
+  readPermittedExcerpts(
+    actor: ActorContext,
+    audience: ExcerptAudience,
+    ids: string[],
+  ): Promise<PermittedExcerpt[]>;
+  /**
+   * One audited access operation (excerpt search/read, admin review reads): operation, intent and
+   * decision events and the actor_activity row in one transaction; membership is checked in SQL.
+   * A null key is a fresh access; the same key and hash return the existing trace, another hash is
+   * CONFLICT. `event` is the decision payload: `stage` (required), findings, semantic and counts only,
+   * never query or excerpt text.
+   */
+  recordAccessDecision(input: {
+    actor: ActorContext;
+    operation: string;
+    idempotencyKey: string | null;
+    requestSha256: string;
+    decision: "ALLOW" | "BLOCK";
+    reasons: string[];
+    usage: Usage;
+    event: Record<string, unknown> & { stage: string };
+  }): Promise<{ trace_id: string; policy_version: number; feed_version: number }>;
 }
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {

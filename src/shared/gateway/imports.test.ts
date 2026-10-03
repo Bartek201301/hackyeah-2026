@@ -170,6 +170,9 @@ function harness(over: Partial<Opts> = {}) {
     listActivity: unused,
     readMetricsRows: unused,
     exportActivity: unused,
+    searchPermittedExcerpts: unused,
+    readPermittedExcerpts: unused,
+    recordAccessDecision: unused,
     async loadDatasetBatch(actor, sourceId, batchId, limit) {
       log.push("loadDatasetBatch");
       if (!o.batch || actor.organisation_id !== ORG || sourceId !== SOURCE || batchId !== BATCH) return null;

@@ -4,7 +4,7 @@
 
 ## Root causes
 
-The greeting `Hello. Reply in one short sentence.` produces Laya scores **0.6542 / 0.1930 / 0.3009**, triggering the provisional 0.65 block threshold. The ordinary AsterCloud revenue/forecast/bid question produces **0.2185 / 0.3412 / 0.2361**, triggering exposure review at 0.3. Missing source data does not itself make a question malicious. This checkout's chat attaches no company sources, so it must explain insufficient evidence without inventing figures or citations.
+The greeting `Hello. Reply in one short sentence.` produces Laya scores **0.6542 / 0.1930 / 0.3009**, triggering the provisional 0.65 block threshold. The ordinary AsterCloud revenue/forecast/bid question produces **0.2185 / 0.3412 / 0.2361**, triggering exposure review at 0.3. Missing source data does not itself make a question malicious. The originally diagnosed checkout attached no company sources. The subsequent integration of main `d5807e6` adds permission-filtered retrieval and citation validation; empty results must still produce an honest evidence limitation.
 
 Identical Laya inputs were stable in prior calibration work. Different wording and stochastic generated answers cross thresholds. The main issue is uncalibrated, context-insensitive semantic refusals. Separately, the setup failures came from a stopped Laya service and a shell key overriding `.env.local`; public `status: ok` is not authenticated model readiness.
 
@@ -70,6 +70,8 @@ Five complete gateway runs also passed with real Laya/Qwen and an explicitly **i
 
 `live-chat-results.json` records synthetic answers and accounting. This proves gateway/model integration, not Supabase persistence, deployed routing or browser behavior. No shared data was seeded/reset/changed by the experiments.
 
+After merging main's retrieval implementation, all six gateway cases passed again: the five above plus a synthetic permitted source returning FY2025 revenue of USD 12 million with a matching citation. `postmerge-live-chat-results.json` records this run. The three frozen classifier corpora were rerun as regression checks, with unchanged counts; these reruns are not fresh validation. A deterministic regression also verifies that a clear Qwen verdict cannot release a cited source whose access was revoked during generation, and that both assessors check the final rewritten answer.
+
 ## Reproduce
 
 ```sh
@@ -87,7 +89,9 @@ The read-only diagnostic distinguishes stopped services, missing authenticated h
 
 ## Rollout and remaining gates
 
-Local verification: the manual live suite passed 8 tests (five gateway cases and three corpus gates). The static trace-rendering test passed separately. The actual `StageList` component was inspected in the in-app browser at 1440×1000 and 375×900 using recorded synthetic evidence and built CSS. Both assessment labels and verdicts were visible; DOM scroll width matched viewport width; no console errors were reported. The isolated preview requested a missing favicon (404). This was a component preview, not a signed-in application walkthrough; authentication, deployed persistence, loading/error journeys and production performance were not tested there. The temporary server was stopped and viewport override reset.
+Final local `npm run check` passed: 891 application tests in 60 files, 17 tooling tests, generated contracts, formatting, type checking, lint, repository rules and the production build. Documentation validation also passed. The final parser regression covers escaped duplicate JSON keys that could otherwise overwrite a risk flag.
+
+Local verification after integrating main: the manual live suite passed 10 tests (six gateway cases, three corpus gates and static trace rendering). The actual `StageList` component was inspected before this merge in the in-app browser at 1440×1000 and 375×900 using recorded synthetic evidence and built CSS. Both assessment labels and verdicts were visible; DOM scroll width matched viewport width; no console errors were reported. The isolated preview requested a missing favicon (404). This was a component preview, not a signed-in application walkthrough; authentication, deployed persistence, loading/error journeys, the merged app shell and production performance were not tested there. The temporary server was stopped and viewport override reset.
 
 The optional policy is not activated in shared Supabase. This base checkout has no implemented policy-update route. Deploy compatible code before adding an immutable policy version through the integrator's atomic update path; older binaries reject the new field. Do not edit historical policy rows.
 

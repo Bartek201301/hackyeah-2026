@@ -74,7 +74,24 @@ The Mac's `.env.local` holds `LAYA_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_P
 4. Ask a benign question (ALLOW) and a known injection (BLOCK); record run ids, statuses and usage only, never answer text.
 5. Outage check with the **analyst** account: stop Laya, ask → "Request withheld" (503); restart Laya, ask again → answer. Never retry an unknown call to make it look clean.
 
-Authenticated bridge/tunnel to Vercel: P8 after G2; until then preview/production return 503 for model paths.
+## Bridge runtime (P8)
+
+Vercel production and preview run the gateway; the models stay on Julian's Mac behind the relay in `src/features/detection/bridge/` (see [Model bridge](../contracts/protocols.md#model-bridge-t04) and `HANDOFF.md` there). There is no call ledger: an unknown outcome stays an unresolved reservation in Postgres.
+
+| Side               | Env                                               | Notes                                                                 |
+| ------------------ | ------------------------------------------------- | --------------------------------------------------------------------- |
+| Vercel prod + prev | `MODEL_BRIDGE_URL`, `MODEL_BRIDGE_TOKEN`          | Server only; `https://` origin, no path. No `LAYA_API_KEY` on Vercel. |
+| Mac relay          | `LAYA_API_KEY`, `MODEL_BRIDGE_TOKEN` (same value) | Private file, mode `0600`, outside the repo. No Supabase key.         |
+
+Julian generates the token into the relay file; Bartosz types the same value into Vercel. Never in chat, logs, commits or screenshots.
+
+1. Start Laya and Ollama as in [G2 runtime on the Mac](#g2-runtime-on-the-mac) step 2.
+2. Relay, from the repository root: `node --env-file=<private file> src/features/detection/bridge/bridge.mjs`.
+3. Tunnel: `cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8787`. Expose only 8787, never 8000 or 11434.
+
+**Tunnel restart.** It is a Cloudflare quick tunnel: the hostname changes on every restart. Then update `MODEL_BRIDGE_URL` in Vercel Production and Preview, redeploy production, and ask one analyst question before handing the URL back to judges. Until the redeploy, production model paths fail closed with 503.
+
+**Switch to path B** (no code change): the Mac serves the release commit with `npm run build && npm start` on port 3000 and holds the four browser profiles. Move the demo to those profiles and finish there; production stays deployed (BLOCK still works, model paths 503 while the bridge is down). Do not retry an unknown call on the other path.
 
 ## Supabase and accounts — T02
 

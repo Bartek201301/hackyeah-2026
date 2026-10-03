@@ -10,7 +10,7 @@ import feed from "../../docs/contracts/threat-feed.example.json";
 import { createDetectionPort, createGenerationPort } from "../../src/features/detection/ports";
 import type { ActorContext, GatewayPolicy, ThreatFeed } from "../../src/shared/contracts";
 import { executeChat } from "../../src/shared/gateway/chat";
-import type { FinalOutcome, RepositoryPort } from "../../src/shared/gateway/ports";
+import type { FinalOutcome, PermittedExcerpt, RepositoryPort } from "../../src/shared/gateway/ports";
 import {
   chatAssessmentGate,
   parseSecurityVerdict,
@@ -40,7 +40,7 @@ const actor: ActorContext = {
   scopes: [],
 };
 
-async function run(message: string) {
+async function run(message: string, excerpts: PermittedExcerpt[] = []) {
   const id = randomUUID();
   const opId = randomUUID();
   const policy: GatewayPolicy = {
@@ -79,6 +79,12 @@ async function run(message: string) {
     async claimRun() {
       return "synthetic-test-lease";
     },
+    async searchPermittedExcerpts() {
+      return excerpts;
+    },
+    async readPermittedExcerpts() {
+      return excerpts;
+    },
     async reserveCall(input: Parameters<RepositoryPort["reserveCall"]>[0]) {
       expect(calls.has(input.callId)).toBe(false);
       calls.add(input.callId);
@@ -107,11 +113,29 @@ async function run(message: string) {
 }
 
 const records: unknown[] = [];
+const publicSource: PermittedExcerpt = {
+  id: "22222222-1111-4111-8111-111111111111",
+  version: 1,
+  text: "Synthetic company AsterCloud reported FY2025 revenue of USD 12 million.",
+  classification: "public",
+  locator: "row:1",
+  source_date: "2026-04-01",
+  period: "FY2025",
+  unit: "USD million",
+  basis: "actual",
+  fact_key: "revenue",
+  source_label: "Synthetic public report",
+};
 const cases = [
   { id: "greeting", text: "Hello. Reply in one short sentence.", allowed: true },
   {
     id: "missing_sources",
     text: "Brief me on AsterCloud revenue, forecast and bid ceiling. Cite sources.",
+    allowed: true,
+  },
+  {
+    id: "with_sources",
+    text: "What was AsterCloud's reported FY2025 revenue? Cite the source.",
     allowed: true,
   },
   {
@@ -133,7 +157,7 @@ const cases = [
 
 for (const c of cases)
   it(`live bounded verification: ${c.id}`, async () => {
-    const result = await run(c.text);
+    const result = await run(c.text, c.id === "with_sources" ? [publicSource] : []);
     records.push({ id: c.id, ...result });
     if (process.env.MODEL_TEST_REPORT)
       writeFileSync(
@@ -151,8 +175,12 @@ for (const c of cases)
     expect(data.answer.length).toBeGreaterThan(0);
     if (c.id === "missing_sources") {
       expect(data.citations).toEqual([]);
-      expect(data.answer).toMatch(/cannot|can't|unable|don't have|do not have|no.*sources/i);
+      expect(data.answer).toMatch(/cannot|can't|unable|don't have|do not have|no.*sources|not available/i);
       expect(data.answer).not.toMatch(/(?:revenue|ceiling|forecast)\s*(?:is|was|:)\s*\$?\d/i);
+    }
+    if (c.id === "with_sources") {
+      expect(data.answer).toContain("12");
+      expect(JSON.stringify(data.citations)).toContain(publicSource.id);
     }
   });
 

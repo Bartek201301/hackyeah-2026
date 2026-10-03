@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Run } from "@/shared/contracts";
 import {
+  CANCEL_UNAVAILABLE,
   POLL_INTERVAL_MS,
   canCancel,
+  cancelReachedDecision,
   describeRun,
   isTerminalRunState,
   progressLabel,
@@ -116,5 +118,26 @@ describe("progressLabel", () => {
   it("falls back to the state label when no stage is supplied", () => {
     expect(progressLabel(devRun("pending", ""))).toBe("Queued");
     expect(progressLabel(devRun("pending", "   "))).toBe("Queued");
+  });
+});
+
+describe("a cancel request that carried no decision", () => {
+  it("treats 503 as no decision, so the run is left alone", () => {
+    // protocols.md: 503 carries no decision. The gateway recorded no cancellation, so the screen
+    // must keep the run it already has instead of reporting a service error as the run's outcome.
+    expect(cancelReachedDecision(503)).toBe(false);
+  });
+
+  it("lets every other answer settle the run, including a refusal", () => {
+    // 202 accepted, 200 already terminal, 403 not permitted, 404 not visible, 409 stale read: each
+    // is a real answer about the run and belongs in the outcome notice.
+    for (const status of [200, 202, 400, 403, 404, 409, 429, 500]) {
+      expect(cancelReachedDecision(status)).toBe(true);
+    }
+  });
+
+  it("says the run is still running, and never that it was cancelled", () => {
+    expect(CANCEL_UNAVAILABLE).toMatch(/not stopped/);
+    expect(CANCEL_UNAVAILABLE).not.toMatch(/cancelled/i);
   });
 });

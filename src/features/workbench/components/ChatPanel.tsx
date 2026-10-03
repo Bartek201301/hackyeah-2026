@@ -22,7 +22,14 @@ import { classifyChatResponse } from "../lib/chatFlow";
 import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
 import { readChatResult, readChatRun, type ChatResult } from "../lib/chatData";
 import { checkCitations, type CitationView } from "../lib/citations";
-import { POLL_INTERVAL_MS, canCancel, progressLabel, shouldKeepPolling } from "../lib/runState";
+import {
+  CANCEL_UNAVAILABLE,
+  POLL_INTERVAL_MS,
+  canCancel,
+  cancelReachedDecision,
+  progressLabel,
+  shouldKeepPolling,
+} from "../lib/runState";
 import { OutcomeNotice } from "./OutcomeNotice";
 
 /** Matches ChatRequest.message in the contract. */
@@ -43,6 +50,7 @@ export function ChatPanel() {
   const [result, setResult] = useState<ChatResult | null>(null);
   const [citations, setCitations] = useState<CitationView[]>([]);
   const [rejectedCitations, setRejectedCitations] = useState(false);
+  const [cancelNotice, setCancelNotice] = useState<string | null>(null);
 
   /**
    * Key bound to the question it was minted for. A retry of the same question reuses it; a
@@ -55,6 +63,7 @@ export function ChatPanel() {
 
   const reset = () => {
     setOutcome(null);
+    setCancelNotice(null);
     setResult(null);
     setCitations([]);
     setRejectedCitations(false);
@@ -138,11 +147,18 @@ export function ChatPanel() {
 
   const cancel = async () => {
     if (!run) return;
+    setCancelNotice(null);
     const { status, body } = readEnvelope(
       await client.POST("/runs/{id}/cancel", {
         params: { path: { id: run.id }, header: { "Idempotency-Key": newIdempotencyKey() } },
       }),
     );
+    // A refused cancel request is not an outcome of the run: see cancelReachedDecision. The run
+    // keeps its state, keeps polling and keeps offering Cancel, and the notice says what happened.
+    if (!cancelReachedDecision(status)) {
+      setCancelNotice(CANCEL_UNAVAILABLE);
+      return;
+    }
     apply(status, body);
   };
 
@@ -223,6 +239,12 @@ export function ChatPanel() {
               </Button>
             )}
           </div>
+          {/* Beside the controls, not in the outcome notice: the run's own state is unchanged. */}
+          {cancelNotice && (
+            <p role="status" className="text-sm text-muted">
+              {cancelNotice}
+            </p>
+          )}
         </div>
       </Card>
 

@@ -86,8 +86,37 @@ describe("resource use", () => {
   it("does not claim a retention when nothing is reserved", () => {
     const none = usageView(usage({ reserved_generation_tokens: 0, unresolved_reservation: false }));
     expect(none.hasReservation).toBe(false);
+    expect(none.reservedHint).toBe("No reservation was recorded for this operation.");
     const unresolved = usageView(usage({ reserved_generation_tokens: 0, unresolved_reservation: true }));
     expect(unresolved.hasReservation).toBe(true);
+    expect(unresolved.reservedHint).toContain("not reconciled");
+  });
+
+  /*
+   * Observed against the real gateway: one settled run records 2,200 reserved tokens while the
+   * dashboard for that same UTC day reports 0 outstanding. Both numbers are right and they are the
+   * same contract field, so the caption has to say which of the two it is.
+   */
+  it("says whether a reserved figure is one operation's or a window's outstanding total", () => {
+    const settled = usage({ reserved_generation_tokens: 2200, unresolved_reservation: false });
+    expect(usageView(settled, "operation").reservedHint).toBe(
+      "Reserved for this operation. A reservation is never added to actual use.",
+    );
+    expect(usageView(settled, "window").reservedHint).toBe(
+      "Still outstanding in this window. Never added to actual use.",
+    );
+    // Neither caption claims a retention; only an unresolved reservation does, in both meanings.
+    for (const means of ["operation", "window"] as const) {
+      expect(usageView(settled, means).reservedHint).not.toContain("Retained");
+      expect(usageView({ ...settled, unresolved_reservation: true }, means).reservedHint).toContain(
+        "Retained",
+      );
+    }
+  });
+
+  it("reports an empty window as nothing outstanding, not as nothing recorded", () => {
+    const quiet = usage({ reserved_generation_tokens: 0, unresolved_reservation: false });
+    expect(usageView(quiet, "window").reservedHint).toBe("No reservation is outstanding.");
   });
 
   it("separates generation from the Laya assessment instead of merging them", () => {

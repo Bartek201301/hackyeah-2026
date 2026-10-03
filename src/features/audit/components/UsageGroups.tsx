@@ -32,9 +32,9 @@ export function UsageGroups({ usage, compact = false }: { usage: UsageView; comp
       <Group
         title={copy.label.reserved}
         rows={usage.reserved}
-        // "Retained until reconciled" is only true when something is reserved. Zero reserved tokens
-        // with that caption would describe a retention that is not happening.
-        hint={compact ? undefined : usage.hasReservation ? copy.usage.reservedHint : copy.usage.noReservation}
+        // The caption comes from the view, because only the caller knows whether this number is one
+        // operation's reservation or a window's outstanding total. See ReservedMeaning.
+        hint={compact ? undefined : usage.reservedHint}
       />
       <Group
         title={copy.label.unknownColumn}
