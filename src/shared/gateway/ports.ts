@@ -160,9 +160,14 @@ export interface RepositoryPort {
   }): Promise<boolean>;
   /** Sources visible to this actor (sourceScope), newest first, at most `limit`. */
   listSources(actor: ActorContext, limit: number): Promise<SourceRow[]>;
-  /** A dataset source of the actor's organisation with its batch rows by row number; null when the
-   *  source is missing, not a dataset, or the batch is empty. */
-  loadDatasetBatch(actor: ActorContext, sourceId: string, batchId: string): Promise<DatasetBatch | null>;
+  /** A dataset source of the actor's organisation with at most `limit` batch rows by row number; null
+   *  when the source is missing, not a dataset, or the batch is empty. */
+  loadDatasetBatch(
+    actor: ActorContext,
+    sourceId: string,
+    batchId: string,
+    limit: number,
+  ): Promise<DatasetBatch | null>;
   /** The source has an approved or partial document (re-import is refused). */
   hasPublishedDocument(organisationId: string, sourceId: string): Promise<boolean>;
   /** Private quarantine bucket, server-generated key, never overwrites. */

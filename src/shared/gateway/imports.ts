@@ -21,6 +21,7 @@ import type { FinalOutcome, GatewayDeps, ImportPublication, Outcome, StoredResul
 const FIELDS = ["text", "source_date", "period", "unit", "fact_key", "basis"] as const;
 const BASES = new Set(["actual", "forecast", "proposal", "event"]);
 const INVALID_ROW = "A batch row does not match the dataset schema, so nothing was imported.";
+const TOO_MANY_ROWS = "The batch has more rows than the import policy allows, so nothing was imported.";
 
 type Row = Record<(typeof FIELDS)[number], string>;
 type Verdict = { decision: "ALLOW" | "REVIEW" | "BLOCK"; reasons: string[] };
@@ -42,7 +43,11 @@ function validRow(payload: unknown, maxChars: number): payload is Row {
   return (
     isDate(r.source_date) &&
     BASES.has(r.basis) &&
-    [r.period, r.unit, r.fact_key].every((v) => v.length <= 60) &&
+    // Metadata is published beside the text but never semantically assessed, so it is held to short
+    // closed shapes that cannot carry a sentence (FY2025 / 2026-Q4, USD million, bid_ceiling).
+    /^[A-Za-z0-9-]{1,20}$/.test(r.period) &&
+    /^[A-Za-z%$]{1,12}( [A-Za-z]{1,12})?$/.test(r.unit) &&
+    /^[a-z0-9_]{1,40}$/.test(r.fact_key) &&
     [...r.text].length <= maxChars
   );
 }
@@ -68,7 +73,8 @@ export async function startConnectorImport(
   if (actor.role !== "admin") return errorOutcome("ACCESS_DENIED");
   const repo = deps.repository;
   // One body for a missing source, another organisation's source and an empty batch.
-  if (!(await repo.loadDatasetBatch(actor, body.source_id, body.batch_id))) return errorOutcome("NOT_FOUND");
+  if (!(await repo.loadDatasetBatch(actor, body.source_id, body.batch_id, 1)))
+    return errorOutcome("NOT_FOUND");
   // ponytail: this runs before the key is looked up, so replaying the key of an import that already
   // published answers 409, not the stored Run. Look the key up first if a client ever relies on that replay.
   if (await repo.hasPublishedDocument(actor.organisation_id, body.source_id)) return errorOutcome("CONFLICT");
@@ -126,8 +132,14 @@ export async function executeImport(
     const batchId = input?.batch_id;
     if (typeof sourceId !== "string" || typeof batchId !== "string")
       throw new GatewayError("STATE_UNAVAILABLE");
-    const batch = await t.time("persistence_ms", () => repo.loadDatasetBatch(actor, sourceId, batchId));
+    // One row past the cap is fetched so an oversized batch fails instead of being silently cut.
+    const cap = policy.imports.max_csv_rows;
+    const batch = await t.time("persistence_ms", () =>
+      repo.loadDatasetBatch(actor, sourceId, batchId, cap + 1),
+    );
     if (!batch) return { error: "NOT_FOUND" };
+    if (batch.rows.length > cap)
+      return { error: "INVALID_INPUT", reasons: ["import:too_many_rows"], message: TOO_MANY_ROWS };
     const { source } = batch;
     if (await t.time("persistence_ms", () => repo.hasPublishedDocument(actor.organisation_id, source.id)))
       return { error: "CONFLICT" };
@@ -154,7 +166,11 @@ export async function executeImport(
     for (const unit of unitsOf(rows)) {
       stage = "import_signature";
       const found = await t.time("deterministic_ms", () =>
-        matchSignatures(unit.text, feed, "import_signature").map((f) => ({ ...f, locator: unit.locator })),
+        matchSignatures(
+          `${unit.text}\n${unit.row.period} ${unit.row.unit} ${unit.row.fact_key}`,
+          feed,
+          "import_signature",
+        ).map((f) => ({ ...f, locator: unit.locator })),
       );
       findings.push(...found);
       let v: Verdict = await t.time("deterministic_ms", () => decide(found, null, policy));
@@ -270,57 +286,74 @@ export async function executeImport(
     states = calls.started || stateFailed ? ["incomplete", "unknown"] : ["failed", "completed"];
   }
 
-  const { status, body } = outcome;
-  const result: StoredResult = {
-    status,
-    decision: body.decision,
-    reasons: body.reasons,
-    semantic: body.semantic,
-    usage: body.usage,
-    data: body.data,
-    error: body.error,
+  const counts = {
+    units: outcomes.length,
+    approved: count("ALLOW"),
+    review: count("REVIEW"),
+    removed: count("BLOCK"),
   };
-  // Safe audit payload: per-unit findings with locators and counts, never unit text.
-  const event = {
-    stage,
-    decision: body.decision,
-    reasons: body.reasons,
-    findings: findings.map((f) => ({
-      code: f.code,
-      category: f.category,
-      severity: f.severity,
-      stage: f.stage,
-      locator: f.locator,
-    })),
-    counts: {
-      units: outcomes.length,
-      approved: count("ALLOW"),
-      review: count("REVIEW"),
-      removed: count("BLOCK"),
-    },
-    semantic: body.semantic,
-    usage,
+  const settle = (o: Outcome, [run_state, operation_state]: typeof states) => {
+    const { status, body } = o;
+    const result: StoredResult = {
+      status,
+      decision: body.decision,
+      reasons: body.reasons,
+      semantic: body.semantic,
+      usage: body.usage,
+      data: body.data,
+      error: body.error,
+    };
+    // Safe audit payload: per-unit findings with locators and counts, never unit text.
+    const event = {
+      stage,
+      decision: body.decision,
+      reasons: body.reasons,
+      findings: findings.map((f) => ({
+        code: f.code,
+        category: f.category,
+        severity: f.severity,
+        stage: f.stage,
+        locator: f.locator,
+      })),
+      counts,
+      semantic: body.semantic,
+      usage,
+    };
+    const outcome: FinalOutcome = {
+      run_state,
+      operation_state,
+      operation: "import_connector",
+      stage,
+      decision: body.decision,
+      reasons: body.reasons,
+      usage,
+      result,
+      event,
+    };
+    return { runId: run.id, leaseToken: lease, operationId: op.operation_id, outcome };
   };
-  const final: FinalOutcome = {
-    run_state: states[0],
-    operation_state: states[1],
-    operation: "import_connector",
-    stage,
-    decision: body.decision,
-    reasons: body.reasons,
-    usage,
-    result,
-    event,
-  };
-  const settle = { runId: run.id, leaseToken: lease, operationId: op.operation_id, outcome: final };
   const pub = "decision" in end ? publication : null;
   let finalized = false;
   try {
     finalized = await t.time("persistence_ms", () =>
-      pub ? repo.finalizeImport({ ...settle, publication: pub }) : repo.finalizeRun(settle),
+      pub
+        ? repo.finalizeImport({ ...settle(outcome, states), publication: pub })
+        : repo.finalizeRun(settle(outcome, states)),
     );
-  } catch {
-    finalized = false;
+  } catch (e) {
+    if (pub) {
+      // finalize_import rejected the publication and rolled all of it back (a concurrent import of the
+      // same source, or a payload the RPC refuses): settle the run without it so it does not linger.
+      outcome = errorOutcome(
+        e instanceof GatewayError && e.code === "CONFLICT" ? "CONFLICT" : "STATE_UNAVAILABLE",
+        {
+          ...common,
+          semantic: worst ?? undefined,
+        },
+      );
+      const fallback = settle(outcome, ["failed", "completed"]);
+      finalized = await t.time("persistence_ms", () => repo.finalizeRun(fallback)).catch(() => false);
+    }
   }
   // Nothing is disclosed unless the publication, terminal result and audit committed together.
   const released = finalized ? outcome : errorOutcome("AUDIT_UNAVAILABLE", { ...common });

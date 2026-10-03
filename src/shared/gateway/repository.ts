@@ -225,7 +225,7 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
     },
 
     // Organisation and kind filter in the query; the batch is read only for a source that passed both.
-    async loadDatasetBatch(actor, sourceId, batchId) {
+    async loadDatasetBatch(actor, sourceId, batchId, limit) {
       const source = await data<DatasetBatch["source"] | null>(
         db
           .from("sources")
@@ -243,7 +243,8 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
           .eq("organisation_id", actor.organisation_id)
           .eq("source_id", source.id)
           .eq("batch_id", batchId)
-          .order("row_number"),
+          .order("row_number")
+          .limit(limit),
       );
       return rows?.length ? { source, rows } : null;
     },
