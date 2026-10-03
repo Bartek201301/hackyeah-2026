@@ -80,3 +80,132 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Login "gateway flow" (src/app/login/GatewayFlow.tsx). Decorative: requests drift to the gate;
+ * most pass (success), some stop (danger), one is held aside (warning). Chip base centre is x=10,
+ * gate centre x=200. Reduced motion freezes each chip at its own --sx/--sy/--sf frame.
+ */
+.flow-chip {
+  /* Longhands: the minifier turns a nameless `animation` shorthand into `none`. */
+  animation-duration: 12s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  fill: var(--color-border-strong);
+}
+.flow-pass {
+  animation-name: flow-pass;
+}
+.flow-stop {
+  animation-name: flow-stop;
+}
+.flow-hold {
+  animation-name: flow-hold;
+}
+.flow-scan {
+  animation: flow-scan 5s ease-in-out infinite alternate;
+}
+.flow-gate {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes flow-pass {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  40% {
+    transform: translateX(166px);
+    fill: var(--color-border-strong);
+  }
+  50% {
+    transform: translateX(190px);
+    fill: var(--color-success);
+  }
+  90% {
+    transform: translateX(390px);
+    opacity: 1;
+    fill: var(--color-success);
+  }
+  100% {
+    transform: translateX(410px);
+    opacity: 0;
+    fill: var(--color-success);
+  }
+}
+@keyframes flow-stop {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  40% {
+    transform: translateX(170px);
+    fill: var(--color-border-strong);
+  }
+  48%,
+  75% {
+    transform: translateX(174px);
+    opacity: 1;
+    fill: var(--color-danger);
+  }
+  90%,
+  100% {
+    transform: translateX(174px);
+    opacity: 0;
+    fill: var(--color-danger);
+  }
+}
+@keyframes flow-hold {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  40% {
+    transform: translate(166px, 0);
+    fill: var(--color-border-strong);
+  }
+  50% {
+    transform: translate(190px, 0);
+    fill: var(--color-border-strong);
+  }
+  58%,
+  82% {
+    transform: translate(214px, 30px);
+    opacity: 1;
+    fill: var(--color-warning);
+  }
+  95%,
+  100% {
+    transform: translate(214px, 30px);
+    opacity: 0;
+    fill: var(--color-warning);
+  }
+}
+@keyframes flow-scan {
+  from {
+    transform: translateY(-150px);
+  }
+  to {
+    transform: translateY(150px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-chip {
+    animation: none;
+    transform: translate(var(--sx), var(--sy, 0));
+    fill: var(--sf);
+  }
+  .flow-scan {
+    animation: none;
+  }
+}
