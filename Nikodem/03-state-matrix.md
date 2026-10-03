@@ -96,7 +96,7 @@ and `Incomplete trace` rows above. A generic client-error state catches anything
 | Percentages  | one decimal, `%` suffix; `N/A` when null                                                  |
 | Money        | micro-USD → `USD {n.nnnnnn}` with the unit stated, plus `disclaimer.money`                |
 | UUIDs        | first 8 and last 4 characters with an ellipsis; full value in `title` and in copy actions |
-| Scores       | two decimals, `0.00`–`1.00`; null → `Not measured`                                        |
+| Scores       | three decimals, truncated, `0.000`–`1.000`; null → `Not measured`                         |
 | Ratios       | `{completed} / {planned}`                                                                 |
 
 English formatting is required by `DESIGN.md`. Note the shared `BarChart` hardcodes `pl-PL` grouping
@@ -108,6 +108,11 @@ takes no range parameter — only `after` — so that list is **not** day-scoped
 does not have would be a false statement on screen. It now reads
 `No audit records are visible in this scope.` / `Records appear here once an audited operation has been
 stored.` The day wording stays on the metrics side, which really is confined to one UTC day.
+
+Scores changed from two decimals to three, truncated rather than rounded, and the reason is the same
+kind: policy thresholds sit on two-decimal values, so rounding printed `0.2972` as `0.30` on an ALLOW —
+a score reading as exactly the threshold it did not reach. Truncation never lifts a value to a boundary.
+Implemented in `formatScore` (`src/features/audit/format.ts`).
 
 Money changed from four decimals to six during P2, and the reason matters: one micro-USD is
 `0.000001` USD, so an illustrative figure of a few micro-USD rounded to `USD 0.0000` — a real cost
