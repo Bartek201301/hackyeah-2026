@@ -76,6 +76,19 @@ export type ActivityRow = {
   created_at: string;
 };
 export type EventRow = { event_type: string; payload: Record<string, unknown>; created_at: string };
+/** actor_activity row as selected for metrics: counters and settled usage, never events. */
+export type MetricsActivityRow = {
+  trace_id: string;
+  decision: ApiResponse["decision"];
+  reasons: string[];
+  usage: Usage;
+};
+/** reservations row as selected for metrics; `state` decides settled against still outstanding. */
+export type MetricsReservationRow = {
+  unit: BudgetUnit;
+  amount: number;
+  state: "reserved" | "settled" | "unresolved" | "released";
+};
 /** sources row as selected for source_list; projected and schema-checked before release. */
 export type SourceRow = { id: string; label: string; classification: string; kind: string };
 /** Names follow protocols.md; startRun/readRun/claimRun are additions. Every method throws GatewayError
@@ -128,6 +141,18 @@ export interface RepositoryPort {
   }): Promise<boolean>;
   /** Sources visible to this actor (sourceScope), newest first, at most `limit`. */
   listSources(actor: ActorContext, limit: number): Promise<SourceRow[]>;
+  /**
+   * Rows behind one metrics window: activity for the counters and settled usage, reservations for
+   * what is still outstanding. Filtering is in the query because the gateway client bypasses RLS;
+   * `ownActorId` null means the whole organisation. At most `limit` rows of each.
+   */
+  readMetricsRows(input: {
+    organisationId: string;
+    ownActorId: string | null;
+    from: string;
+    to: string;
+    limit: number;
+  }): Promise<{ activity: MetricsActivityRow[]; reservations: MetricsReservationRow[] }>;
 }
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {

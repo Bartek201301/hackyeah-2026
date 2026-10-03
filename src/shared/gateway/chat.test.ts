@@ -157,6 +157,11 @@ function harness(over: Partial<Opts> = {}) {
     async listSources() {
       throw new Error("not used");
     },
+
+    async readMetricsRows() {
+      log.push("readMetricsRows");
+      return { activity: [], reservations: [] };
+    },
   };
 
   const detection: DetectionPort = {

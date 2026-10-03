@@ -5,7 +5,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ErrorCode } from "@/shared/contracts";
 import { createSupabaseAdmin } from "@/shared/supabase/admin";
 import { GatewayError, STATUS } from "./envelope";
-import type { ActivityRow, EventRow, RepositoryPort, RunRecord, SourceRow } from "./ports";
+import type {
+  ActivityRow,
+  EventRow,
+  MetricsActivityRow,
+  MetricsReservationRow,
+  RepositoryPort,
+  RunRecord,
+  SourceRow,
+} from "./ports";
 import { sourceScope } from "./sources";
 
 const CODES = new Set<string>(Object.keys(STATUS));
@@ -222,6 +230,36 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit),
       );
       return rows ?? [];
+    },
+
+    async readMetricsRows({ organisationId, ownActorId, from, to, limit }) {
+      let activityQuery = db
+        .from("actor_activity")
+        .select("trace_id, decision, reasons, usage")
+        .eq("organisation_id", organisationId)
+        .gte("created_at", from)
+        .lte("created_at", to);
+      // own scope filters here, not after serialization: the admin client bypasses RLS.
+      if (ownActorId) activityQuery = activityQuery.eq("actor_id", ownActorId);
+      const activity = await data<MetricsActivityRow[] | null>(
+        activityQuery.order("created_at", { ascending: false }).limit(limit),
+      );
+
+      /*
+       * Reservations carry no actor, so the window and the scope come from their operation. The
+       * embedded columns exist to filter the join and are never read: only unit, amount and state
+       * reach the aggregate, so the nested object cannot reach a response.
+       */
+      let reservationQuery = db
+        .from("reservations")
+        .select("unit, amount, state, operations!inner(actor_id, created_at)")
+        .eq("organisation_id", organisationId)
+        .gte("operations.created_at", from)
+        .lte("operations.created_at", to);
+      if (ownActorId) reservationQuery = reservationQuery.eq("operations.actor_id", ownActorId);
+      const reservations = await data<MetricsReservationRow[] | null>(reservationQuery.limit(limit));
+
+      return { activity: activity ?? [], reservations: reservations ?? [] };
     },
   };
 }
