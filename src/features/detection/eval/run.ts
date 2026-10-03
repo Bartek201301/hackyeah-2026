@@ -55,11 +55,17 @@ const sourcePaths = [
   path.join(__dirname, "core.ts"),
   path.join(__dirname, "run.ts"),
   path.join(__dirname, "report.ts"),
+  path.join(root, "package-lock.json"),
+  path.join(root, "src/features/detection/ports.ts"),
   path.join(root, "src/features/detection/providers/smoke.mjs"),
+  path.join(root, "src/features/detection/providers/clients.ts"),
   path.join(root, "src/features/detection/providers/laya.ts"),
   path.join(root, "src/features/detection/providers/ollama.ts"),
+  path.join(root, "src/features/detection/providers/transport.ts"),
+  path.join(root, "src/features/detection/providers/validation.ts"),
   path.join(root, "src/shared/gateway/chat.ts"),
   path.join(root, "src/shared/gateway/checks.ts"),
+  path.join(root, "src/shared/contracts/validate.ts"),
   path.join(root, "src/shared/contracts/runtime-manifest.json"),
 ];
 
