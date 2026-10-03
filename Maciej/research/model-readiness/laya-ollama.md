@@ -1,0 +1,43 @@
+# Laya and Ollama — first-request readiness
+
+Researched 3 October 2026. T01 preparation/T04; R05/R09/R16/R19; AT04/13 and G2. Goal: let Bartosz inject genuine provider adapters whose bounds, failures and usage are understood. This is research, not a completed service handoff.
+
+## Observed host and artifacts
+
+The [source map](../overview/source-map.md) records host commands and repository revisions. This is an M5 Pro/48 GiB Mac with Homebrew Ollama 0.20.5, but no responding default model service. Default Ollama manifests contain no models and the default Hugging Face cache does not exist. Default Python 3.14.6 has no installed Laya, torch, transformers, tokenizers, FastAPI or Uvicorn metadata. Another environment or custom model location remains unverified; Julian should identify it before any new installation.
+
+[PyPI's exact 0.3.24 release](https://pypi.org/project/laya/0.3.24/) publishes a wheel whose SHA-256 is `dbb302bbf5a0d4801c34db5b3112bde0cb69dc920cb5f57089f75c6d7e9cd56a`. The downloaded research copy matched it. Static inspection used its `laya/agent.py`, `common.py`, `router.py`, `revisions.py` and `serve.py`; no package code was executed. PyPI provenance identifies publishing commit `fa9a2a7070b1789912a49ae24603bbfb1a78b001`.
+
+The public model API reported checkpoint candidate `1a793eb568e6718f15941d08f85432581df534e3`. This is a remote revision candidate, not a locally loaded or approved runtime revision. At that revision, [agent configuration](https://huggingface.co/convaiinnovations/laya-typed-decisions/blob/1a793eb568e6718f15941d08f85432581df534e3/rl_agent_config.json) sets `max_len=1024` and `head_max_len=256`. The [tokenizer configuration](https://huggingface.co/convaiinnovations/laya-typed-decisions/blob/1a793eb568e6718f15941d08f85432581df534e3/tokenizer/tokenizer_config.json) advertises 8192; that larger tokenizer/encoder capacity does not override the project's 1024 assessment ceiling.
+
+## Recommended provider setup to verify later
+
+| Question                         | Recommendation and tradeoff                                                                                                                                                                                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Laya HTTP or embedded inference? | Keep the accepted loopback Laya HTTP service plus protected bridge. It separates lifecycle and provider protocol from gateway code. Embedded Router can pin revisions but changes operational assumptions; do not switch just to avoid writing a launcher.                |
+| How to pin weights?              | Map project `LAYA_CHECKPOINT_REVISION` explicitly to upstream `LAYA_REVISION`, using a full approved commit SHA. Pin tokenizer and weights together. Record actual loaded revision and artifact hashes. A recorded environment value alone proves nothing.                |
+| Model routing?                   | Send explicit `model: typed-decisions`, require matching `routing.model` and expected repository, and inspect actual revision through authenticated readiness. Preloading one model does not itself forbid all other upstream routes; only the private bridge is exposed. |
+| Native long-text helper?         | Prefer explicit project windows over treating `predict_long` as a drop-in. The latter splits serialized state and has different aggregate truncation reporting; see [coverage](../semantic-coverage/tokenization-and-accounting.md).                                      |
+| CPU fallback?                    | Report actual device and fallback state. A CPU fallback is usable only after measured timeout/cap checks, with no claim of identical scores or latency.                                                                                                                   |
+| Ollama client SDK?               | Native TypeScript fetch/Python HTTPX fits the narrow endpoints and avoids another SDK dependency. No model-driven endpoint or model selection.                                                                                                                            |
+
+The pin mapping is confirmed in [0.3.24 revisions source](https://github.com/NandhaKishorM/laya/blob/fa9a2a7070b1789912a49ae24603bbfb1a78b001/laya/revisions.py): `resolve_revision` consults `LAYA_REVISION`; `verify_digests` supports explicit hashes. Project `LAYA_CHECKPOINT_REVISION` is not automatically consumed by this loader. Keep `LAYA_JEV_STRICT=0`; strict projection drops routing and truncation evidence required by our adapter. These are deployment requests for Bartosz, with bridge implementation owned by Maciej.
+
+## Generation mapping and capability proof
+
+Use the selected `qwen3:8b` with `think:false`, `stream:false`, bounded context and output options. [Ollama chat](https://docs.ollama.com/api/chat) exposes `prompt_eval_count`, `eval_count`, `total_duration`, `done` and `done_reason`; duration is nanoseconds. Preserve null when usage is unavailable. Convert duration to milliseconds, and record bridge wall time separately. The response's model name is not a digest; obtain and compare the installed model digest using [model listing](https://docs.ollama.com/api/tags).
+
+Proposed research conclusion: validate `num_ctx`/`num_predict` behavior against the actual installed server and model, using the [Modelfile parameter reference](https://docs.ollama.com/modelfile) as the initial specification. Test plain text, a registered tool request, a tool result followed by generation, and output-cap termination. `done:true` alone must not turn a length-truncated response into a finished checked answer. The bridge returns proposed tools; Bartosz validates arguments, authorizes and executes them.
+
+The neutral ToolCall requires an ID, while the documented Ollama function-call example has no ID. Recommend deterministic bridge-generated IDs scoped to call ID and tool index, persisted with the result for replay. Confirm tool-result association in the actual provider format; do not forward the neutral shape blindly. Account for complete messages, tool schemas, tool results and template overhead when verifying the input reservation bound. Byte counts of user content alone are insufficient.
+
+## Readiness procedure for the future authorized capability task
+
+1. Julian confirms available runtime locations, Mac availability, power/awake arrangements and tunnel ownership. Bartosz locks dependencies and records the secure environment mapping. Never print secret values.
+2. Verify loopback binds, installed package versions, full checkpoint pin and tokenizer/weight hashes. Inspect authenticated Laya health: loaded typed-decisions, actual revision and actual device. Upstream liveness can return 200 without authentication or loaded weights; it is not bridge readiness.
+3. Make a bounded synthetic assessment with the exact three protocol questions. Require finite named scores, full routing/truncation evidence, complete coverage and authentic usage. Retain safe metadata, not prompt bodies or secret values.
+4. Verify qwen digest, thinking disabled, bounded generation, tools and genuine counts. Reject changed revisions/digests and unsupported capabilities; never substitute fake success or a different model silently.
+5. Exercise the protected bridge and ledger over loopback, then the agreed HTTPS endpoint. Missing/wrong bearer, unknown route, arbitrary model/URL and overlimit requests must cause zero provider calls.
+6. Bartosz performs the integrated allowed/blocked request with identity, reservation and durable audit. A clean request can generate; a denied action must not call generation. Maciej's adapter smoke alone is not G2.
+
+Handoff records exact factory exports after G1, commit, protocol/policy versions, package versions, actual checkpoint/digest/device, safe health procedure, token/timing fields, cancellation behavior and unavailable capabilities. All six steps are pending; no inference or performance result was collected in this research task.
