@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { ActorContext, AuditProjection } from "@/shared/contracts";
 import { check } from "@/shared/contracts/validate";
 import { toListProjection } from "./auditList";
+import { sha256Hex } from "./checks";
 import { errorOutcome } from "./envelope";
 import { parseScope, parseWindow } from "./metrics";
 import type { GatewayDeps, Outcome } from "./ports";
@@ -14,8 +15,11 @@ import type { GatewayDeps, Outcome } from "./ports";
  * organisation for admins only, one UTC day at most. The rows are the AuditProjection list fields,
  * flattened, so the file carries safe codes and measurements only — never events, prompts or text.
  *
- * No audit write: like audit_list and metrics_read this is a projection read. X-Trace-ID names this
- * response; persisting access to it would need a repository write the port does not have yet.
+ * Unlike audit_list and metrics_read, this hands a file out of the gateway, so the access itself is
+ * durable: begin_operation writes an `audit_export` operation and its `intent` event under the
+ * X-Trace-ID before any byte is sent. If that write fails the file is withheld (handle maps the
+ * GatewayError), so a trace id is never shown for an export that has no record. The event carries
+ * the request hash only, never the rows. A refused export reads nothing and records nothing.
  */
 
 /** protocols.md: one export is at most 1,000 rows; a larger window is refused, never truncated. */
@@ -114,6 +118,15 @@ export async function exportAudit(
   }
 
   const traceId = randomUUID();
+  await deps.repository.beginOperation({
+    actor,
+    operation: "audit_export",
+    // A GET carries no Idempotency-Key; every download is its own access.
+    idempotencyKey: randomUUID(),
+    requestSha256: sha256Hex(JSON.stringify({ scope, ...window })),
+    traceId,
+    runId: null,
+  });
   return new Response(toCsv(items), {
     status: 200,
     headers: {

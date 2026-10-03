@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ActorContext } from "@/shared/contracts";
 import { EXPORT_ROW_CAP, csvCell, exportAudit } from "./auditExport";
-import { notExecutedUsage } from "./envelope";
+import { GatewayError, notExecutedUsage } from "./envelope";
 import type { ActivityRow, GatewayDeps, Outcome, RepositoryPort, WindowQuery } from "./ports";
 
 const actor: ActorContext = {
@@ -30,16 +30,24 @@ const row = (overrides: Partial<ActivityRow> = {}): ActivityRow => ({
   ...overrides,
 });
 
-function setup(rows: ActivityRow[] = [row()]) {
+type Intent = Parameters<RepositoryPort["beginOperation"]>[0];
+
+function setup(rows: ActivityRow[] = [row()], intentFails = false) {
   const queries: WindowQuery[] = [];
+  const intents: Intent[] = [];
   const repository = {
     async exportActivity(input: WindowQuery) {
       queries.push(input);
       return rows;
     },
+    async beginOperation(input: Intent) {
+      if (intentFails) throw new GatewayError("STATE_UNAVAILABLE");
+      intents.push(input);
+      return { operation_id: "op", state: "intent", replay: false, policy_version: 1, feed_version: 1 };
+    },
   } as unknown as RepositoryPort;
   const deps: GatewayDeps = { repository, detection: null, generation: null };
-  return { deps, queries };
+  return { deps, queries, intents };
 }
 
 const run = (
@@ -139,5 +147,31 @@ describe("exportAudit", () => {
   it("withholds the whole file when one row breaks the contract", async () => {
     const { deps } = setup([row(), row({ policy_version: null })]);
     expect(refusal(await run(deps, actor))).toMatchObject({ status: 503, code: "STATE_UNAVAILABLE" });
+  });
+
+  it("records the access under X-Trace-ID before the file is sent", async () => {
+    const { deps, intents } = setup();
+    const res = (await run(deps, admin, { scope: "organisation" })) as Response;
+    expect(intents).toEqual([
+      expect.objectContaining({
+        actor: admin,
+        operation: "audit_export",
+        traceId: res.headers.get("x-trace-id"),
+        runId: null,
+        requestSha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+      }),
+    ]);
+  });
+
+  it("withholds the file when the access record cannot be written", async () => {
+    const { deps } = setup([row()], true);
+    await expect(run(deps, actor)).rejects.toMatchObject({ code: "STATE_UNAVAILABLE" });
+  });
+
+  it("records nothing for a refused export", async () => {
+    const { deps, intents } = setup(Array(EXPORT_ROW_CAP + 1).fill(row()));
+    await run(deps, actor);
+    await run(deps, actor, { scope: "organisation" });
+    expect(intents).toHaveLength(0);
   });
 });
