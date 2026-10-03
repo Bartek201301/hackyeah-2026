@@ -62,8 +62,9 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       .neq("operation", "db_test")
       .gte("created_at", from)
       .lte("created_at", to);
-    // own scope filters here, not after serialization: the admin client bypasses RLS.
-    if (ownActorId) query = query.eq("actor_id", ownActorId);
+    // own scope filters here, not after serialization: the admin client bypasses RLS. Tested against
+    // null, not truthiness: a falsy identifier would drop the filter and widen the read silently.
+    if (ownActorId !== null) query = query.eq("actor_id", ownActorId);
     const rows = await data<Row[] | null>(
       query
         .order("created_at", { ascending: false })
@@ -426,7 +427,9 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         .eq("organisation_id", organisationId)
         .gte("operations.created_at", from)
         .lte("operations.created_at", to);
-      if (ownActorId) reservationQuery = reservationQuery.eq("operations.actor_id", ownActorId);
+      if (ownActorId !== null) {
+        reservationQuery = reservationQuery.eq("operations.actor_id", ownActorId);
+      }
       const reservations = await data<MetricsReservationRow[] | null>(reservationQuery.limit(limit));
 
       return { activity, reservations: reservations ?? [] };

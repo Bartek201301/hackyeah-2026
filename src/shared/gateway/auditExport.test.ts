@@ -144,6 +144,30 @@ describe("exportAudit", () => {
     expect(over.message).toContain("1000 rows");
   });
 
+  /*
+   * csvCell is tested above; this asserts the mapping applies it to every column, which is where a
+   * forgotten field would leak a formula or break the row into two.
+   */
+  it("neutralises a hostile value in any column, and keeps the row one line", async () => {
+    const hostile = row({
+      operation: '=HYPERLINK("http://x")',
+      state: "-2+3",
+      reasons: ["@cmd", 'quote"inside', "with,comma"],
+      usage: { ...notExecutedUsage("@rate"), comparison_micro_usd: 0 },
+    });
+    const res = (await run(setup([hostile]).deps, actor)) as Response;
+    const lines = (await res.text()).split("\r\n");
+    // Header, one record, trailing newline: a stray CR or LF would show up as a fourth element.
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toContain("'=HYPERLINK");
+    expect(lines[1]).toContain("'-2+3");
+    expect(lines[1]).toContain("'@cmd");
+    // Joined first, then neutralised once and quoted: one cell, not three columns.
+    expect(lines[1]).toContain('"\'@cmd;quote""inside;with,comma"');
+    // The rate version is a stored string too, so it goes through the same gate.
+    expect(lines[1]).toContain("'@rate");
+  });
+
   it("withholds the whole file when one row breaks the contract", async () => {
     const { deps } = setup([row(), row({ policy_version: null })]);
     expect(refusal(await run(deps, actor))).toMatchObject({ status: 503, code: "STATE_UNAVAILABLE" });

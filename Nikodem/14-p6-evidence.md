@@ -87,11 +87,30 @@ All four are fixed. Items 1–3 are in `aed4d09`, item 4 in `feee57e`.
 | AT16-3 | the keyboard walk; every interactive element carries a focus ring in code          |
 | AT16-4 | 375 px and 1440 px. One overflow was already found and fixed at 375 px (`50d8975`) |
 | AT10-1 | two sessions, to show that own scope excludes another actor                        |
-| AT10-2 | a real 403, which needs `/metrics`                                                 |
-| AT10-6 | the CSV bytes, which need the export backend                                       |
+| AT10-2 | a real 403, now reachable: `/metrics` refuses `scope=organisation` to a non-admin  |
+| AT10-6 | the CSV bytes, reachable once `codex/gateway-audit-export` is merged               |
 
-Nothing on this list is work I can write. Four need a human with a browser; three need endpoints that
-are still the 503 seam.
+Nothing on this list is work I can write: every row needs a browser and a session.
+
+**What the dev-server log of the current run already shows.** Not a browser observation and not an
+acceptance gate — a server access log, which says what was requested and answered, never what was on
+screen or who clicked:
+
+- `GET /api/v1/metrics?scope=own&from=…&to=…` → **200**, and the same for `scope=organisation`
+- `GET /api/v1/audit` → **200**
+- `GET /api/v1/audit/export?scope=own&from=…&to=…` → **200**, with exactly the window the button sends
+- the refusals still refuse: `GET /api/v1/audit/export` without a session → 401, `POST` → 503
+
+So the three reads answer a real session, and the CSV was produced at least once. What nobody has
+recorded is the **rendered** screen, the console, or the contents of that file. The log cannot show any
+of those, so none of them is claimed here.
+
+**The endpoint blocker is gone, which changes what the next observation is worth.** The dashboard
+screenshot in §1 was taken while `/metrics` and `/audit` were the 503 seam, so it shows the honest
+refusal and no figures at all. Both reads are now merged (PR #57, PR #62) and the export is pushed, so
+the dashboard has never been seen with real numbers in it — and that screen is the one the demo's final
+slot shows. The nine `503` console entries recorded in §1 should now be absent; if they are not, that is
+the finding that paragraph promised to treat as one.
 
 ## 5. The demo beat, as it can honestly be run today
 

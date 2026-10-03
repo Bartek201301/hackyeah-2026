@@ -40,6 +40,22 @@ export function canCancel(run: Pick<Run, "state"> | null): boolean {
   return run !== null && (run.state === "pending" || run.state === "running");
 }
 
+/**
+ * Did a cancel request reach a decision?
+ *
+ * protocols.md: a 503 carries no decision. The gateway did not record a cancellation, so the run is
+ * exactly as it was and must keep being observed. Treating that response as the run's own outcome
+ * would replace a live run with a service error it never had — and `run_cancel` is still the 503
+ * seam, so today every cancel takes this path.
+ */
+export function cancelReachedDecision(status: number): boolean {
+  return status !== 503;
+}
+
+/** Said next to the Cancel button, not in the outcome notice: the run itself is unaffected. */
+export const CANCEL_UNAVAILABLE =
+  "Cancellation is unavailable, so the run was not stopped. The gateway is still checking it.";
+
 export type RunDescription = {
   label: string;
   detail: string;
