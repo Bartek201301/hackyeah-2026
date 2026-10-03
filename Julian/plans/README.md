@@ -1,7 +1,7 @@
 # Builder A — workbench research index
 
 **Owner:** Builder A (workbench). **Scope:** `src/features/workbench/**` and its tests, nothing else.
-**Updated:** 2026-10-03, against merged main `50606ca`.
+**Updated:** 2026-10-03 18:25 UTC, against merged main `a6178ef`.
 
 This folder is Builder A's own research. It is not a specification: authority stays with
 [docs/README.md](../../docs/README.md) and the files it names. Where this folder and an authoritative
@@ -18,6 +18,7 @@ change rather than implementing a compromise.
 | [03-browser-qa.md](03-browser-qa.md)                          | Signed-in browser checklist for every workbench view                          |
 | [04-judge-script.md](04-judge-script.md)                      | Workbench operator script for the three-minute walkthrough                    |
 | [05-session-handoff.md](05-session-handoff.md)                | State, bugs found, blockers and workflow gotchas as of 17:33 UTC              |
+| [06-browser-qa-results.md](06-browser-qa-results.md)          | Run 1 of the browser checklist: what passed, what is not run and why          |
 | [minimal-controlled-chat/](minimal-controlled-chat/README.md) | T06 chat brief — interaction boundary, polling, submission recovery           |
 | [imports/](imports/README.md)                                 | T05 sources/upload brief — file selection, limits, outcome labels             |
 | [review/](review/README.md)                                   | T07 review brief — candidate display, exact version, evidence                 |
@@ -41,7 +42,16 @@ what to code against, in what order, and what is still blocked.
   `20261003152115_core_schema.sql`, commit `632d006`, applied 2026-10-03 15:31 UTC: **17 tables,
   RLS 17/17, 3 SELECT policies, anon probe denied 17/17.**
 
-**Every `/api/v1/*` operation still returns HTTP 503 `STATE_UNAVAILABLE`.** The catch-all route
+**The gateway is partly live.** T03 landed the chat and run routes
+([PR #28](https://github.com/Bartek201301/hackyeah-2026/pull/28)) and the audit read routes
+([PR #33](https://github.com/Bartek201301/hackyeah-2026/pull/33)). Their access checks run — an
+anonymous chat call is denied `403 ACCESS_DENIED` — but
+[composition.ts](../../src/app/api/v1/composition.ts) leaves the detection and generation ports null
+until phase 6, so chat still ends `503 STATE_UNAVAILABLE` and no governed answer exists yet. Every
+other operation is still the catch-all seam. Verified in a browser on 2026-10-03, recorded in
+[06-browser-qa-results.md](06-browser-qa-results.md).
+
+The catch-all route
 `src/app/api/v1/[...path]/route.ts` answers GET/POST/PUT/DELETE with
 [unavailableResponse()](../../src/shared/gateway/unavailable.ts) until Bartosz's real routes take
 precedence. No live gateway behaviour may be claimed anywhere in this folder.
