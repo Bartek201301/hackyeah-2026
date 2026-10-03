@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FileClock } from "lucide-react";
-import { Badge, Card, CardHeader, EmptyState, IconTile } from "@/shared/ui";
+import { Badge, Button, Card, CardHeader, EmptyState, IconTile, Notice } from "@/shared/ui";
 import type { ActivityRow } from "../activity";
 import { copy } from "../copy";
 
@@ -54,12 +54,31 @@ function Row({ row }: { row: ActivityRow }) {
   );
 }
 
+type ActivityListProps = {
+  rows: ActivityRow[];
+  /** A full page means more may exist; the response carries no explicit next-page field. */
+  moreMayExist: boolean;
+  onLoadOlder?: () => void;
+  loadingOlder?: boolean;
+  olderFailed?: boolean;
+};
+
 /**
- * One page of audited operations, newest first. The footer states that a full page is the 100
- * most recent records rather than the whole history, because the response carries no next-page
- * field and the list must not imply completeness.
+ * Audited operations, newest first. The footer states that a full page is the 100 most recent
+ * records rather than the whole history, and the control asks for the next page by cursor.
+ *
+ * A failed older page never discards the rows already on screen: it says what failed and leaves the
+ * evidence in place, because losing visible records to a network error would look like losing audit
+ * data. The list is not filtered by day — `GET /audit` has no range parameter — and the empty copy
+ * says so instead of inviting the reader to pick another day.
  */
-export function ActivityList({ rows, pageCapped }: { rows: ActivityRow[]; pageCapped: boolean }) {
+export function ActivityList({
+  rows,
+  moreMayExist,
+  onLoadOlder,
+  loadingOlder = false,
+  olderFailed = false,
+}: ActivityListProps) {
   return (
     <Card>
       <CardHeader title={copy.activity.title} description={copy.activity.description} />
@@ -72,7 +91,17 @@ export function ActivityList({ rows, pageCapped }: { rows: ActivityRow[]; pageCa
               <Row key={row.traceId} row={row} />
             ))}
           </ul>
-          {pageCapped && <p className="mt-5 text-xs text-muted">{copy.activity.pageCap}</p>}
+          <div className="mt-5 flex flex-col gap-2">
+            {moreMayExist && <p className="text-xs text-muted">{copy.activity.pageCap}</p>}
+            {onLoadOlder && moreMayExist && (
+              <div>
+                <Button variant="secondary" size="sm" onClick={onLoadOlder} loading={loadingOlder}>
+                  {loadingOlder ? copy.activity.loadingOlder : copy.activity.loadOlder}
+                </Button>
+              </div>
+            )}
+            {olderFailed && <Notice tone="danger">{copy.activity.olderFailed}</Notice>}
+          </div>
         </>
       )}
     </Card>

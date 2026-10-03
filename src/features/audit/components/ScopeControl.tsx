@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { cn } from "@/shared/cn";
 import { copy } from "../copy";
+import type { UtcDay } from "../range";
+import { todayUtc } from "../range";
 import type { ReportingScope } from "../scope";
 import { SCOPES } from "../scope";
 
@@ -18,7 +20,17 @@ const labels: Record<ReportingScope, string> = {
  * state this screen renders (AGENTS.md — a prompt is not an access boundary, and UI role visibility
  * is not authorization).
  */
-export function ScopeControl({ scope }: { scope: ReportingScope }) {
+export function ScopeControl({ scope, day }: { scope: ReportingScope; day?: UtcDay }) {
+  const today = todayUtc(new Date());
+  // Switching scope keeps the window: silently resetting the day would change two things at once.
+  const href = (option: ReportingScope) => {
+    const params = new URLSearchParams();
+    if (option !== "own") params.set("scope", option);
+    if (day && day !== today) params.set("day", day);
+    const query = params.toString();
+    return query ? `/audit?${query}` : "/audit";
+  };
+
   return (
     <nav aria-label={copy.metrics.scopeLabel} className="flex flex-wrap items-center gap-2">
       <span className="text-xs uppercase tracking-wider text-muted">{copy.metrics.scopeLabel}</span>
@@ -27,7 +39,7 @@ export function ScopeControl({ scope }: { scope: ReportingScope }) {
         return (
           <Link
             key={option}
-            href={option === "own" ? "/audit" : `/audit?scope=${option}`}
+            href={href(option)}
             aria-current={current ? "page" : undefined}
             className={cn(
               "rounded-control px-3 py-1.5 text-sm font-semibold",

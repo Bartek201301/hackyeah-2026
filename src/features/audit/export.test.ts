@@ -8,7 +8,7 @@ import {
 } from "./export";
 import { envelope } from "./test-support";
 
-const now = new Date("2026-10-03T12:00:00.000Z");
+const day = "2026-10-03";
 const EXPORT_TRACE = "7c2e5b91-4c33-4a6b-8c9d-0e1f2a3b4c5d";
 
 // `in` rather than `??`, so a test can pass an explicitly absent header.
@@ -22,7 +22,7 @@ const csv = (headers: { traceId?: string | null; contentDisposition?: string | n
       contentDisposition: headers.contentDisposition ?? null,
     },
     "own",
-    now,
+    day,
   );
 
 const refusal = (status: number, code: string, message: string) =>
@@ -32,20 +32,21 @@ const refusal = (status: number, code: string, message: string) =>
     envelope({ error: { code, message, retryable: false } }),
     { traceId: null, contentDisposition: null },
     "own",
-    now,
+    day,
   );
 
 describe("the request", () => {
-  it("asks for the scope the screen is showing", () => {
-    expect(exportPath("own")).toBe("/audit/export?scope=own");
-    expect(exportPath("organisation")).toBe("/audit/export?scope=organisation");
+  it("asks for the scope and the single UTC day the screen is showing", () => {
+    expect(exportPath("own", day)).toBe(
+      "/audit/export?scope=own&from=2026-10-03T00%3A00%3A00.000Z&to=2026-10-03T23%3A59%3A59.999Z",
+    );
+    expect(exportPath("organisation", "2026-09-01")).toContain("scope=organisation");
+    expect(exportPath("organisation", "2026-09-01")).toContain("2026-09-01T00%3A00%3A00.000Z");
   });
 
-  it("names the file after the scope and the UTC day", () => {
-    expect(fallbackFilename("own", now)).toBe("audit-own-2026-10-03.csv");
-    expect(fallbackFilename("organisation", new Date("2026-01-09T23:59:00Z"))).toBe(
-      "audit-organisation-2026-01-09.csv",
-    );
+  it("names the file after the scope and that day, not after today", () => {
+    expect(fallbackFilename("own", day)).toBe("audit-own-2026-10-03.csv");
+    expect(fallbackFilename("organisation", "2026-01-09")).toBe("audit-organisation-2026-01-09.csv");
   });
 });
 
@@ -88,7 +89,7 @@ describe("a successful export", () => {
       envelope({ error: { code: "ACCESS_DENIED", message: "no", retryable: false } }),
       { traceId: null, contentDisposition: null },
       "own",
-      now,
+      day,
     );
     expect(state.kind).toBe("denied");
   });
@@ -130,7 +131,7 @@ describe("other refusals use the states the rest of the feature uses", () => {
       "<html>bad gateway</html>",
       { traceId: null, contentDisposition: null },
       "own",
-      now,
+      day,
     );
     expect(state.kind).toBe("clientError");
   });
