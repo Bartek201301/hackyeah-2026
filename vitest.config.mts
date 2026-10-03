@@ -10,5 +10,6 @@ export default defineConfig({
       ),
     },
   },
-  test: { include: ["src/**/*.test.ts"], environment: "node" },
+  // Component tests opt into a DOM per file with a `// @vitest-environment happy-dom` docblock.
+  test: { include: ["src/**/*.test.ts", "src/**/*.test.tsx"], environment: "node" },
 });
