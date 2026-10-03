@@ -6,6 +6,8 @@
  * selected by `?trace=`, so a link can target a view without a new route segment.
  */
 
+import type { ActorContext } from "@/shared/contracts";
+
 export const WORKBENCH_VIEWS = ["chat", "sources", "review", "policy", "export"] as const;
 export type WorkbenchView = (typeof WORKBENCH_VIEWS)[number];
 
@@ -45,6 +47,17 @@ export const VIEW_DESCRIPTIONS: Record<WorkbenchView, string> = {
 export const ADMIN_ONLY_VIEWS: readonly WorkbenchView[] = ["review", "policy"];
 
 export const isAdminOnlyView = (view: WorkbenchView): boolean => ADMIN_ONLY_VIEWS.includes(view);
+
+/**
+ * Whether to show admin-only links, from a role the app page passes in purely for display.
+ *
+ * This feature makes no auth call of its own: identity, cookies and permissions belong to the app
+ * and the gateway. An absent role shows everything, because a missing prop must not strip an
+ * administrator's controls — and hiding a link was never a control in the first place.
+ */
+export function shouldShowAdminViews(role: ActorContext["role"] | undefined): boolean {
+  return role === undefined || role === "admin";
+}
 
 /** Chat is the canonical view, so it gets the bare path rather than `?view=chat`. */
 export function viewHref(view: WorkbenchView): string {

@@ -30,7 +30,8 @@ export type OutcomeKind =
   | "notFound"
   | "unavailable"
   | "incomplete"
-  | "cancelled";
+  | "cancelled"
+  | "failed";
 
 export type GatewayOutcome = {
   kind: OutcomeKind;
@@ -163,8 +164,8 @@ export function classifyResponse(status: number, body: ApiResponse | null): Gate
       return {
         ...common,
         kind: "unauthenticated",
-        title: "Sign in required",
-        detail: "Your session is missing or has expired. Sign in and try again.",
+        title: "Signed out",
+        detail: "Your session has ended. Sign in again to continue.",
         tone: "danger",
         showsResult: false,
         retryable: false,
