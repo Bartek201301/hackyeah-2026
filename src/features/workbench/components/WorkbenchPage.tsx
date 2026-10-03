@@ -1,11 +1,11 @@
+import type { ActorContext } from "@/shared/contracts";
 import { Card, CardHeader, EmptyState, PageHeader } from "@/shared/ui";
-import { getActor } from "@/shared/auth/actor";
 import { ChatPanel } from "./ChatPanel";
 import { FeedPanel } from "./FeedPanel";
 import { PolicyPanel } from "./PolicyPanel";
 import { SourcesPanel } from "./SourcesPanel";
 import { WorkbenchNav } from "./WorkbenchNav";
-import { VIEW_DESCRIPTIONS, VIEW_LABELS, parseView } from "../lib/views";
+import { VIEW_DESCRIPTIONS, VIEW_LABELS, parseView, shouldShowAdminViews } from "../lib/views";
 
 /*
  * Workbench shell. Server component: only the panels are interactive, so the client bundle covers
@@ -16,6 +16,14 @@ import { VIEW_DESCRIPTIONS, VIEW_LABELS, parseView } from "../lib/views";
  */
 type WorkbenchPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  /**
+   * Signed-in role, for display only, supplied by the app page.
+   *
+   * This feature performs no auth call of its own: identity, cookies and permissions belong to the
+   * app and the gateway. `undefined` means the role was not passed, and every view stays visible —
+   * hiding a link is presentation, never a control, and the gateway checks each call regardless.
+   */
+  role?: ActorContext["role"];
 };
 
 /* Review and export are not built: both wait on a contract decision, named here rather than
@@ -33,23 +41,11 @@ const WAITING: Record<"review" | "export", { title: string; description: string 
   },
 };
 
-export async function WorkbenchPage({ searchParams }: WorkbenchPageProps) {
+export async function WorkbenchPage({ searchParams, role }: WorkbenchPageProps) {
   const params = (await searchParams) ?? {};
   const view = parseView(params.view);
 
-  /*
-   * Role drives presentation only. Hiding a link is not authorization: every route the panels call
-   * is checked server-side regardless of what is shown. When the role cannot be read the admin
-   * views stay visible, because a failed membership read must not strip an administrator's
-   * controls — the gateway still denies everyone else.
-   */
-  let isAdmin = true;
-  try {
-    const actor = await getActor();
-    if (actor) isAdmin = actor.role === "admin";
-  } catch {
-    isAdmin = true;
-  }
+  const isAdmin = shouldShowAdminViews(role);
 
   return (
     <>

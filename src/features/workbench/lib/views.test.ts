@@ -7,6 +7,7 @@ import {
   WORKBENCH_VIEWS,
   isAdminOnlyView,
   parseView,
+  shouldShowAdminViews,
   viewHref,
 } from "./views";
 
@@ -68,5 +69,18 @@ describe("admin-only views", () => {
 
   it("never marks the default view admin-only, so chat is always reachable", () => {
     expect(isAdminOnlyView(DEFAULT_VIEW)).toBe(false);
+  });
+});
+
+describe("shouldShowAdminViews", () => {
+  it("shows admin links to an admin only", () => {
+    expect(shouldShowAdminViews("admin")).toBe(true);
+    for (const role of ["analyst", "employee", "external"] as const) {
+      expect(shouldShowAdminViews(role)).toBe(false);
+    }
+  });
+
+  it("shows everything when the role was not passed, rather than hiding controls", () => {
+    expect(shouldShowAdminViews(undefined)).toBe(true);
   });
 });
