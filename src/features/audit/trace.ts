@@ -173,19 +173,28 @@ export function findingRows(findings: readonly Finding[]): FindingRow[] {
  * Splits usage into the three groups required by the reporting rules. Measured values appear
  * only in `actual`, a reservation only in `reserved`, and every null only in `unknown`.
  */
-export function usageView(usage: Usage, means: ReservedMeaning = "operation"): UsageView {
+/**
+ * `root` is the request's own usage, passed for a stage. A stage that left a field null while the
+ * request recorded it did not leave it unmeasured — the value sits on the request — so it points
+ * there instead of saying "Not measured".
+ */
+export function usageView(usage: Usage, means: ReservedMeaning = "operation", root?: Usage): UsageView {
   const actual: ValueRow[] = [];
   const unknown: ValueRow[] = [];
 
-  const measured = (label: string, value: number | null, format: (value: number) => string) => {
-    if (value === null) unknown.push({ label, value: copy.label.notMeasured });
-    else actual.push({ label, value: format(value) });
+  type Nullable =
+    "generation_input_tokens" | "generation_output_tokens" | "generation_ms" | "semantic_input_tokens";
+  const measured = (label: string, field: Nullable, format: (value: number) => string) => {
+    const value = usage[field];
+    if (value !== null) actual.push({ label, value: format(value) });
+    else if (root && root[field] !== null) actual.push({ label, value: copy.usage.onRequest });
+    else unknown.push({ label, value: copy.label.notMeasured });
   };
 
-  measured(copy.usage.generationInput, usage.generation_input_tokens, (value) => formatTokens(value));
-  measured(copy.usage.generationOutput, usage.generation_output_tokens, (value) => formatTokens(value));
-  measured(copy.usage.generationDuration, usage.generation_ms, (value) => formatDuration(value));
-  measured(copy.usage.semanticInput, usage.semantic_input_tokens, (value) => formatTokens(value));
+  measured(copy.usage.generationInput, "generation_input_tokens", formatTokens);
+  measured(copy.usage.generationOutput, "generation_output_tokens", formatTokens);
+  measured(copy.usage.generationDuration, "generation_ms", formatDuration);
+  measured(copy.usage.semanticInput, "semantic_input_tokens", formatTokens);
   // semantic_ms is the one duration the contract never leaves null.
   actual.push({ label: copy.usage.semanticDuration, value: formatDuration(usage.semantic_ms) });
 
@@ -285,8 +294,11 @@ export function groupStages(rows: readonly StageRow[]): StageGroup[] {
   return groups;
 }
 
-/** Stages in stored order, each with its own measurements. Nothing is aggregated here. */
-export function stageRows(events: readonly AuditEvent[] | undefined): StageRow[] {
+/**
+ * Stages in stored order, each with its own measurements. Nothing is aggregated here; `rootUsage`
+ * only lets a stage say a value it lacks is recorded on the request.
+ */
+export function stageRows(events: readonly AuditEvent[] | undefined, rootUsage?: Usage): StageRow[] {
   if (!events) return [];
   const ordered = [...events].sort(
     (left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime(),
@@ -307,7 +319,7 @@ export function stageRows(events: readonly AuditEvent[] | undefined): StageRow[]
       feedChanged: previous !== null && previous.feed_version !== event.feed_version,
       findings: findingRows(event.findings),
       assessment: assessmentView(event.semantic),
-      usage: usageView(event.usage),
+      usage: usageView(event.usage, "operation", rootUsage),
     };
   });
 }

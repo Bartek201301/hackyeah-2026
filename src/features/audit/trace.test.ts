@@ -293,6 +293,23 @@ describe("stages", () => {
     expect(rows[1].feedChanged).toBe(false);
   });
 
+  // P05 on a real S07 trace: the settled stage had null generation tokens, the root had 385/119.
+  it("points a stage's missing value to the request total instead of calling it not measured", () => {
+    const stage = auditEvent({
+      stage: "ollama:settled",
+      usage: usage({ generation_input_tokens: null, generation_output_tokens: 120, generation_ms: null }),
+    });
+    const root = usage({ generation_input_tokens: 385, generation_output_tokens: 119, generation_ms: null });
+    const [row] = stageRows([stage], root);
+    const value = (label: string) => row.usage.actual.find((entry) => entry.label === label)?.value;
+
+    expect(value("Generation input")).toBe("Shown on the request total");
+    expect(value("Generation output")).toBe("120 tokens");
+    // Missing on both the stage and the request: still honestly unknown.
+    expect(row.usage.unknown.map((entry) => entry.label)).toContain("Generation duration");
+    expect(row.usage.unknown.map((entry) => entry.label)).not.toContain("Generation input");
+  });
+
   it("returns nothing when the projection carries no events", () => {
     expect(stageRows(undefined)).toEqual([]);
     expect(stageRows([])).toEqual([]);
