@@ -171,6 +171,18 @@ the root decision, so nothing is broken here — but if the inconsistency is uni
 any consumer that trusts the root.
 Blocks: nothing.
 
+**21. Should `audit_list` take a `scope` parameter?** You delegated the three gateway reads with the rule
+`scope=own` filters by actor and `scope=organisation` requires `role === "admin"`, but
+`docs/contracts/openapi.json` gives `audit_list` exactly one parameter, `after`. I built it as own
+activity for everyone, admins included, because with no scope parameter the list can only mean one thing
+and returning organisation rows would put other people's operations under a heading that says they are
+the reader's own. The organisation figures come from `metrics_read`, which does have a scope, and an
+admin who needs another actor's trace opens it by id, where `audit_read` already allows it.
+Blocks: nothing. The dashboard now titles that card `Your recent activity` and says the scope and day
+apply to the figures and the export, not to the list.
+Default: own activity only. If you want an admin organisation list, add `scope` to the contract and I
+will send it and restore the actor column, which is still implemented and tested behind one option.
+
 ## What I do not need
 
 Raw document access, excerpt text, review candidate contents, policy write access, budget RPCs, or any

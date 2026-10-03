@@ -106,8 +106,13 @@ The activity list's empty copy changed during the range work, and for a factual 
 it `No audit records for this UTC day.` / `Choose another day to see earlier activity.`, but `GET /audit`
 takes no range parameter — only `after` — so that list is **not** day-scoped. Promising a day filter it
 does not have would be a false statement on screen. It now reads
-`No audit records are visible in this scope.` / `Records appear here once an audited operation has been
+`No audit records of your own are stored yet.` / `Records appear here once an audited operation has been
 stored.` The day wording stays on the metrics side, which really is confined to one UTC day.
+
+The same sentence was corrected a second time once the gateway side was built: `audit_list` has no scope
+parameter either, so the list is own activity in both scopes, including for an admin. "In this scope"
+beside an organisation heading would have labelled own rows as organisation-wide, so the card now reads
+`Your recent activity` and the actor column is gone — every row belongs to the reader.
 
 Scores changed from two decimals to three, truncated rather than rounded, and the reason is the same
 kind: policy thresholds sit on two-decimal values, so rounding printed `0.2972` as `0.30` on an ALLOW —
