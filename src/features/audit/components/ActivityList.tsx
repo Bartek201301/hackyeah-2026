@@ -82,6 +82,11 @@ export function ActivityList({
   return (
     <Card>
       <CardHeader title={copy.activity.title} description={copy.activity.description} />
+      {/*
+       * Said out loud, because the day selector sits directly above this card: a reader would
+       * otherwise assume these rows belong to the selected day. `GET /audit` has no range parameter.
+       */}
+      <p className="mb-5 text-xs text-muted">{copy.range.listNote}</p>
       {rows.length === 0 ? (
         <EmptyState title={copy.activity.emptyTitle} description={copy.activity.emptyDescription} />
       ) : (

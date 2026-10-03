@@ -23,8 +23,6 @@ export const copy = {
     noRevision: "Revision not reported",
     traceId: "Trace",
     actorId: "Actor",
-    operation: "Operation",
-    started: "Recorded",
     state: "State",
     reasons: "Reason codes",
     policyVersion: "Policy version",
@@ -55,10 +53,6 @@ export const copy = {
   stages: {
     title: "Stages",
     description: "Each recorded step of this operation, in the order the gateway stored it.",
-    stage: "Stage",
-    event: "Event",
-    when: "Time (UTC)",
-    versions: "Versions",
     findings: "Findings",
     noFindings: "No findings recorded for this stage.",
     stageUsage: "Stage resource use",
@@ -112,9 +106,7 @@ export const copy = {
   },
   metrics: {
     controlsTitle: "Security decisions",
-    controlsDescription: "What the gateway decided in this window. Each counter answers one question.",
     resourcesTitle: "Resource use",
-    resourcesDescription: "What those operations actually consumed.",
     estimatesTitle: "Context and illustrative cost",
     measuredUse: "Measured use",
     illustrativeCost: "Illustrative commercial equivalent",
@@ -179,9 +171,6 @@ export const copy = {
   },
   action: {
     retry: "Try again",
-  },
-  a11y: {
-    copyTraceId: "Full trace identifier",
   },
 } as const;
 
