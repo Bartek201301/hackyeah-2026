@@ -387,3 +387,20 @@ describe("G2 generation factory", () => {
     expect(new ProviderFailure("unavailable")).not.toHaveProperty("cause");
   });
 });
+
+it("rejects unknown payloads before copying them into a snapshot", async () => {
+  const p = policy();
+  const detectionInput = input();
+  const generation = generationInput();
+  const clone = vi.spyOn(globalThis, "structuredClone");
+  const fetcher = provider();
+  const extra = { unregistered_payload: { nested: "untrusted" } };
+  await expect(
+    publicApi.createDetectionPort().assess({ ...detectionInput, ...extra }, p, signal()),
+  ).rejects.toThrow("invalid_input");
+  await expect(
+    publicApi.createGenerationPort().generate({ ...generation, ...extra }, signal()),
+  ).rejects.toThrow("invalid_input");
+  expect(clone).not.toHaveBeenCalled();
+  expect(fetcher).not.toHaveBeenCalled();
+});

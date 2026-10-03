@@ -1,6 +1,6 @@
 # G2 local factories — Bartosz handoff
 
-Owner: Maciej / Builder B. Implementation commit: `03e8664`. Started from main `c4a15b0`
+Owner: Maciej / Builder B. Initial implementation commit: `03e8664`; the PR records the final reviewed head. Started from main `c4a15b0`
 after provider PR #20 merged as `085dc1e`. Only detection files change. This is the approved
 Mac-only G2 scope: the app, Laya and Ollama run on the same host; the gateway owns durable
 Postgres reservation/usage/audit and deterministic content/feed/permission checks.
@@ -70,8 +70,8 @@ replay of uncertain calls. No Python/SQLite bridge, tombstones or retry allowanc
 
 ## Checks actually run
 
-- `npm test -- src/features/detection`: exit 0, **142 tests** (32 new factory cases + 110 provider tests).
-- `npm run check:fast`: exit 0, **431 application tests + 12 tooling tests**; types, lint, format and
+- `npm test -- src/features/detection`: exit 0, **143 tests** (33 new factory cases + 110 provider tests).
+- `npm run check:fast`: exit 0, **432 application tests + 12 tooling tests**; types, lint, format and
   module-boundary checks pass.
 - `npm run check`: exit 0, including the production Next 16.3.8 build, in the fresh isolated worktree
   outside the sandbox. The prior worktree's Turbopack worker port-binding failure is historical;

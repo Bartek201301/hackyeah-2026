@@ -4,6 +4,7 @@ import type { Assessment, DetectionPort, GenerationPort } from "@/shared/contrac
 import { check } from "@/shared/contracts/validate";
 import { assessLocalWindow, generateLocal } from "./providers/clients";
 import { serializeLaya } from "./providers/laya";
+import { serializeOllama } from "./providers/ollama";
 import { inputOnly, ProviderFailure, requireValue } from "./providers/validation";
 
 /** G2 local-only port. The gateway owns deterministic findings and durable accounting. */
@@ -15,11 +16,9 @@ export function createDetectionPort(): DetectionPort {
     async assess(input, policy, signal) {
       // Snapshot before the first await so concurrent caller mutations cannot change coverage.
       const { accepted, limits } = inputOnly(() => {
-        const accepted = structuredClone(input);
-        const limits = structuredClone(policy.semantic);
-        serializeLaya(accepted, limits);
-        requireValue(accepted.text.length > 0);
-        return { accepted, limits };
+        serializeLaya(input, policy.semantic);
+        requireValue(input.text.length > 0);
+        return { accepted: structuredClone(input), limits: structuredClone(policy.semantic) };
       });
       if (signal.aborted) throw new ProviderFailure("cancelled");
       const bearer = process.env.LAYA_API_KEY;
@@ -62,11 +61,12 @@ export function createDetectionPort(): DetectionPort {
 /** G2 local-only port; reservation and at-most-once dispatch belong to the gateway. */
 export function createGenerationPort(): GenerationPort {
   return {
-    generate(input, signal) {
-      return generateLocal(
-        inputOnly(() => structuredClone(input)),
-        signal,
-      );
+    async generate(input, signal) {
+      const accepted = inputOnly(() => {
+        serializeOllama(input);
+        return structuredClone(input);
+      });
+      return generateLocal(accepted, signal);
     },
   };
 }
