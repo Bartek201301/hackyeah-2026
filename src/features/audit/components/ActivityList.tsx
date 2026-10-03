@@ -14,7 +14,7 @@ function Row({ row }: { row: ActivityRow }) {
             href={`/audit?trace=${row.traceId}`}
             title={row.traceId}
             aria-label={`${copy.activity.openTrace} ${row.traceId}`}
-            className="truncate text-sm font-semibold text-fg underline decoration-border hover:decoration-brand"
+            className="truncate rounded-control text-sm font-semibold text-fg underline decoration-border hover:decoration-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
             {row.operation}
           </Link>

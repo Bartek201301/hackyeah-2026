@@ -31,6 +31,7 @@ export function ScopeControl({ scope }: { scope: ReportingScope }) {
             aria-current={current ? "page" : undefined}
             className={cn(
               "rounded-control px-3 py-1.5 text-sm font-semibold",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
               current ? "bg-brand text-on-brand" : "border border-border bg-surface text-fg",
             )}
           >

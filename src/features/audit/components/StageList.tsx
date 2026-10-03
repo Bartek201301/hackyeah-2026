@@ -118,7 +118,7 @@ export function StageList({ rows }: { rows: StageRow[] }) {
             ) : (
               <li key={group.key} className="border-t border-border pt-5 first:border-0 first:pt-0">
                 <details className="flex flex-col gap-4">
-                  <summary className="cursor-pointer text-sm font-semibold text-fg">
+                  <summary className="cursor-pointer rounded-control text-sm font-semibold text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
                     {`${copy.stages.showSubcalls} (${group.rows.length})`}
                   </summary>
                   <p className="mt-2 text-xs text-muted">{copy.stages.subcallHint}</p>
