@@ -11,6 +11,7 @@ import { copy } from "../copy";
 import type { ReportingScope } from "../scope";
 import { ActivityList } from "./ActivityList";
 import { DashboardStateBlock } from "./DashboardStates";
+import { ExportButton } from "./ExportButton";
 import { ControlsPanel, ResourcesPanel, ScopeLine } from "./MetricsPanels";
 
 type Result = { request: string; metrics: MetricsReadState; activity: ActivityReadState };
@@ -104,6 +105,9 @@ export function Dashboard({ scope = "own" }: { scope?: ReportingScope }) {
       ) : (
         <DashboardStateBlock state={activity} onRetry={retry} />
       )}
+
+      {/* The export asks the gateway for the same scope this screen is showing. */}
+      <ExportButton scope={scope} />
     </div>
   );
 }

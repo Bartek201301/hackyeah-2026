@@ -182,13 +182,13 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 | AT10-3  | `safety.test.ts` §"the list is never an aggregate"                           | unit                                            |
 | AT10-4  | `safety.test.ts` — four leak assertions against the view models              | unit at model level; DOM scan not run           |
 | AT10-5  | `safety.test.ts` — reason codes survive, `Finding` has no `value` key        | unit at model level                             |
-| AT10-6  | —                                                                            | not run; needs the real `/audit/export` route   |
+| AT10-6  | `export.test.ts` covers the refusal and row-cap handling                     | the byte assertion is not run; needs the route  |
 | AT10-7  | `envelope.test.ts` incomplete + unknown usage; `trace.test.ts` unknown group | unit                                            |
 | AT10-8  | `envelope.test.ts` event cap; `activity.test.ts` page cap                    | unit for the flags; the copy itself needs a DOM |
 | AT10-9  | `envelope.test.ts` and `metrics.test.ts` unavailable states                  | unit                                            |
 | AT10-10 | `activity.test.ts` unauthenticated mapping                                   | unit; "clears earlier numbers" by construction  |
 | AT10-11 | `metrics.test.ts` invalid-input mapping                                      | partial; no range picker exists yet             |
-| AT10-12 | —                                                                            | not run; P5 plus the real route                 |
+| AT10-12 | `export.test.ts` — the export trace id is reported                           | unit; "body never rendered" by construction     |
 | AT10-13 | `activity.test.ts` rate-limited mapping                                      | unit; the absent retry control needs a DOM      |
 
 ### 7.2 AT15 — reporting honesty
@@ -217,13 +217,14 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 | AT16-3 | code half done — every interactive element now carries a focus ring; the walk itself is not run                                                                  |
 | AT16-4 | not run                                                                                                                                                          |
 | AT16-5 | by construction — every `Badge` in this feature carries text, never colour alone                                                                                 |
-| AT16-6 | not run; P5                                                                                                                                                      |
+| AT16-6 | by construction — an in-flight guard plus a disabled button; the network log itself is not run                                                                   |
 | AT16-7 | feature side by construction; the app-level Polish default above is the open item                                                                                |
 
 ### 7.4 What this table says plainly
 
 Every assertion that can be made without a browser or without live data is made. What remains is one
 runner and one set of routes, not a backlog of unwritten tests: **AT10-1, AT10-6, AT10-12, AT16-1,
-AT16-4 and AT16-6 cannot be satisfied by anything this feature can add.** AT10-4 and AT10-5 — the two
+AT16-4 and AT16-6 cannot be satisfied by anything this feature can add.** P5 narrowed AT10-6 and AT10-12 to
+their observable halves: the handling is asserted, the bytes and the network log are not. AT10-4 and AT10-5 — the two
 security assertions a judge is most likely to care about — are covered at the layer below the DOM and
 will stay "model level" until a DOM runner exists.
