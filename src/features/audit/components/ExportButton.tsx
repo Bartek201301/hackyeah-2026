@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { Button, Notice } from "@/shared/ui";
+import { readEnvelope } from "@/shared/contracts/client";
 import type { ExportState } from "../export";
 import { classifyExportResponse, exportPath } from "../export";
 import { copy } from "../copy";
@@ -38,7 +39,11 @@ export function ExportButton({ scope, day }: { scope: ReportingScope; day: UtcDa
       });
       const contentType = response.headers.get("content-type");
       const isCsv = (contentType ?? "").toLowerCase().includes("text/csv");
-      const body = isCsv ? null : await response.json().catch(() => null);
+      // The export is a plain fetch, because a typed client cannot hand back a blob or a header.
+      // The refusal body is still read through the shared reader, so "is this an envelope" has one
+      // definition across the feature.
+      const refusal = isCsv ? null : await response.json().catch(() => null);
+      const { body } = readEnvelope({ error: refusal, response });
 
       const next = classifyExportResponse(
         response.status,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { EmptyState, LoadingState } from "@/shared/ui";
-import { createGatewayClient } from "@/shared/contracts/client";
+import { createGatewayClient, readEnvelope } from "@/shared/contracts/client";
 import type { ActivityReadState, ActivityRow } from "../activity";
 import { classifyActivityRead } from "../activity";
 import type { MetricsReadState } from "../metrics";
@@ -52,13 +52,17 @@ export function Dashboard({ scope = "own", day }: { scope?: ReportingScope; day:
     void Promise.all([
       client
         .GET("/metrics", { params: { query: { scope, from, to } }, signal })
-        .then(({ data, error, response }) => classifyMetricsRead(response.status, data ?? error))
+        .then((result) => {
+          const { status, body } = readEnvelope(result);
+          return classifyMetricsRead(status, body);
+        })
         .catch((): MetricsReadState => ({ kind: "clientError" })),
       client
         .GET("/audit", { signal })
-        .then(({ data, error, response }) =>
-          classifyActivityRead(response.status, data ?? error, { showActor: scope === "organisation" }),
-        )
+        .then((result) => {
+          const { status, body } = readEnvelope(result);
+          return classifyActivityRead(status, body, { showActor: scope === "organisation" });
+        })
         .catch((): ActivityReadState => ({ kind: "clientError" })),
     ]).then(([metrics, activity]) => {
       if (signal.aborted) return;
@@ -103,12 +107,10 @@ export function Dashboard({ scope = "own", day }: { scope?: ReportingScope; day:
     setLoadingOlder(true);
     setOlderFailed(false);
     try {
-      const { data, error, response } = await createGatewayClient().GET("/audit", {
-        params: { query: { after: cursor } },
-      });
-      const next = classifyActivityRead(response.status, data ?? error, {
-        showActor: scope === "organisation",
-      });
+      const { status, body } = readEnvelope(
+        await createGatewayClient().GET("/audit", { params: { query: { after: cursor } } }),
+      );
+      const next = classifyActivityRead(status, body, { showActor: scope === "organisation" });
       if (next.kind !== "ok") {
         setOlderFailed(true);
         return;
