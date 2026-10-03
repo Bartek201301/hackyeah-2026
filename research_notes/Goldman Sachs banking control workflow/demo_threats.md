@@ -1,3 +1,5 @@
+> HISTORICAL EVIDENCE — this research predates the accepted gateway specification. Recommendations here are not implementation instructions. Read [the active documentation](../../docs/README.md).
+
 # Synthetic M&A board-brief AI control demo: 24-hour design
 
 Prepared 3 October 2026. **Evidence boundary:** Goldman Sachs publicly describes investment bankers working on financial models, client materials, and live transactions; ON24's 24 February 2026 definitive proxy describes Goldman Sachs advising its board on bidder process and analyses. The fictional people, company, documents, prices, permissions, agent, and policy below are _our proposed demo fixtures_, not Goldman Sachs data or procedures. [Goldman Sachs banker profile](https://www.goldmansachs.com/worldwide/singapore/careers/meet-bryan); [ON24 SEC proxy](https://www.sec.gov/Archives/edgar/data/1110611/000119312526067473/d885656ddefm14a.htm); [SEC filing date](https://www.sec.gov/Archives/edgar/data/1110611/000119312526067473/0001193125-26-067473-index.htm).

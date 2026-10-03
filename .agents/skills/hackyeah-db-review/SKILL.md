@@ -41,6 +41,6 @@ Przykłady nie upoważniają do uruchamiania SQL ani delegowania pracy agentom w
 
 ## Wynik
 
-Podaj po polsku: plik i linię, problem, scenariusz błędu oraz minimalną poprawkę.
+Podaj po angielsku: plik i linię, problem, scenariusz błędu oraz minimalną poprawkę.
 Oddziel potwierdzone ustalenia od pytań i testów niewykonanych. Przegląd plików i zielony build
 nie potwierdzają działania RLS w bazie. Po zleconych poprawkach wykonaj kontrole z AGENTS.md.

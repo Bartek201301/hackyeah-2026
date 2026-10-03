@@ -1,0 +1,8 @@
+{
+  "expected_version": 1,
+  "action": "approve",
+  "candidate_text": "The public AsterCloud webinar is on 15 October 2026.",
+  "classification": "public",
+  "reason": "Verified against public event notice; removed ambiguous internal note.",
+  "evidence_excerpt_ids": ["00000000-0000-4000-8000-000000001202"]
+}

@@ -1,10 +1,8 @@
 @AGENTS.md
 
-# Claude Code
+# Claude Code entry point
 
-Wspólne zasady, role i komendy znajdują się w AGENTS.md. Przed pracą czytaj też
-docs/product/requirements.md i odpowiednią część docs/product/architecture.md.
-Rdzeniem jest AI Control Layer; demo pozostaje klientem.
-Hook w .claude/settings.json formatuje edytowany plik jako wygoda; nie zastępuje
-`npm run format:check` ani CI. Jeśli nie zadziała, użyj `npm run format -- <plik>`.
-Nie zmieniaj konfiguracji hooka poza zadaniem integratora.
+Shared instructions are imported above. Follow docs/README.md for authority and reading order,
+then your exact task in docs/team/implementation-plan.md. All active work and reports use English.
+Do not duplicate specifications here. The local formatting hook is a convenience, not a replacement
+for required checks; change hook configuration only within an integrator task.

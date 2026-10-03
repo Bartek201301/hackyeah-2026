@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "mode": "balanced",
+  "imports": {
+    "max_bytes": 2097152,
+    "max_pdf_pages": 20,
+    "max_csv_rows": 500,
+    "max_text_chars": 24000,
+    "max_processing_ms": 180000,
+    "allowed_formats": ["csv", "pdf"],
+    "connector_dataset": "demo_dataset_v1"
+  },
+  "semantic": {
+    "required": true,
+    "checkpoint": "typed-decisions",
+    "context_tokens": 1024,
+    "window_tokens": 700,
+    "overlap_tokens": 80,
+    "max_windows": 64,
+    "timeout_ms": 10000,
+    "thresholds": {
+      "instruction_manipulation": {
+        "review": 0.3,
+        "block": 0.65
+      },
+      "sensitive_exposure": {
+        "review": 0.3,
+        "block": 0.65
+      },
+      "resource_abuse": {
+        "review": 0.3,
+        "block": 0.65
+      }
+    }
+  },
+  "execution": {
+    "generation_model": "qwen3:8b",
+    "thinking": false,
+    "context_tokens": 8192,
+    "max_input_utf8_bytes": 6000,
+    "template_token_reserve": 1024,
+    "max_output_tokens": 768,
+    "max_model_turns": 3,
+    "max_tool_calls": 6,
+    "max_identical_tool_calls": 2,
+    "max_elapsed_ms": 120000,
+    "provider_timeout_ms": 60000,
+    "max_search_results": 5,
+    "max_excerpt_chars": 1600,
+    "allowed_tools": ["search_excerpts", "read_excerpt"]
+  },
+  "budgets": {
+    "period": "utc_day",
+    "actor_generation_tokens": 100000,
+    "org_generation_tokens": 400000,
+    "actor_generation_ms": 600000,
+    "org_generation_ms": 1800000,
+    "actor_semantic_tokens": 200000,
+    "org_semantic_tokens": 800000,
+    "actor_commercial_micro_usd": 1000000,
+    "org_commercial_micro_usd": 5000000,
+    "requests_per_actor_minute": 20,
+    "max_active_runs_per_actor": 2,
+    "max_active_runs_per_org": 4
+  },
+  "comparison_rate": {
+    "version": "illustrative-v1",
+    "currency": "USD",
+    "input_micro_usd_per_token": 1,
+    "output_micro_usd_per_token": 3,
+    "label": "Illustrative commercial equivalent; not an invoice"
+  },
+  "retention": {
+    "raw_days": 30,
+    "audit_days": 90,
+    "export_minutes": 30,
+    "review_days": 7
+  }
+}

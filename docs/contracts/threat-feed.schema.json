@@ -1,0 +1,67 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "indicators": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["literal", "domain"]
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "category": {
+            "type": "string",
+            "enum": ["prompt_injection", "exfiltration", "unsafe_code", "resource_abuse"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["REVIEW", "BLOCK"]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        },
+        "required": ["id", "kind", "value", "category", "action", "description"]
+      },
+      "maxItems": 100
+    }
+  },
+  "required": ["schema_version", "version", "source", "published_at", "expires_at", "indicators"],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-control-gateway.example/schemas/threat-feed"
+}

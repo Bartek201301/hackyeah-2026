@@ -1,119 +1,26 @@
-# DESIGN — jak ma wyglądać każdy ekran
+# Interface design contract
 
-> Czyta to każda osoba i każda sesja Claude Code PRZED budową ekranu. Design to 20% oceny.
-> Żywy wzorzec: strona **`/ui`** (sekcja „Wzorzec: dashboard”). W razie wątpliwości — zrób jak tam.
+Read before building screens. The existing `/ui` page demonstrates shared components, not the completed gateway. UI, documentation, errors and accessibility labels are **English**. Existing Polish starter copy is migrated by T01/T06; it is not the target product language.
 
-## 1. Styl w jednym zdaniu
+## Application
 
-**Jasny, „miękki” dashboard: białe, mocno zaokrąglone karty unoszą się nad lawendowo-szarym tłem, jeden nasycony indygo jako kolor marki, duże pogrubione liczby, małe kolorowe pigułki.**
+Retain the existing light dashboard system: white cards, soft neutral/lavender background, brand indigo, readable dark text. Use existing tokens from shared UI; no feature-private CSS or raw color overrides. The standalone pitch may use its specified black/white/cobalt style.
 
-Inspiracja: nowoczesne panele SaaS (białe karty, sidebar z niebieskim aktywnym kafelkiem, jedna wyróżniona karta w kolorze marki).
+Use `PageHeader` on each page, `Card`/`CardHeader` for sections, `StatCard` for measured totals, `Badge` for status, `Notice` for errors, `EmptyState`, `LoadingState`/`Skeleton`, and labelled `Field` controls with `Button loading`. Request missing shared primitives from the integrator. Use lucide-react icons with text labels where meaning is not obvious.
 
-## 2. Pięć zasad, których nie łamiemy
+## Screens and information
 
-1. **Jedna mocna barwa na ekran.** Indygo (`brand`) tylko dla: głównego przycisku, aktywnej pozycji menu, JEDNEJ wyróżnionej karty, słupków/pasków wykresu. Cała reszta to biel, szarości i czarny tekst.
-2. **Wszystko siedzi w kartach.** Treść nigdy nie leży „gołym tekstem” na tle. Tło (`bg-bg`) to tylko przestrzeń między kartami.
-3. **Dużo powietrza.** Odstęp między kartami `gap-6`, wnętrze karty `p-6` (już w `Card`). Nie ściskaj — lepiej mniej elementów.
-4. **Liczba jest bohaterem.** Kluczowe wartości duże i pogrubione (`StatCard`), opis mały i szary obok.
-5. **Kolor = znaczenie.** Zielona pigułka = dobrze/wzrost, czerwona = źle/spadek, żółta = w toku, szara = neutralne. Nigdy dekoracyjnie.
+- Login: four prepared accounts, no public signup. Never display passwords on a public page.
+- Workbench: question, safe progress stages, checked answer, citations, trace link. No unchecked streaming text.
+- Sources/import: configured source, accepted formats, classification/deal, upload progress, outcome and review reference. No direct original download.
+- Review: admin-only candidate version, findings, edited extract, audience, reason and approve/reject actions. Display conflict/rescan failure clearly.
+- Policy/feed: admin-only validated settings and current versions. No toggle to bypass required Laya or access checks.
+- Dashboard: security and resource cards equally visible. Own activity for every account; separate admin organisation view. Distinguish actual, estimated and unknown. No fake zero breaches or estimated invoice.
+- Trace: stage, decision, reasons, versions, measured usage/timings and incomplete status; no denied text or raw prompts.
+- Export: public-only summary, citations, readiness and authenticated PDF download.
 
-## 3. Klocki — czego użyć do czego
+## Interaction and accessibility
 
-Wszystko z `@/shared/ui`. Nie piszesz własnych kart, przycisków, pigułek.
+Visible keyboard focus, semantic buttons/links, labelled inputs and errors associated with controls. Do not communicate status only by color. Keep English sentences short and actionable. Responsive single-column flow on phones; no horizontal page overflow. Tables can use a labelled local scroll region where necessary. Respect reduced motion. Provide empty/loading/error/permission-denied/incomplete states; “not measured” differs from zero. Use English number/date formatting with explicit currency and units, UTC timestamps labelled or localized with zone.
 
-| Potrzebujesz…                           | Użyj                                                                 |
-| --------------------------------------- | -------------------------------------------------------------------- |
-| Tytuł ekranu (zawsze, na górze)         | `PageHeader` (+ `actions` = główny przycisk po prawej)               |
-| Kontener treści                         | `Card`                                                               |
-| Tytuł sekcji w karcie + filtr po prawej | `CardHeader title description actions`                               |
-| Kluczowa liczba (3–4 w rzędzie)         | `StatCard icon label value hint change trend`                        |
-| Najważniejsza liczba ekranu             | `StatCard highlight` — **max. jedna na ekran**                       |
-| Status / zmiana procentowa              | `Badge tone="success"` (też `danger`, `warning`, `brand`, `neutral`) |
-| Ikona przy pozycji listy / w karcie     | `IconTile icon={...} tone="brand"`                                   |
-| Udział / postęp / ranking               | `ProgressBar label valueLabel value`                                 |
-| Wykres w czasie / porównanie            | `BarChart data valueLabel compareLabel`                              |
-| Formularz                               | `Field` + `Input` / `Textarea` / `Select`, wysyłka: `Button loading` |
-| Pusta lista                             | `EmptyState` (z przyciskiem „Dodaj pierwszy…”)                       |
-| Błąd akcji                              | `Notice tone="danger"`                                               |
-| Błąd całej sekcji                       | `ErrorState`                                                         |
-| Ładowanie                               | `LoadingState` / `Skeleton`                                          |
-
-Brakuje klocka (np. avatar, tabela, zakładki)? **Nie pisz go w featurze** — zgłoś integratorowi, doda do `shared/ui`.
-
-## 4. Układ ekranu (szablony)
-
-**Dashboard / przegląd:**
-
-```tsx
-<PageHeader title="…" description="…" actions={<Button>Główna akcja</Button>} />
-<div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-  <div className="flex flex-col gap-6">
-    <div className="grid gap-6 sm:grid-cols-2">{/* 2–4× StatCard, pierwsza highlight */}</div>
-    <Card><CardHeader … /><BarChart … /></Card>
-  </div>
-  <div className="flex flex-col gap-6">{/* karty boczne: ProgressBar, lista z IconTile + Badge */}</div>
-</div>
-```
-
-**Lista + formularz:** `grid gap-6 lg:grid-cols-[1fr_2fr]` — formularz w `Card` po lewej, lista (lub `EmptyState`) po prawej. Wzór: `src/features/example`.
-
-**Lista elementów w karcie:** wiersz = `IconTile` + (pogrubiona nazwa, pod nią szary `text-xs` opis) + `Badge` po prawej, odstęp `gap-4`.
-
-**Szczegóły / formularz pojedynczy:** jedna `Card` o szerokości `max-w-2xl`, pola `flex flex-col gap-4`.
-
-## 5. Typografia
-
-| Element                     | Klasy                                                       |
-| --------------------------- | ----------------------------------------------------------- |
-| Tytuł strony                | (w `PageHeader`) `text-3xl font-bold`                       |
-| Tytuł karty                 | (w `CardHeader`) `text-lg font-semibold`                    |
-| Duża liczba                 | (w `StatCard`) `text-3xl font-bold tabular-nums`            |
-| Tekst zwykły                | `text-sm text-fg`                                           |
-| Opis / podpis               | `text-sm text-muted` albo `text-xs text-muted`              |
-| Etykieta grupy (jak „MENU”) | `text-xs font-semibold uppercase tracking-wider text-muted` |
-
-Liczby formatuj po polsku: `n.toLocaleString("pl-PL")` → `34 760`, procenty z przecinkiem: `+12,4%`, minus jako `−`.
-
-## 6. Tokeny (jedyne dozwolone kolory/kształty)
-
-Zdefiniowane w `src/app/globals.css`. W featurach **zakazane**: `#hex`, `bg-[…]`, `text-[…]`, pliki `.css`, inne biblioteki UI (pilnuje tego `npm run check`).
-
-| Token                                        | Klasa przykładowa                | Do czego                                |
-| -------------------------------------------- | -------------------------------- | --------------------------------------- |
-| `brand`                                      | `bg-brand`, `text-brand`         | główna akcja, aktywne, wykres           |
-| `brand-soft`                                 | `bg-brand-soft`                  | tło ikon, delikatne podświetlenie       |
-| `bg`                                         | `bg-bg`                          | tło strony (lawendowo-szare)            |
-| `surface`                                    | `bg-surface`                     | karty                                   |
-| `surface-muted`                              | `bg-surface-muted`               | pola formularzy, tło pasków, hover      |
-| `fg` / `muted`                               | `text-fg`, `text-muted`          | tekst główny / pomocniczy               |
-| `border`                                     | `border-border`                  | rzadko — karty nie mają widocznej ramki |
-| `success` / `danger` / `warning` (+ `-soft`) | `text-success`, `bg-danger-soft` | znaczenie, nie dekoracja                |
-| `ink` / `on-ink`                             | `bg-ink text-on-ink`             | ciemne dymki, wyjątkowe akcenty         |
-| `rounded-card`                               | 1.5rem                           | karty                                   |
-| `rounded-control`                            | 0.875rem                         | przyciski, pola, kafelki ikon           |
-| `shadow-card`                                |                                  | karty                                   |
-| `shadow-brand`                               |                                  | elementy w kolorze marki (poświata)     |
-
-Zmiana koloru marki dla całej aplikacji = jedna linia `--color-brand` (robi integrator).
-
-## 7. Ikony
-
-Tylko `lucide-react`, rozmiar `size-5` (w `IconTile` automatycznie), zawsze `aria-hidden` gdy obok jest tekst. Jedna ikona = jedno znaczenie w całej aplikacji (np. `ClipboardList` zawsze = zgłoszenie).
-
-## 8. Telefon
-
-Każdy ekran musi działać na szerokości ~390 px. Siatki zawsze zaczynają od 1 kolumny i rozszerzają się progami: `grid gap-6 sm:grid-cols-2 xl:grid-cols-[2fr_1fr]`. Nigdy stałe szerokości w px. Menu boczne chowa się samo (robi to `AppShell`).
-
-## 9. Teksty
-
-Po polsku, krótko, po ludzku. Przyciski = czasownik („Dodaj zgłoszenie”, nie „OK”). Pusty stan mówi, co zrobić dalej. Błąd mówi, co się stało i co teraz — bez kodów i stack trace.
-
-## 10. Checklista przed commitem ekranu
-
-- [ ] `PageHeader` na górze, treść w kartach
-- [ ] Max. jedna karta `highlight` i jeden przycisk `primary` na ekran
-- [ ] Pusta lista → `EmptyState`, błąd → `Notice tone="danger"`, wysyłka → `Button loading`
-- [ ] Zero surowych kolorów, zero własnych komponentów, które dublują `shared/ui`
-- [ ] Sprawdzone w `npm run dev` na szerokim oknie i na wąskim (DevTools → tryb telefonu)
-- [ ] Wszystkie teksty po polsku
-- [ ] `npm run check` zielony
+Browser validation follows the project browser-QA skill. A source review or green build is not visual verification. The pitch's six-slide layout is separately verified at desktop/tablet/phone sizes.

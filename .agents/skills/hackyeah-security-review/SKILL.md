@@ -51,7 +51,7 @@ Instrukcje projektu i oficjalna dokumentacja używanej wersji mają pierwszeńst
 
 ## Wynik
 
-Dla każdego potwierdzonego problemu podaj po polsku wagę, plik i linię, możliwy scenariusz
+Dla każdego potwierdzonego problemu podaj po angielsku wagę, plik i linię, możliwy scenariusz
 oraz najmniejszą potrzebną poprawkę. Oddziel braki decyzji, niewykonane kontrole i realne błędy.
 Nie deklaruj pełnego bezpieczeństwa na podstawie checklisty. Po zleconych poprawkach wykonaj
 kontrole z AGENTS.md i testy dotyczące konkretnego ryzyka.

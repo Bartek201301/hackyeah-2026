@@ -1,30 +1,22 @@
-# hackyeah-2026
+# AI Control Gateway
 
-Wyzwanie HackYeah / Goldman Sachs **AI Control Layer**: konfigurowalna warstwa kontroli
-interakcji aplikacji, agentów, modeli, MCP, narzędzi i danych. Obecny kod jest szkieletem
-Next.js App Router + Supabase + Vercel, a nie działającą warstwą kontroli.
-Trzech builderów, jeden integrator; podział funkcji pozostaje do uzgodnienia.
+AI Control Gateway governs how AI uses company data and compute. It checks access, detects malicious instructions, stops excessive tool loops, and produces approved answers or sanitized exports. Security teams inspect decisions; managers see usage and clearly labelled cost estimates.
 
-1. Node **24.14.1** (plik `.nvmrc`), npm **11.11.0** (`npm install -g npm@11.11.0`).
-2. `npm ci`
-3. `cp .env.example .env.local` — wartości projektu od integratora, poza Git.
-4. `npm run doctor`, następnie `npm run dev` i http://localhost:3000/health.
+**Status:** implementation-ready specification and a Next.js/Supabase starter. The gateway, authentication flows, live model bridge, demo dataset, dashboards and security test suite described here are planned work, not shipped capabilities. The HTML pitch is a standalone presentation.
 
-- Zasady dla wszystkich narzędzi: [AGENTS.md](AGENTS.md).
-- Zadanie, podział funkcji i kontrakty: [wymagania](docs/product/requirements.md).
-- Opis pomysłu i mapa wymagań: [idea](docs/product/idea.md).
-- Przepływ, niezmienniki i otwarte granice: [architektura](docs/product/architecture.md).
-- Konfiguracja usług i potwierdzenia zespołu: [setup](docs/team/setup.md).
-- Jedna konfiguracja narzędzi zespołu: [CodeGraph, Agent Reach i Ponytail](docs/team/agent-tools.md).
-- Uzasadnienie: [decyzje](docs/team/decisions.md).
-- Wspólne skille AI: [instrukcja ECC](docs/ai/ecc/README.md) — przegląd bazy,
-  bezpieczeństwa i demo w przeglądarce. Codex i Claude Code dostają je razem z repo;
-  instalacja globalnego pluginu nie jest potrzebna.
+The reference application is an internal company chat. AsterCloud is a fictional acquisition target. All demonstration data is synthetic. Four prepared accounts show administrator, assigned analyst, employee and external-reviewer access.
 
-Przed małym commitem: `npm run check:fast`. Przed PR i po znaczącej zmianie: `npm run check`.
-Kontrole działają bez bazy i kluczy. `npm run doctor` sprawdza konfigurację i połączenie osobno.
-Formatuj własne pliki: `npm run format -- <plik1> <plik2>`.
+## Start here
 
-Nowa praca: osobna gałąź `codex/<zadanie>`, PR, jedna akceptacja kolegi, scalenie przez integratora.
-Local, preview i production korzystają z **jednej bazy** — tylko integrator wykonuje migracje i resety.
-Strony techniczne: `/ui` (komponenty), `/health` (diagnostyka).
+1. [Documentation map and authority](docs/README.md)
+2. [Product requirements](docs/product/requirements.md)
+3. [Architecture](docs/product/architecture.md) and [technical specification](docs/product/technical-spec.md)
+4. [Your implementation task](docs/team/implementation-plan.md)
+5. [Setup and command availability](docs/team/setup.md)
+6. [Acceptance tests](docs/testing/acceptance.md) and [judge runbook](docs/demo/runbook.md)
+
+Coding agents first read [AGENTS.md](AGENTS.md); Claude Code imports it through [CLAUDE.md](CLAUDE.md). Read [DESIGN.md](DESIGN.md) before implementing screens.
+
+Available now: `npm ci`, `npm run dev`, `npm run check`. These operate on the starter; a green build does not prove the planned gateway works. Use the setup guide before configuring services or writing shared data.
+
+[One-page pitch](docs/pitch/pitch.md) · [Six-slide presentation](docs/pitch/presentation.html) · [Historical evidence](docs/product/research-decisions.md)

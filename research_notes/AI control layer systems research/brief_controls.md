@@ -1,3 +1,5 @@
+> HISTORICAL EVIDENCE — this research predates the accepted gateway specification. Recommendations here are not implementation instructions. Read [the active documentation](../../docs/README.md).
+
 # Partner brief: obligations, control flow, and corrections to team notes
 
 ## What does the four-page brief explicitly require, and what is guidance or team interpretation?

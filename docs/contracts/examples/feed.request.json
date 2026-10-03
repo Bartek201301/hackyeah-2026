@@ -1,0 +1,28 @@
+{
+  "expected_version": 1,
+  "feed": {
+    "schema_version": 1,
+    "version": 2,
+    "source": "demo-security-team",
+    "published_at": "2026-10-03T00:00:00Z",
+    "expires_at": "2026-10-10T00:00:00Z",
+    "indicators": [
+      {
+        "id": "SIG-001",
+        "kind": "literal",
+        "value": "ignore all previous instructions",
+        "category": "prompt_injection",
+        "action": "BLOCK",
+        "description": "Demonstration indicator for instruction override; not complete injection detection."
+      },
+      {
+        "id": "SIG-002",
+        "kind": "domain",
+        "value": "exfil.example.invalid",
+        "category": "exfiltration",
+        "action": "BLOCK",
+        "description": "Fictional exfiltration destination."
+      }
+    ]
+  }
+}

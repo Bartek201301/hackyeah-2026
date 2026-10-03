@@ -1,3 +1,5 @@
+> HISTORICAL EVIDENCE — this research predates the accepted gateway specification. Recommendations here are not implementation instructions. Read [the active documentation](../../docs/README.md).
+
 # Public Goldman Sachs and US controls for an investment-banking analyst AI workflow
 
 ## What do Goldman Sachs' public materials actually say about AI, client information, MNPI and information barriers?

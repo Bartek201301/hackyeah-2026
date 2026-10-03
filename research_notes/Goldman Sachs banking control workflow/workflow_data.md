@@ -1,3 +1,5 @@
+> HISTORICAL EVIDENCE — this research predates the accepted gateway specification. Recommendations here are not implementation instructions. Read [the active documentation](../../docs/README.md).
+
 # Goldman Sachs investment banking M&A advisory workflow: an evidence-based reference case
 
 Research checked 3 October 2026. The chosen case is Goldman Sachs & Co. LLC advising the ON24 board during its 2025 strategic alternatives process and proposed sale to Cvent. The primary case source is ON24's definitive merger proxy, filed with the SEC on **24 February 2026**; it recounts events in 2025 and discloses some materials only after announcement. This is a public reconstruction of a _type_ of banking workflow, not a claim about a Goldman Sachs employee's exact day, internal software, access rules, or confidential procedures. [SEC filing index](https://www.sec.gov/Archives/edgar/data/1110611/000119312526067473/0001193125-26-067473-index.htm); [ON24 definitive proxy](https://www.sec.gov/Archives/edgar/data/1110611/000119312526067473/d885656ddefm14a.htm).
