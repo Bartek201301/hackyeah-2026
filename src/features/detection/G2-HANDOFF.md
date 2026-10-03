@@ -12,8 +12,8 @@ The server-only `src/features/detection/index.ts` exports exactly:
 ```ts
 import { createDetectionPort, createGenerationPort } from "@/features/detection";
 
-const detection = createDetectionPort(); // DetectionPort from @/shared/contracts
-const generation = createGenerationPort(); // GenerationPort from @/shared/contracts
+const detection = createDetectionPort(); // DetectionPort | null
+const generation = createGenerationPort(); // GenerationPort | null
 ```
 
 Bartosz injects these into the gateway from server-only app composition. Neither factory changes
@@ -21,9 +21,12 @@ shared types, connects a route, accesses Supabase, handles login/cookies, or gra
 The existing `/api/v1` seam is unchanged by this PR. Accepted pins remain enforced by the
 underlying adapters; Bartosz owns copying them into the runtime manifest.
 
-Before starting the app on this Mac, supply `LAYA_API_KEY` privately in its server process
-environment. Assessment reads it when called; missing/empty configuration throws `unavailable`
-before any provider request. Factory construction and generation do not require that key.
+Before constructing either port on this Mac, supply `LAYA_API_KEY` privately in the app's server
+process environment. Both factories read only that environment variable. Missing, empty or blank
+configuration returns `null` before gateway budget reservation; Bartosz's composition maps `null`
+to 503. Detection captures the configured bearer at construction, so later process-environment
+changes do not change an already constructed port. Generation needs no separate Ollama environment
+variable. A configured port can still fail safely if a model becomes unavailable.
 Endpoints remain fixed at Laya `127.0.0.1:8000` and Ollama `127.0.0.1:11434`. No model ports
 or bridge tunnel are published. Vercel deployment does not establish model connectivity.
 

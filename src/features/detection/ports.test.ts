@@ -10,6 +10,16 @@ import { ProviderFailure } from "./providers/validation";
 
 const policy = () => structuredClone(policyExample) as GatewayPolicy;
 const signal = () => new AbortController().signal;
+function detectionPort(): DetectionPort {
+  const port = publicApi.createDetectionPort();
+  if (port === null) throw new Error("expected configured detection port");
+  return port;
+}
+function generationPort(): GenerationPort {
+  const port = publicApi.createGenerationPort();
+  if (port === null) throw new Error("expected configured generation port");
+  return port;
+}
 const input = (): Parameters<DetectionPort["assess"]>[0] => ({
   call_id: "ca984d6b-7475-4aa0-baff-a4e34e21d937",
   operation: "chat",
@@ -84,8 +94,8 @@ afterEach(() => {
 
 it("exports exactly two server-only factories with the shared port signatures", () => {
   expect(Object.keys(publicApi).sort()).toEqual(["createDetectionPort", "createGenerationPort"]);
-  expectTypeOf(publicApi.createDetectionPort).returns.toEqualTypeOf<DetectionPort>();
-  expectTypeOf(publicApi.createGenerationPort).returns.toEqualTypeOf<GenerationPort>();
+  expectTypeOf(publicApi.createDetectionPort).returns.toEqualTypeOf<DetectionPort | null>();
+  expectTypeOf(publicApi.createGenerationPort).returns.toEqualTypeOf<GenerationPort | null>();
   // Vitest deliberately aliases server-only to an empty module; assert the production guard remains.
   expect(readFileSync(new URL("./index.ts", import.meta.url), "utf8")).toMatch(/^import "server-only";/);
 });
@@ -94,7 +104,7 @@ describe("G2 detection factory", () => {
   it("returns schema-valid single-window metadata and genuine aggregate usage", async () => {
     const fetcher = provider(health(), layaResponse(), health());
     const accepted = { ...input(), text: "A😀e\u0301" };
-    const result = await publicApi.createDetectionPort().assess(accepted, policy(), signal());
+    const result = await detectionPort().assess(accepted, policy(), signal());
     expect(result.semantic).toEqual({
       status: "complete",
       scores: { instruction_manipulation: 0.2, sensitive_exposure: 0.2, resource_abuse: 0.2 },
@@ -121,35 +131,41 @@ describe("G2 detection factory", () => {
     const accepted = input();
     const p = policy();
     const fetcher = provider(health(), layaResponse(), health());
-    const pending = publicApi.createDetectionPort().assess(accepted, p, signal());
+    const pending = detectionPort().assess(accepted, p, signal());
     accepted.text = "changed after dispatch";
     p.semantic.window_tokens = 1;
     const result = await pending;
     expect(result.semantic.coverage_ranges[0].end_char).toBe("Synthetic public report.".length);
     expect(JSON.parse(String(fetcher.mock.calls[1][1]?.body)).state).toContain("Synthetic public report.");
   });
-  it.each([undefined, ""])(
-    "missing/empty credentials fail before dispatch and are read per assessment",
+  it.each([undefined, "", " \t "])(
+    "missing/blank credentials return null ports without provider dispatch",
     async (key) => {
-      const port = publicApi.createDetectionPort();
       vi.stubEnv("LAYA_API_KEY", key);
       const fetcher = provider();
-      await expect(port.assess(input(), policy(), signal())).rejects.toMatchObject({
-        code: "unavailable",
-        dispatched: false,
-        input_tokens: null,
-      });
+      expect(publicApi.createDetectionPort()).toBeNull();
+      expect(publicApi.createGenerationPort()).toBeNull();
       expect(fetcher).not.toHaveBeenCalled();
     },
   );
+  it("captures the configured Laya bearer at construction", async () => {
+    const port = detectionPort();
+    vi.stubEnv("LAYA_API_KEY", undefined);
+    const fetcher = provider(health(), layaResponse(), health());
+    await expect(port.assess(input(), policy(), signal())).resolves.toMatchObject({
+      semantic_input_tokens: 199,
+    });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(new Headers(fetcher.mock.calls[1][1]?.headers).get("authorization")).toBe(
+      "Bearer synthetic-test-secret",
+    );
+  });
   it.each(["csv", "pdf"] as const)(
     "parsing %s is explicitly unavailable without provider dispatch",
     async (format) => {
       const fetcher = provider();
       await expect(
-        publicApi
-          .createDetectionPort()
-          .parse({ bytes: new Uint8Array([1]), format }, policy().imports, signal()),
+        detectionPort().parse({ bytes: new Uint8Array([1]), format }, policy().imports, signal()),
       ).rejects.toMatchObject({ code: "unavailable", dispatched: false });
       expect(fetcher).not.toHaveBeenCalled();
     },
@@ -158,28 +174,25 @@ describe("G2 detection factory", () => {
     "invalid or over-wire-limit input fails without dispatch (case %#)",
     async (text) => {
       const fetcher = provider();
-      await expect(
-        publicApi.createDetectionPort().assess({ ...input(), text }, policy(), signal()),
-      ).rejects.toMatchObject({ code: "invalid_input", dispatched: false });
+      await expect(detectionPort().assess({ ...input(), text }, policy(), signal())).rejects.toMatchObject({
+        code: "invalid_input",
+        dispatched: false,
+      });
       expect(fetcher).not.toHaveBeenCalled();
     },
   );
   it("rejects unsupported fields and invalid policy before dispatch", async () => {
     const fetcher = provider();
     await expect(
-      publicApi
-        .createDetectionPort()
-        .assess(
-          { ...input(), url: "https://untrusted.example" } as ReturnType<typeof input>,
-          policy(),
-          signal(),
-        ),
+      detectionPort().assess(
+        { ...input(), url: "https://untrusted.example" } as ReturnType<typeof input>,
+        policy(),
+        signal(),
+      ),
     ).rejects.toThrow("invalid_input");
     const p = policy();
     p.semantic.timeout_ms = 10001;
-    await expect(publicApi.createDetectionPort().assess(input(), p, signal())).rejects.toThrow(
-      "invalid_input",
-    );
+    await expect(detectionPort().assess(input(), p, signal())).rejects.toThrow("invalid_input");
     expect(fetcher).not.toHaveBeenCalled();
   });
   it.each([
@@ -193,7 +206,7 @@ describe("G2 detection factory", () => {
     const raw = layaResponse();
     Object.assign(raw.usage, patch);
     const fetcher = provider(health(), raw, health());
-    await expect(publicApi.createDetectionPort().assess(input(), policy(), signal())).rejects.toMatchObject({
+    await expect(detectionPort().assess(input(), policy(), signal())).rejects.toMatchObject({
       code: "incomplete",
       dispatched: true,
       input_tokens: raw.usage.input_tokens,
@@ -205,7 +218,7 @@ describe("G2 detection factory", () => {
     const raw = layaResponse();
     raw.usage.input_tokens = 1024;
     provider(health(), raw, health());
-    const result = await publicApi.createDetectionPort().assess(input(), policy(), signal());
+    const result = await detectionPort().assess(input(), policy(), signal());
     expect(result.semantic_input_tokens).toBe(1024);
     expect(result.semantic.coverage_ranges[0].input_tokens).toBe(1024);
   });
@@ -217,7 +230,7 @@ describe("G2 detection factory", () => {
     const p = policy();
     p.semantic.window_tokens = 64;
     p.semantic.overlap_tokens = 0;
-    await expect(publicApi.createDetectionPort().assess(input(), p, signal())).rejects.toMatchObject({
+    await expect(detectionPort().assess(input(), p, signal())).rejects.toMatchObject({
       code: "incomplete",
       input_tokens: 250,
     });
@@ -226,7 +239,7 @@ describe("G2 detection factory", () => {
     const raw = layaResponse();
     Object.assign(raw.answers.resource_abuse, { noul: "protected-value" });
     provider(health(), raw);
-    await expect(publicApi.createDetectionPort().assess(input(), policy(), signal())).rejects.toMatchObject({
+    await expect(detectionPort().assess(input(), policy(), signal())).rejects.toMatchObject({
       message: "invalid_response",
       input_tokens: 199,
       dispatched: true,
@@ -236,12 +249,10 @@ describe("G2 detection factory", () => {
     const wrong = health();
     wrong.revisions["typed-decisions"] = "wrong";
     const fetcher = provider(wrong);
-    await expect(publicApi.createDetectionPort().assess(input(), policy(), signal())).rejects.toThrow(
-      "revision_mismatch",
-    );
+    await expect(detectionPort().assess(input(), policy(), signal())).rejects.toThrow("revision_mismatch");
     expect(fetcher).toHaveBeenCalledTimes(1);
     provider(health(), layaResponse(), wrong);
-    await expect(publicApi.createDetectionPort().assess(input(), policy(), signal())).rejects.toMatchObject({
+    await expect(detectionPort().assess(input(), policy(), signal())).rejects.toMatchObject({
       code: "revision_mismatch",
       dispatched: true,
       input_tokens: 199,
@@ -251,9 +262,10 @@ describe("G2 detection factory", () => {
     const fetcher = provider();
     const controller = new AbortController();
     controller.abort();
-    await expect(
-      publicApi.createDetectionPort().assess(input(), policy(), controller.signal),
-    ).rejects.toMatchObject({ code: "cancelled", dispatched: false });
+    await expect(detectionPort().assess(input(), policy(), controller.signal)).rejects.toMatchObject({
+      code: "cancelled",
+      dispatched: false,
+    });
     expect(fetcher).not.toHaveBeenCalled();
   });
   it.each(["timeout", "cancelled"] as const)(
@@ -265,7 +277,7 @@ describe("G2 detection factory", () => {
       fetcher.mockImplementationOnce(() => new Promise<Response>(() => undefined));
       const p = policy();
       p.semantic.timeout_ms = 100;
-      const pending = publicApi.createDetectionPort().assess(input(), p, controller.signal);
+      const pending = detectionPort().assess(input(), p, controller.signal);
       const rejected = expect(pending).rejects.toMatchObject({
         code: reason,
         dispatched: true,
@@ -282,12 +294,11 @@ describe("G2 detection factory", () => {
 });
 
 describe("G2 generation factory", () => {
-  it("forwards fixed requests and maps actual usage without needing a Laya credential", async () => {
-    vi.stubEnv("LAYA_API_KEY", undefined);
+  it("forwards fixed requests and maps actual usage with a configured Laya credential", async () => {
     const fetcher = provider(tags(), qwenResponse(), tags());
     const request = generationInput();
     request.limits.max_output_tokens = 64;
-    const result = await publicApi.createGenerationPort().generate(request, signal());
+    const result = await generationPort().generate(request, signal());
     expect(result).toMatchObject({
       finished: true,
       text: "Synthetic hello.",
@@ -311,15 +322,15 @@ describe("G2 generation factory", () => {
       { ...qwenResponse(), prompt_eval_count: null, eval_count: null, total_duration: null },
       tags(),
     );
-    await expect(
-      publicApi.createGenerationPort().generate(generationInput(), signal()),
-    ).resolves.toMatchObject({ input_tokens: null, output_tokens: null, duration_ms: null });
+    await expect(generationPort().generate(generationInput(), signal())).resolves.toMatchObject({
+      input_tokens: null,
+      output_tokens: null,
+      duration_ms: null,
+    });
   });
   it("withholds output-cap text and keeps genuine usage", async () => {
     provider(tags(), { ...qwenResponse(), done_reason: "length", eval_count: 64 }, tags());
-    await expect(
-      publicApi.createGenerationPort().generate(generationInput(), signal()),
-    ).resolves.toMatchObject({
+    await expect(generationPort().generate(generationInput(), signal())).resolves.toMatchObject({
       finished: false,
       text: "",
       tool_calls: [],
@@ -329,27 +340,26 @@ describe("G2 generation factory", () => {
   });
   it("rejects malformed output and wrong digest safely", async () => {
     provider(tags(), { ...qwenResponse(), message: { role: "assistant", content: 123 } });
-    await expect(
-      publicApi.createGenerationPort().generate(generationInput(), signal()),
-    ).rejects.toMatchObject({ code: "invalid_response", input_tokens: 23, output_tokens: 5 });
+    await expect(generationPort().generate(generationInput(), signal())).rejects.toMatchObject({
+      code: "invalid_response",
+      input_tokens: 23,
+      output_tokens: 5,
+    });
     const fetcher = provider({ models: [{ name: QWEN_MODEL, digest: "wrong" }] });
-    await expect(publicApi.createGenerationPort().generate(generationInput(), signal())).rejects.toThrow(
-      "revision_mismatch",
-    );
+    await expect(generationPort().generate(generationInput(), signal())).rejects.toThrow("revision_mismatch");
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
   it("rejects unsupported input and pre-cancellation without dispatch", async () => {
     const fetcher = provider();
     const request = generationInput();
     request.limits.max_output_tokens = 769;
-    await expect(publicApi.createGenerationPort().generate(request, signal())).rejects.toThrow(
-      "invalid_input",
-    );
+    await expect(generationPort().generate(request, signal())).rejects.toThrow("invalid_input");
     const controller = new AbortController();
     controller.abort();
-    await expect(
-      publicApi.createGenerationPort().generate(generationInput(), controller.signal),
-    ).rejects.toMatchObject({ code: "cancelled", dispatched: false });
+    await expect(generationPort().generate(generationInput(), controller.signal)).rejects.toMatchObject({
+      code: "cancelled",
+      dispatched: false,
+    });
     expect(fetcher).not.toHaveBeenCalled();
   });
   it.each(["timeout", "cancelled"] as const)("%s retains unknown generation usage", async (reason) => {
@@ -359,7 +369,7 @@ describe("G2 generation factory", () => {
     fetcher.mockImplementationOnce(() => new Promise<Response>(() => undefined));
     const request = generationInput();
     request.limits.provider_timeout_ms = 1000;
-    const pending = publicApi.createGenerationPort().generate(request, controller.signal);
+    const pending = generationPort().generate(request, controller.signal);
     const rejected = expect(pending).rejects.toMatchObject({
       code: reason,
       dispatched: true,
@@ -375,7 +385,7 @@ describe("G2 generation factory", () => {
   it("does not invent replay protection or retry a failed dispatch", async () => {
     const fetcher = provider(tags());
     fetcher.mockRejectedValueOnce(new Error("private network detail"));
-    await expect(publicApi.createGenerationPort().generate(generationInput(), signal())).rejects.toEqual(
+    await expect(generationPort().generate(generationInput(), signal())).rejects.toEqual(
       expect.objectContaining({
         name: "ProviderFailure",
         message: "unavailable",
@@ -395,12 +405,12 @@ it("rejects unknown payloads before copying them into a snapshot", async () => {
   const clone = vi.spyOn(globalThis, "structuredClone");
   const fetcher = provider();
   const extra = { unregistered_payload: { nested: "untrusted" } };
-  await expect(
-    publicApi.createDetectionPort().assess({ ...detectionInput, ...extra }, p, signal()),
-  ).rejects.toThrow("invalid_input");
-  await expect(
-    publicApi.createGenerationPort().generate({ ...generation, ...extra }, signal()),
-  ).rejects.toThrow("invalid_input");
+  await expect(detectionPort().assess({ ...detectionInput, ...extra }, p, signal())).rejects.toThrow(
+    "invalid_input",
+  );
+  await expect(generationPort().generate({ ...generation, ...extra }, signal())).rejects.toThrow(
+    "invalid_input",
+  );
   expect(clone).not.toHaveBeenCalled();
   expect(fetcher).not.toHaveBeenCalled();
 });
