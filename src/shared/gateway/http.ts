@@ -35,7 +35,8 @@ type Context = { actor: ActorContext; body: unknown; key: string | null; signal:
 export async function handle(
   request: Request,
   opts: { body?: SchemaName; idempotent?: boolean },
-  run: (ctx: Context) => Promise<Outcome>,
+  // A Response is passed through as is: a non-JSON success such as a CSV download.
+  run: (ctx: Context) => Promise<Outcome | Response>,
 ): Promise<Response> {
   // Defence in depth on top of SameSite cookies.
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -73,7 +74,8 @@ export async function handle(
   }
 
   try {
-    return toResponse(await run({ actor, body, key, signal: request.signal }));
+    const result = await run({ actor, body, key, signal: request.signal });
+    return result instanceof Response ? result : toResponse(result);
   } catch (error) {
     if (error instanceof GatewayError) return toResponse(errorOutcome(error.code));
     // Error name only: never content, database detail or stacks.

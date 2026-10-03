@@ -36,3 +36,29 @@ describe("createSupabaseRepository error mapping", () => {
     expect(await finalize(fakeRpc(async () => ({ data: { finalized: false }, error: null })))).toBe(false);
   });
 });
+
+describe("createSupabaseRepository window queries", () => {
+  // TEST FAKE: a query builder that records each call and resolves to no rows.
+  function recording() {
+    const calls: unknown[][] = [];
+    const builder: Record<string, unknown> = {};
+    for (const name of ["from", "select", "eq", "neq", "gte", "lte", "order", "limit", "overrideTypes"]) {
+      builder[name] = (...args: unknown[]) => (calls.push([name, ...args]), builder);
+    }
+    builder.then = (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null });
+    return { calls, repository: createSupabaseRepository(builder as unknown as SupabaseClient) };
+  }
+  const window = { organisationId: "org", from: "f", to: "t", limit: 5 };
+
+  it("leaves db_test rows out of metrics and export, and filters own scope in the query", async () => {
+    const { calls, repository } = recording();
+    await repository.readMetricsRows({ ...window, ownActorId: "me" });
+    await repository.exportActivity({ ...window, ownActorId: null });
+    expect(calls.filter(([name]) => name === "neq")).toEqual([
+      ["neq", "operation", "db_test"],
+      ["neq", "operation", "db_test"],
+    ]);
+    expect(calls).toContainEqual(["eq", "actor_id", "me"]);
+    expect(calls.filter(([name, column]) => name === "eq" && column === "actor_id")).toHaveLength(1);
+  });
+});

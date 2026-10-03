@@ -157,6 +157,18 @@ function harness(over: Partial<Opts> = {}) {
     async listSources() {
       throw new Error("not used");
     },
+    async loadDatasetBatch() {
+      throw new Error("not used");
+    },
+    async hasPublishedDocument() {
+      throw new Error("not used");
+    },
+    async storeQuarantine() {
+      throw new Error("not used");
+    },
+    async finalizeImport() {
+      throw new Error("not used");
+    },
 
     async listActivity() {
       log.push("listActivity");
@@ -166,6 +178,10 @@ function harness(over: Partial<Opts> = {}) {
     async readMetricsRows() {
       log.push("readMetricsRows");
       return { activity: [], reservations: [] };
+    },
+    async exportActivity() {
+      log.push("exportActivity");
+      return [];
     },
   };
 

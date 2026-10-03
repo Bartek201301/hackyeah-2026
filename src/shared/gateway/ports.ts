@@ -89,8 +89,48 @@ export type MetricsReservationRow = {
   amount: number;
   state: "reserved" | "settled" | "unresolved" | "released";
 };
+/** One reporting window; `ownActorId` null means the whole organisation. */
+export type WindowQuery = {
+  organisationId: string;
+  ownActorId: string | null;
+  from: string;
+  to: string;
+  limit: number;
+};
 /** sources row as selected for source_list; projected and schema-checked before release. */
 export type SourceRow = { id: string; label: string; classification: string; kind: string };
+/** A registered dataset batch as loaded for import_connector; payloads are untrusted until validated. */
+export type DatasetBatch = {
+  source: {
+    id: string;
+    classification: "public" | "internal" | "restricted";
+    audience_evidence: "verified" | "unverified";
+  };
+  rows: { row_number: number; payload: unknown }[];
+};
+/** finalize_import payload. Classification, deal and text hashes are derived in SQL, never sent. */
+export type ImportPublication = {
+  document: {
+    id: string;
+    source_id: string;
+    status: "approved" | "partial" | "review" | "blocked";
+    storage_key: string;
+    sha256: string;
+    format: string;
+    byte_count: number;
+  };
+  excerpts: {
+    status: "approved" | "candidate";
+    text: string;
+    locator: string;
+    source_date: string;
+    period: string;
+    unit: string;
+    basis: string;
+    fact_key: string;
+  }[];
+  reviews: { candidate_text: string; expires_at: string }[];
+};
 /** Names follow protocols.md; startRun/readRun/claimRun are additions. Every method throws GatewayError
  *  carrying the RPC's ErrorCode, or STATE_UNAVAILABLE for anything else. */
 export interface RepositoryPort {
@@ -141,6 +181,26 @@ export interface RepositoryPort {
   }): Promise<boolean>;
   /** Sources visible to this actor (sourceScope), newest first, at most `limit`. */
   listSources(actor: ActorContext, limit: number): Promise<SourceRow[]>;
+  /** A dataset source of the actor's organisation with at most `limit` batch rows by row number; null
+   *  when the source is missing, not a dataset, or the batch is empty. */
+  loadDatasetBatch(
+    actor: ActorContext,
+    sourceId: string,
+    batchId: string,
+    limit: number,
+  ): Promise<DatasetBatch | null>;
+  /** The source has an approved or partial document (re-import is refused). */
+  hasPublishedDocument(organisationId: string, sourceId: string): Promise<boolean>;
+  /** Private quarantine bucket, server-generated key, never overwrites. */
+  storeQuarantine(key: string, bytes: Uint8Array): Promise<void>;
+  /** finalize_run plus the publication in one transaction; false/CONFLICT = nothing was inserted. */
+  finalizeImport(input: {
+    runId: string;
+    leaseToken: string;
+    operationId: string;
+    outcome: FinalOutcome;
+    publication: ImportPublication;
+  }): Promise<boolean>;
   /**
    * One page of an actor's own activity, newest first, at most `limit`. `after` is a trace id the
    * actor may see; null means the first page. Returns null when the cursor is not one of theirs,
@@ -157,13 +217,11 @@ export interface RepositoryPort {
    * what is still outstanding. Filtering is in the query because the gateway client bypasses RLS;
    * `ownActorId` null means the whole organisation. At most `limit` rows of each.
    */
-  readMetricsRows(input: {
-    organisationId: string;
-    ownActorId: string | null;
-    from: string;
-    to: string;
-    limit: number;
-  }): Promise<{ activity: MetricsActivityRow[]; reservations: MetricsReservationRow[] }>;
+  readMetricsRows(
+    input: WindowQuery,
+  ): Promise<{ activity: MetricsActivityRow[]; reservations: MetricsReservationRow[] }>;
+  /** Activity rows of one window for the audit CSV, newest first, at most `limit`. */
+  exportActivity(input: WindowQuery): Promise<ActivityRow[]>;
 }
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {
