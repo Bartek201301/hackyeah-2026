@@ -1,6 +1,8 @@
 import type { ActorContext } from "@/shared/contracts";
-import { Card, CardHeader, EmptyState, PageHeader } from "@/shared/ui";
+import { PageHeader } from "@/shared/ui";
 import { ChatPanel } from "./ChatPanel";
+import { ExportPanel } from "./ExportPanel";
+import { ReviewPanel } from "./ReviewPanel";
 import { FeedPanel } from "./FeedPanel";
 import { PolicyPanel } from "./PolicyPanel";
 import { SourcesPanel } from "./SourcesPanel";
@@ -32,21 +34,6 @@ type WorkbenchPageProps = {
   dealIds?: readonly string[];
 };
 
-/* Review and export are not built: both wait on a contract decision, named here rather than
- * guessed at, so nobody mistakes an empty screen for a missing endpoint. */
-const WAITING: Record<"review" | "export", { title: string; description: string }> = {
-  review: {
-    title: "Review is not built yet",
-    description:
-      "The review response carries candidate text, classification and status, but DESIGN also requires the findings and the original locator. That projection has to be agreed before this screen can show an administrator what they are approving.",
-  },
-  export: {
-    title: "Public summary is not built yet",
-    description:
-      "A completed export returns a download path and an expiry. DESIGN also asks for the checked summary text and its citations, so whether those are exposed has to be agreed before this screen can preview anything.",
-  },
-};
-
 export async function WorkbenchPage({ searchParams, role, dealIds }: WorkbenchPageProps) {
   const params = (await searchParams) ?? {};
   const view = parseView(params.view);
@@ -67,12 +54,9 @@ export async function WorkbenchPage({ searchParams, role, dealIds }: WorkbenchPa
         </div>
       )}
 
-      {(view === "review" || view === "export") && (
-        <Card>
-          <CardHeader title={WAITING[view].title} />
-          <EmptyState title="Waiting on a contract decision" description={WAITING[view].description} />
-        </Card>
-      )}
+      {view === "review" && <ReviewPanel />}
+
+      {view === "export" && <ExportPanel dealIds={dealIds} />}
     </>
   );
 }
