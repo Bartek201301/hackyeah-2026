@@ -20,7 +20,7 @@ const sizes: Record<Size, string> = {
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: Size;
-  /** Pokazuje kręciołek i blokuje przycisk (np. w trakcie wysyłania formularza). */
+  /** Shows a spinner and disables the button (e.g. while a form is submitting). */
   loading?: boolean;
 };
 

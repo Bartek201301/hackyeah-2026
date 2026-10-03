@@ -23,7 +23,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     unstable_rethrow(error);
   }
   return (
-    <html lang="pl" className={geist.variable}>
+    <html lang="en" className={geist.variable}>
       <body className="font-sans antialiased">
         <AppShell appName={APP_NAME} nav={nav} role={role}>
           {children}

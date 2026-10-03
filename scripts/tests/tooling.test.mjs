@@ -19,7 +19,7 @@ import { validateSupabaseConfig, checkSupabaseConnection } from "../../src/share
 const root = resolve(".");
 const analyze = (file, source) => analyzeSource(root, join(root, "src", file), source);
 
-test("granice: realne importy, eksporty, require i import type są kontrolowane", () => {
+test("boundaries: real imports, exports, require and import type are checked", () => {
   for (const source of [
     'import x from "@/features/b";',
     'export { x } from "../b";',
@@ -37,7 +37,7 @@ test("granice: realne importy, eksporty, require i import type są kontrolowane"
   assert.equal(analyze("features/a/index.ts", "import(path)").errors.length, 1);
 });
 
-test("granice: komentarze, przykłady tekstowe, własne i wspólne importy są dozwolone", () => {
+test("boundaries: comments, text examples, own and shared imports are allowed", () => {
   const source = `// import x from "@/features/b";
     const example = 'import x from "@/features/b"';
     import x from "./queries";
@@ -47,7 +47,7 @@ test("granice: komentarze, przykłady tekstowe, własne i wspólne importy są d
   assert.deepEqual(analyze("app/page.tsx", 'export { default } from "@/features/a/index.ts"').errors, []);
 });
 
-test("kotwice i rozmiary tekstu nie są błędami kolorów", () => {
+test("anchors and text sizes are not colour errors", () => {
   const result = analyze("features/a/page.tsx", '<a href="#abc" className="text-[14px]">ok</a>');
   assert.deepEqual(result, { errors: [], warnings: [] });
   const warning = analyze("features/a/page.tsx", '<p className="bg-red-500">ok</p>');
@@ -76,23 +76,23 @@ function snapshot(dir) {
     .sort();
 }
 
-test("generator: nav jest poprawną nazwą, powtórzenie nie zmienia plików", async (t) => {
+test("generator: nav is a valid name, repeating does not change files", async (t) => {
   const dir = fixture(t);
   await generateFeature(dir, "nav");
   assert.ok(existsSync(join(dir, "src/features/nav/components/NavPage.tsx")));
   assert.match(readFileSync(join(dir, "src/app/nav.ts"), "utf8"), /meta as featureNavMeta/);
   const before = snapshot(dir);
-  await assert.rejects(generateFeature(dir, "nav"), /istnieje/);
+  await assert.rejects(generateFeature(dir, "nav"), /already exists/);
   assert.deepEqual(snapshot(dir), before);
 });
 
-test("generator: poprawna nazwa z myślnikiem", async (t) => {
+test("generator: valid name with a hyphen", async (t) => {
   const dir = fixture(t);
   await generateFeature(dir, "help-center");
   assert.match(readFileSync(join(dir, "src/features/help-center/meta.ts"), "utf8"), /slug: "help-center"/);
 });
 
-test("generator: błędne nazwy odrzucane przed zapisem", async (t) => {
+test("generator: invalid names rejected before writing", async (t) => {
   const dir = fixture(t);
   const before = snapshot(dir);
   for (const slug of [undefined, "", "help-", "help--me", "../escape", "UPPER", "1test"]) {
@@ -101,7 +101,7 @@ test("generator: błędne nazwy odrzucane przed zapisem", async (t) => {
   }
 });
 
-test("generator: brak lub duplikat markerów oraz kolizja aliasu nie zostawiają plików", async (t) => {
+test("generator: missing or duplicate markers and an alias collision leave no files", async (t) => {
   const dir = fixture(t);
   const nav = join(dir, "src/app/nav.ts");
   for (const content of [
@@ -116,16 +116,16 @@ test("generator: brak lub duplikat markerów oraz kolizja aliasu nie zostawiają
   }
 });
 
-test("generator: brak pliku wzorca odrzucany przed zapisem", async (t) => {
+test("generator: missing template file rejected before writing", async (t) => {
   const dir = fixture(t);
   rmSync(join(dir, "src/features/example/meta.ts"));
   const before = snapshot(dir);
-  await assert.rejects(generateFeature(dir, "help"), /wzorca/);
+  await assert.rejects(generateFeature(dir, "help"), /template/);
   assert.deepEqual(snapshot(dir), before);
 });
 
 const config = { url: "https://test.supabase.co", key: "sb_publishable_test" };
-test("konfiguracja: jeden format URL i tylko publishable key, bez wartości klucza w błędzie", () => {
+test("configuration: one URL format and publishable key only, no key value in the error", () => {
   assert.deepEqual(validateSupabaseConfig(" https://test.supabase.co/ ", " sb_publishable_test "), config);
   for (const key of [undefined, "", "sb_secret_private", "eyJlegacy", "sb_publishable_"]) {
     assert.throws(
@@ -147,7 +147,7 @@ test("konfiguracja: jeden format URL i tylko publishable key, bez wartości kluc
   }
 });
 
-test("diagnostyka: sukces wymaga poprawnej odpowiedzi RPC", async () => {
+test("diagnostics: success requires a valid RPC response", async () => {
   const calls = [];
   const checks = await checkSupabaseConnection(config, {
     fetchImpl: async (url, options) => {
@@ -161,7 +161,7 @@ test("diagnostyka: sukces wymaga poprawnej odpowiedzi RPC", async () => {
   assert.ok(calls.every(([, options]) => options.signal instanceof AbortSignal));
 });
 
-test("diagnostyka: HTTP i błąd drugiego żądania są czytelnym FAIL", async () => {
+test("diagnostics: HTTP and second-request errors are a readable FAIL", async () => {
   const http = await checkSupabaseConnection(config, {
     fetchImpl: async () => new Response("secret", { status: 401 }),
   });
@@ -183,7 +183,7 @@ test("diagnostyka: HTTP i błąd drugiego żądania są czytelnym FAIL", async (
   assert.equal(malformed[1].ok, false);
 });
 
-test("diagnostyka: timeout przerywa oczekiwanie", async () => {
+test("diagnostics: timeout stops waiting", async () => {
   const keepAlive = setTimeout(() => {}, 1000);
   try {
     const result = await checkSupabaseConnection(config, {
@@ -194,7 +194,7 @@ test("diagnostyka: timeout przerywa oczekiwanie", async () => {
         ),
     });
     assert.equal(result[0].ok, false);
-    assert.match(result[0].detail, /czas oczekiwania/);
+    assert.match(result[0].detail, /Timed out/);
   } finally {
     clearTimeout(keepAlive);
   }

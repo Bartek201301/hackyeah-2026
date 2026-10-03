@@ -1,6 +1,6 @@
-// Hook Claude Code (PostToolUse): po każdej edycji pliku formatuje go Prettierem.
-// Opcjonalna wygoda; wspólną kontrolą dla wszystkich narzędzi jest format:check w CI.
-// Nigdy nie zgłasza błędu — jeśli formatowanie się nie uda, po prostu nic nie robi.
+// Claude Code hook (PostToolUse): formats each file with Prettier after it is edited.
+// Optional convenience; the shared check for all tools is format:check in CI.
+// Never reports an error — if formatting fails, it simply does nothing.
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
@@ -14,7 +14,7 @@ process.stdin.on("end", () => {
       execFileSync(prettier, ["--write", "--ignore-unknown", file], { stdio: "ignore", timeout: 15000 });
     }
   } catch {
-    // celowo ignorujemy — formatowanie nie może blokować pracy
+    // deliberately ignored — formatting must not block work
   }
   process.exit(0);
 });

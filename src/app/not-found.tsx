@@ -4,11 +4,11 @@ import { EmptyState } from "@/shared/ui";
 export default function NotFound() {
   return (
     <EmptyState
-      title="Nie ma takiej strony"
-      description="Adres jest nieprawidłowy albo strona została przeniesiona."
+      title="Page not found"
+      description="The address is invalid or the page has moved."
       action={
         <Link href="/" className="text-sm font-medium text-brand hover:underline">
-          Wróć na stronę główną
+          Back to the home page
         </Link>
       }
     />

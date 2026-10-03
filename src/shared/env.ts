@@ -1,6 +1,6 @@
 import { validateSupabaseConfig } from "./supabase-config.mjs";
 
-// Leniwy odczyt: build nie wymaga kluczy. NEXT_PUBLIC musi być odczytane dosłownie.
+// Lazy read: the build does not need keys. NEXT_PUBLIC must be read literally.
 export function getSupabaseEnv() {
   return validateSupabaseConfig(
     process.env.NEXT_PUBLIC_SUPABASE_URL,

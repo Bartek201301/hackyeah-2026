@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 type PageHeaderProps = {
   title: string;
   description?: string;
-  /** Przyciski po prawej stronie nagłówka. */
+  /** Buttons on the right side of the header. */
   actions?: ReactNode;
 };
 
-/** Nagłówek każdego ekranu. Każda strona zaczyna się od niego. */
+/** Header of every screen. Every page starts with it. */
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

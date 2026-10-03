@@ -3,7 +3,7 @@ import { CircleAlert, CircleCheck } from "lucide-react";
 import { runHealthChecks } from "@/shared/health";
 import { Card, PageHeader } from "@/shared/ui";
 
-/* Strona diagnostyczna: czy ten deployment widzi zmienne środowiskowe i bazę. */
+/* Diagnostic page: whether this deployment sees the environment variables and the database. */
 export default async function HealthPage() {
   await connection();
   const checks = await runHealthChecks();
@@ -12,8 +12,8 @@ export default async function HealthPage() {
   return (
     <>
       <PageHeader
-        title="Status systemu"
-        description={allOk ? "HEALTH: OK — wszystko działa." : "HEALTH: FAIL — patrz szczegóły poniżej."}
+        title="System status"
+        description={allOk ? "HEALTH: OK — everything works." : "HEALTH: FAIL — see details below."}
       />
       <Card className="flex flex-col divide-y divide-border p-0">
         {checks.map((c) => (

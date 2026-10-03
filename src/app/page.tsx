@@ -8,7 +8,7 @@ export default function Home() {
     <>
       <PageHeader
         title={APP_NAME}
-        description="Strona startowa. Jutro: opis rozwiązania i wejście do funkcji."
+        description="Start page. Tomorrow: solution overview and entry to the features."
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {nav.map((item) => (

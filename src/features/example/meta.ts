@@ -1,6 +1,6 @@
-/* Dane featura używane przez nawigację i stronę startową. slug = adres URL (/example). */
+/* Feature data used by the navigation and the start page. slug = URL path (/example). */
 export const meta = {
   slug: "example",
-  title: "Przykład",
-  description: "Wzorcowy feature: pusty ekran, formularz i stany ładowania/błędu.",
+  title: "Example",
+  description: "Reference feature: empty screen, form and loading/error states.",
 };

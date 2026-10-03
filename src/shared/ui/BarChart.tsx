@@ -3,29 +3,29 @@ import { cn } from "@/shared/cn";
 export type BarDatum = {
   label: string;
   value: number;
-  /** Opcjonalna druga seria (szary słupek obok), np. poprzedni okres. */
+  /** Optional second series (grey bar alongside), e.g. the previous period. */
   compare?: number;
 };
 
 type BarChartProps = {
   data: BarDatum[];
-  /** Nazwy serii w legendzie. */
+  /** Series names in the legend. */
   valueLabel?: string;
   compareLabel?: string;
-  /** Wysokość obszaru słupków w pikselach. */
+  /** Height of the bar area in pixels. */
   height?: number;
 };
 
-/** Prosty wykres słupkowy bez bibliotek: niebieskie słupki + opcjonalne szare do porównania. Dymek po najechaniu. */
+/** Simple library-free bar chart: blue bars + optional grey ones for comparison. Tooltip on hover. */
 export function BarChart({
   data,
-  valueLabel = "Wartość",
-  compareLabel = "Porównanie",
+  valueLabel = "Value",
+  compareLabel = "Comparison",
   height = 200,
 }: BarChartProps) {
   const hasCompare = data.some((d) => d.compare !== undefined);
   const max = Math.max(1, ...data.flatMap((d) => [d.value, d.compare ?? 0]));
-  const fmt = (n: number) => n.toLocaleString("pl-PL");
+  const fmt = (n: number) => n.toLocaleString("en-US");
 
   return (
     <div className="flex flex-col gap-4">

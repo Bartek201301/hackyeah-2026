@@ -3,12 +3,12 @@
 import type { ActionResult } from "@/shared/types";
 
 /*
- * ZAPISY danych (Server Actions). Zawsze zwracają ActionResult, nigdy nie rzucają
- * wyjątku do UI. Wzorzec zapisu do bazy na jutro:
+ * Data WRITES (Server Actions). They always return ActionResult and never throw
+ * to the UI. Database write pattern for tomorrow:
  *   const supabase = await createSupabaseServer();
- *   const { error } = await supabase.from("nazwa_tabeli").insert({ name });
- *   if (error) return { ok: false, error: "Nie udało się zapisać. Spróbuj ponownie." };
- *   revalidatePath("/example");   // z "next/cache" — odświeża listę
+ *   const { error } = await supabase.from("table_name").insert({ name });
+ *   if (error) return { ok: false, error: "Could not save. Try again." };
+ *   revalidatePath("/example");   // from "next/cache" — refreshes the list
  */
 export async function submitExample(
   _prev: ActionResult<{ name: string }> | null,
@@ -16,7 +16,7 @@ export async function submitExample(
 ): Promise<ActionResult<{ name: string }>> {
   const name = String(formData.get("name") ?? "").trim();
   if (name.length < 2) {
-    return { ok: false, error: "Nazwa musi mieć co najmniej 2 znaki." };
+    return { ok: false, error: "Name must be at least 2 characters." };
   }
   return { ok: true, data: { name } };
 }

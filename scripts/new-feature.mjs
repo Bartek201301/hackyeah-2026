@@ -1,4 +1,4 @@
-// Integrator uruchamia na krótkiej gałęzi, następnie PR i scalenie przed pracą builderów.
+// The integrator runs this on a short branch, then PR and merge before builders start work.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -7,11 +7,11 @@ import ts from "typescript";
 
 export async function generateFeature(root, slug) {
   if (!slug || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(slug)) {
-    throw new Error("Podaj nazwę małymi literami, np. npm run new-feature zgloszenia.");
+    throw new Error("Give a lowercase name, e.g. npm run new-feature tickets.");
   }
   const featureDir = join(root, "src/features", slug);
   const pageDir = join(root, "src/app", slug);
-  if (existsSync(featureDir) || existsSync(pageDir)) throw new Error("Feature lub trasa już istnieje.");
+  if (existsSync(featureDir) || existsSync(pageDir)) throw new Error("Feature or route already exists.");
   const template = join(root, "src/features/example");
   for (const file of [
     "index.ts",
@@ -22,12 +22,12 @@ export async function generateFeature(root, slug) {
     "components/ExamplePage.tsx",
     "components/ExampleForm.tsx",
   ]) {
-    if (!existsSync(join(template, file))) throw new Error(`Brak pliku wzorca: ${file}`);
+    if (!existsSync(join(template, file))) throw new Error(`Missing template file: ${file}`);
   }
   const navPath = join(root, "src/app/nav.ts");
   const nav = readFileSync(navPath, "utf8");
   for (const marker of ["// new-feature:imports", "// new-feature:nav"]) {
-    if (nav.split(marker).length !== 2) throw new Error(`Nawigacja musi zawierać dokładnie jeden ${marker}.`);
+    if (nav.split(marker).length !== 2) throw new Error(`Navigation must contain exactly one ${marker}.`);
   }
   const pascal = slug
     .split("-")
@@ -42,7 +42,7 @@ export async function generateFeature(root, slug) {
     ts.forEachChild(node, visit);
   }
   visit(source);
-  if (collision) throw new Error(`Nawigacja zawiera już feature lub nazwę ${alias}.`);
+  if (collision) throw new Error(`Navigation already contains the feature or name ${alias}.`);
   const writes = new Map();
   function collect(dir, output) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -50,13 +50,7 @@ export async function generateFeature(root, slug) {
       const to = join(output, entry.name.replaceAll("Example", pascal));
       if (entry.isDirectory()) collect(from, to);
       else
-        writes.set(
-          to,
-          readFileSync(from, "utf8")
-            .replaceAll("Example", pascal)
-            .replaceAll("example", slug)
-            .replaceAll("Przykład", pascal),
-        );
+        writes.set(to, readFileSync(from, "utf8").replaceAll("Example", pascal).replaceAll("example", slug));
     }
   }
   collect(template, featureDir);
@@ -73,7 +67,7 @@ export async function generateFeature(root, slug) {
         `{ href: \`/\${${alias}.slug}\`, label: ${alias}.title },\n  // new-feature:nav`,
       ),
   );
-  // Wszystkie walidacje i formatowanie przed pierwszym zapisem.
+  // All validation and formatting before the first write.
   const options = (await prettier.resolveConfig(navPath)) ?? {};
   for (const [file, content] of writes)
     writes.set(file, await prettier.format(content, { ...options, filepath: file }));
@@ -87,7 +81,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   try {
     await generateFeature(process.cwd(), process.argv[2]);
     console.log(
-      `✅ Utworzono ${process.argv[2]}. Uruchom npm run check, commit i PR. Builder zaczyna po scaleniu.`,
+      `✅ Created ${process.argv[2]}. Run npm run check, commit and open a PR. The builder starts after the merge.`,
     );
   } catch (error) {
     console.error(`❌ ${error.message}`);

@@ -6,18 +6,18 @@ import { IconTile } from "./IconTile";
 type StatCardProps = {
   icon: LucideIcon;
   label: string;
-  /** Główna liczba — już sformatowana, np. "34 760" albo "612 917 zł". */
+  /** Main number — already formatted, e.g. "34,760" or "612,917". */
   value: string;
-  /** Szary dopisek obok liczby, np. "vs poprzedni miesiąc". */
+  /** Grey note next to the number, e.g. "vs last month". */
   hint?: string;
-  /** Zmiana w pigułce, np. "+12,4%". Kolor wynika z `trend`. */
+  /** Change shown in a pill, e.g. "+12.4%". Colour follows `trend`. */
   change?: string;
   trend?: "up" | "down";
-  /** Karta w kolorze marki — tylko dla JEDNEJ najważniejszej liczby na ekranie. */
+  /** Brand-coloured card — only for the ONE most important number on the screen. */
   highlight?: boolean;
 };
 
-/** Kafelek z kluczową liczbą: ikona + zmiana u góry, etykieta i duża liczba na dole. */
+/** Tile with a key number: icon + change at the top, label and large number at the bottom. */
 export function StatCard({
   icon,
   label,

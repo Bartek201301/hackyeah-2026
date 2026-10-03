@@ -3,7 +3,7 @@ import { cn } from "@/shared/cn";
 
 type IconTileProps = {
   icon: LucideIcon;
-  /** "onBrand" = biały kafelek na karcie highlight. */
+  /** "onBrand" = white tile on a highlight card. */
   tone?: "neutral" | "brand" | "onBrand";
   className?: string;
 };
@@ -14,7 +14,7 @@ const tones = {
   onBrand: "bg-surface text-brand",
 };
 
-/** Ikona w zaokrąglonym kwadracie — w rogu karty statystyki, przy pozycji listy. */
+/** Icon in a rounded square — in the corner of a stat card, next to a list item. */
 export function IconTile({ icon: Icon, tone = "neutral", className }: IconTileProps) {
   return (
     <span

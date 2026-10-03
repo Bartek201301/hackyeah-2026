@@ -1,23 +1,23 @@
--- SZABLON, nie gotowa migracja. Integrator kopiuje do migrations/<RRRRMMDDHHMMSS>_<opis>.sql.
--- Najpierw uzgodnij encję, użytkowników i dostęp w docs/product/requirements.md. Commit + przegląd przed wykonaniem.
--- Po wykonaniu zapisz wynik w APPLIED.md; nigdy nie edytuj już zastosowanej migracji.
+-- TEMPLATE, not a ready migration. The integrator copies it to migrations/<YYYYMMDDHHMMSS>_<description>.sql.
+-- First agree the entity, users and access in docs/product/requirements.md. Commit + review before applying.
+-- After applying, record the result in APPLIED.md; never edit an already applied migration.
 
 begin;
 
-create table public.nazwa_tabeli (
+create table public.table_name (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   title text not null
 );
 
-alter table public.nazwa_tabeli enable row level security;
--- Brak dostępu domyślnego, również gdy projekt ma szerokie default privileges.
-revoke all on public.nazwa_tabeli from anon, authenticated;
+alter table public.table_name enable row level security;
+-- No default access, even when the project has broad default privileges.
+revoke all on public.table_name from anon, authenticated;
 
--- TU integrator dodaje polityki i granty zgodnie z wymaganiami. Każda operacja i rola osobno.
--- Dla danych użytkownika dodaj kolumnę właściciela i warunki (select auth.uid()) = owner_id.
+-- HERE the integrator adds policies and grants per the requirements. Each operation and role separately.
+-- For user data add an owner column and the condition (select auth.uid()) = owner_id.
 -- SELECT: USING, INSERT: WITH CHECK, UPDATE: USING + WITH CHECK, DELETE: USING.
--- Nie kopiuj domyślnych USING (true) ani anonimowego zapisu.
--- Przed scaleniem zależnego kodu przetestuj zarówno dozwolony, jak i niedozwolony dostęp.
+-- Do not copy default USING (true) or anonymous writes.
+-- Before merging dependent code, test both allowed and denied access.
 
 commit;

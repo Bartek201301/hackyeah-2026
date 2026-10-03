@@ -4,12 +4,12 @@ import { Inbox } from "lucide-react";
 type EmptyStateProps = {
   title: string;
   description?: string;
-  /** Np. przycisk "Dodaj pierwszy element". */
+  /** E.g. an "Add the first item" button. */
   action?: ReactNode;
   icon?: ReactNode;
 };
 
-/** Stan pusty: lista bez elementów, brak wyników wyszukiwania itp. */
+/** Empty state: a list with no items, no search results, etc. */
 export function EmptyState({ title, description, action, icon }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-border bg-surface px-6 py-12 text-center">

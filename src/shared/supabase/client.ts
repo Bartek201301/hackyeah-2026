@@ -4,9 +4,9 @@ import { createBrowserClient } from "@supabase/ssr";
 import { getSupabaseEnv } from "@/shared/env";
 
 /*
- * Klient Supabase dla przeglądarki. Używaj TYLKO do rzeczy, które muszą dziać się
- * w przeglądarce: realtime (subskrypcje) i upload plików do Storage.
- * Zwykłe odczyty -> queries.ts (serwer), zapisy -> actions.ts (Server Action).
+ * Supabase client for the browser. Use it ONLY for things that must happen
+ * in the browser: realtime (subscriptions) and file uploads to Storage.
+ * Regular reads -> queries.ts (server), writes -> actions.ts (Server Action).
  */
 export function createSupabaseBrowser() {
   const { url, key } = getSupabaseEnv();

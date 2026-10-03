@@ -1,16 +1,16 @@
-// Wspólna walidacja dla aplikacji i doctor. Nigdy nie wypisuje wartości klucza.
+// Shared validation for the app and doctor. Never prints the key value.
 /** @param {string | undefined} rawUrl @param {string | undefined} rawKey */
 export function validateSupabaseConfig(rawUrl, rawKey) {
   const url = rawUrl?.trim().replace(/\/$/, "") ?? "";
   const key = rawKey?.trim() ?? "";
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)) {
     throw new Error(
-      "NEXT_PUBLIC_SUPABASE_URL: wpisz https://<id>.supabase.co w .env.local (docs/team/setup.md).",
+      "NEXT_PUBLIC_SUPABASE_URL: set https://<id>.supabase.co in .env.local (docs/team/setup.md).",
     );
   }
   if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) {
     throw new Error(
-      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: wymagany sb_publishable_...; klucze secret i legacy JWT są niedozwolone. Sprawdź docs/team/setup.md.",
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_... required; secret and legacy JWT keys are not allowed. Check docs/team/setup.md.",
     );
   }
   return { url, key };
@@ -24,8 +24,8 @@ export function validateSupabaseConfig(rawUrl, rawKey) {
 export async function checkSupabaseConnection(config, { fetchImpl = fetch, timeoutMs = 8000 } = {}) {
   const checks = [];
   for (const [name, path, method] of [
-    ["Projekt Supabase i klucz", "/auth/v1/settings", "GET"],
-    ["Baza danych", "/rest/v1/rpc/health_check", "POST"],
+    ["Supabase project and key", "/auth/v1/settings", "GET"],
+    ["Database", "/rest/v1/rpc/health_check", "POST"],
   ]) {
     try {
       const response = await fetchImpl(`${config.url}${path}`, {
@@ -39,7 +39,7 @@ export async function checkSupabaseConnection(config, { fetchImpl = fetch, timeo
         checks.push({
           name,
           ok: false,
-          detail: `HTTP ${response.status}. ${method === "POST" ? "Sprawdź migrację health_check z integratorem." : "Sprawdź adres projektu i publishable key."}`,
+          detail: `HTTP ${response.status}. ${method === "POST" ? "Check the health_check migration with the integrator." : "Check the project URL and publishable key."}`,
         });
         break;
       }
@@ -50,7 +50,7 @@ export async function checkSupabaseConnection(config, { fetchImpl = fetch, timeo
       checks.push({
         name,
         ok: true,
-        detail: method === "POST" ? "health_check odpowiada poprawnie." : "Klucz zaakceptowany.",
+        detail: method === "POST" ? "health_check responds correctly." : "Key accepted.",
       });
     } catch (error) {
       const timeout = error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name);
@@ -58,8 +58,8 @@ export async function checkSupabaseConnection(config, { fetchImpl = fetch, timeo
         name,
         ok: false,
         detail: timeout
-          ? "Przekroczono czas oczekiwania. Sprawdź internet i spróbuj ponownie."
-          : "Brak połączenia lub nieprawidłowa odpowiedź. Sprawdź konfigurację i migrację z integratorem.",
+          ? "Timed out. Check your internet connection and try again."
+          : "No connection or invalid response. Check the configuration and migration with the integrator.",
       });
       break;
     }

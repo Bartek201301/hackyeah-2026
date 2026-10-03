@@ -1,38 +1,38 @@
 /*
  * ============================================================================
- *  KONTRAKT ZESPOŁU — wspólne typy danych dla wszystkich featurów.
+ *  TEAM CONTRACT — shared data types for all features.
  * ============================================================================
  *
- *  Po co: trzy osoby budują równolegle. Jeśli każda wymyśli własny kształt
- *  "zgłoszenia" czy "użytkownika", scalenie gałęzi skończy się rozjazdem typów.
- *  Ten plik ustala kształt danych RAZ, zanim ktokolwiek zacznie pracę.
+ *  Why: three people build in parallel. If each invents their own shape of a
+ *  "ticket" or "user", merging branches ends in mismatched types.
+ *  This file fixes the data shape ONCE, before anyone starts work.
  *
- *  Zasady:
- *  1. Wypełnia go integrator przed zależną implementacją, razem ze schematem bazy
- *     (supabase/migrations). Nazwy pól = nazwy kolumn w bazie (snake_case).
- *  2. Po zamrożeniu: TYLKO DOPISYWANIE (nowe typy, nowe pola opcjonalne).
- *     Nigdy zmiana nazwy, zmiana typu ani usunięcie. Tylko integrator, przez PR.
- *  3. Typy prywatne jednego featura trzymaj w src/features/<nazwa>/types.ts, nie tutaj.
+ *  Rules:
+ *  1. The integrator fills it in before dependent implementation, together with the database schema
+ *     (supabase/migrations). Field names = database column names (snake_case).
+ *  2. After the freeze: ADDITIONS ONLY (new types, new optional fields).
+ *     Never a rename, type change or removal. Integrator only, via PR.
+ *  3. Keep types private to one feature in src/features/<name>/types.ts, not here.
  * ============================================================================
  */
 
-/* ---------- 1. Typy pomocnicze (gotowe, nie zmieniać) ---------- */
+/* ---------- 1. Helper types (ready, do not change) ---------- */
 
-/** Identyfikator wiersza w bazie (uuid jako tekst). */
+/** Database row identifier (uuid as text). */
 export type Id = string;
 
-/** Data/czas w formacie ISO, tak jak zwraca Supabase, np. "2026-10-03T12:00:00Z". */
+/** ISO date/time as returned by Supabase, e.g. "2026-10-03T12:00:00Z". */
 export type IsoDateTime = string;
 
 /**
- * Wynik każdej Server Action. Akcja nigdy nie rzuca wyjątku do UI —
- * zwraca { ok: false, error } z komunikatem po polsku do pokazania użytkownikowi.
+ * Result of every Server Action. An action never throws to the UI —
+ * it returns { ok: false, error } with an English message to show the user.
  */
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: string };
 
-/* ---------- 2. Encje domenowe (uzgodnić przed implementacją) ---------- */
+/* ---------- 2. Domain entities (agree before implementation) ---------- */
 /*
- * Wzór jednej encji (odpowiada tabeli w bazie):
+ * Pattern for one entity (matches a database table):
  *
  *   export type Report = {
  *     id: Id;
@@ -43,7 +43,7 @@ export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error:
  *   export type ReportStatus = "new" | "in_progress" | "done";
  */
 
-/* ---------- 3. Dane wejściowe formularzy / akcji (uzgodnić przed implementacją) ---------- */
+/* ---------- 3. Form / action input data (agree before implementation) ---------- */
 /*
- * Wzór:  export type NewReport = Pick<Report, "title">;
+ * Pattern:  export type NewReport = Pick<Report, "title">;
  */
