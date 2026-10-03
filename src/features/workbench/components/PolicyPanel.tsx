@@ -20,7 +20,13 @@ import { createGatewayClient, newIdempotencyKey } from "@/shared/contracts/clien
 import type { ApiResponse, GatewayPolicy } from "@/shared/contracts";
 import { Badge, Button, Card, CardHeader, Field, Input, Notice } from "@/shared/ui";
 import { classifyResponse, classifyTerminalErrorCode, type GatewayOutcome } from "../lib/envelope";
-import { POLICY_SECTIONS, checkPolicyInvariants, nextPolicyVersion, type Invariant } from "../lib/policyForm";
+import {
+  POLICY_SECTIONS,
+  checkPolicyInvariants,
+  nextPolicyVersion,
+  toPolicySubmission,
+  type Invariant,
+} from "../lib/policyForm";
 import { OutcomeNotice } from "./OutcomeNotice";
 
 const client = createGatewayClient();
@@ -52,6 +58,8 @@ const problemFor = (problems: Invariant[], path: string): string | undefined =>
 
 export function PolicyPanel() {
   const [policy, setPolicy] = useState<GatewayPolicy | null>(null);
+  /* The head as loaded. CAS compares against this, never against the edited copy. */
+  const [head, setHead] = useState<GatewayPolicy | null>(null);
   const [loadOutcome, setLoadOutcome] = useState<GatewayOutcome | null>(null);
   const [saveOutcome, setSaveOutcome] = useState<GatewayOutcome | null>(null);
   const [busy, setBusy] = useState(false);
@@ -72,6 +80,7 @@ export function PolicyPanel() {
 
   const applyPolicy = useCallback((next: Awaited<ReturnType<typeof fetchPolicy>>) => {
     setPolicy(next.policy);
+    setHead(next.policy);
     setLoadOutcome(next.outcome);
   }, []);
 
@@ -88,10 +97,11 @@ export function PolicyPanel() {
   const problems = policy ? checkPolicyInvariants(policy) : [];
 
   const save = async () => {
-    if (!policy) return;
+    if (!policy || !head) return;
     setBusy(true);
     const { data, error, response } = await client.PUT("/policy", {
-      body: { expected_version: nextPolicyVersion(policy.version), policy },
+      // CAS against the head we loaded; the document carries head + 1 (technical-spec §5).
+      body: toPolicySubmission(head, policy),
       params: { header: { "Idempotency-Key": newIdempotencyKey() } },
     });
     const outcome = classify(response.status, envelopeOf(data, error));

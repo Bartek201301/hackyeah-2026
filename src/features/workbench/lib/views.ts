@@ -38,6 +38,14 @@ export const VIEW_DESCRIPTIONS: Record<WorkbenchView, string> = {
   export: "Request a public summary and download its checked PDF.",
 };
 
+/**
+ * Views whose endpoints are admin-only. Used to hide links, which is presentation, never a control:
+ * the gateway checks the actor on every call regardless of what the nav shows.
+ */
+export const ADMIN_ONLY_VIEWS: readonly WorkbenchView[] = ["review", "policy"];
+
+export const isAdminOnlyView = (view: WorkbenchView): boolean => ADMIN_ONLY_VIEWS.includes(view);
+
 /** Chat is the canonical view, so it gets the bare path rather than `?view=chat`. */
 export function viewHref(view: WorkbenchView): string {
   return view === DEFAULT_VIEW ? "/workbench" : `/workbench?view=${view}`;
