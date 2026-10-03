@@ -153,6 +153,10 @@ function harness(over: Partial<Opts> = {}) {
       if (o.finalize === "throw") throw new GatewayError("AUDIT_UNAVAILABLE");
       return o.finalize;
     },
+    // Not reachable from the chat engine; present so this fake still satisfies RepositoryPort.
+    async listSources() {
+      throw new Error("not used");
+    },
   };
 
   const detection: DetectionPort = {
