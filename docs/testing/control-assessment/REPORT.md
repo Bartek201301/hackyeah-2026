@@ -89,7 +89,7 @@ The read-only diagnostic distinguishes stopped services, missing authenticated h
 
 ## Rollout and remaining gates
 
-Final local `npm run check`, including the policy activation follow-up, passed: 915 application tests in 62 files, 22 tooling/SQL tests, generated contracts, formatting, type checking, lint, repository rules and the production build. Documentation validation also passed. The parser regression covers escaped duplicate JSON keys that could otherwise overwrite a risk flag.
+Final local `npm run check`, including the policy activation follow-up and main `9018cf1`, passed: 912 application tests in 61 files, 22 tooling/SQL tests, generated contracts, formatting, type checking, lint, repository rules and the production build. Documentation validation also passed. The parser regression covers escaped duplicate JSON keys that could otherwise overwrite a risk flag.
 
 Local verification after integrating main: the manual live suite passed 10 tests (six gateway cases, three corpus gates and static trace rendering). The actual `StageList` component was inspected before this merge in the in-app browser at 1440×1000 and 375×900 using recorded synthetic evidence and built CSS. Both assessment labels and verdicts were visible; DOM scroll width matched viewport width; no console errors were reported. The isolated preview requested a missing favicon (404). This was a component preview, not a signed-in application walkthrough; authentication, deployed persistence, loading/error journeys, the merged app shell and production performance were not tested there. The temporary server was stopped and viewport override reset.
 
