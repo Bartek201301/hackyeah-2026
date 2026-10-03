@@ -28,7 +28,7 @@ import {
 import { classifyImportResponse, readImportRun } from "../lib/importRun";
 import { describeClassification, describeImportStatus, describeSourceKind } from "../lib/importStatus";
 import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
-import { POLL_INTERVAL_MS, progressLabel, shouldKeepPolling } from "../lib/runState";
+import { POLL_INTERVAL_MS, shouldKeepPolling } from "../lib/runState";
 import { OutcomeNotice } from "./OutcomeNotice";
 
 const client = createGatewayClient();
@@ -201,8 +201,6 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
     };
   }, [run, apply]);
 
-  const progress = run ? progressLabel(run) : null;
-
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -274,16 +272,6 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
           </div>
         </div>
       </Card>
-
-      {progress && (
-        <Card>
-          <CardHeader title="Import progress" actions={<Badge tone="brand">{progress}</Badge>} />
-          {/* Server-reported stage only: the browser never narrates what the checks are doing. */}
-          <p role="status" className="text-sm text-muted">
-            {progress}
-          </p>
-        </Card>
-      )}
 
       {uploadOutcome && <OutcomeNotice outcome={uploadOutcome} />}
 

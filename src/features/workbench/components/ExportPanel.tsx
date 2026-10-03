@@ -35,7 +35,6 @@ import {
   POLL_INTERVAL_MS,
   canCancel,
   cancelReachedDecision,
-  progressLabel,
   shouldKeepPolling,
 } from "../lib/runState";
 import { OutcomeNotice } from "./OutcomeNotice";
@@ -159,7 +158,6 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
     };
   }, [run, apply]);
 
-  const progress = run ? progressLabel(run) : null;
   const expiry = ready ? expiryInstant(ready.expiresAt) : null;
   const expired = ready ? hasExpired(ready.expiresAt) : false;
 
@@ -232,16 +230,6 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
           )}
         </div>
       </Card>
-
-      {progress && (
-        <Card>
-          <CardHeader title="Progress" actions={<Badge tone="brand">{progress}</Badge>} />
-          {/* Server-reported stage only; no generated text while work is in flight. */}
-          <p role="status" className="text-sm text-muted">
-            {progress}
-          </p>
-        </Card>
-      )}
 
       {outcome && <OutcomeNotice outcome={outcome} />}
 
