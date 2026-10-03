@@ -1,10 +1,11 @@
 import "server-only";
+import { createDetectionPort, createGenerationPort } from "@/features/detection";
 import type { GatewayDeps } from "@/shared/gateway/ports";
 import { createSupabaseRepository } from "@/shared/gateway/repository";
 
-// ponytail: detection/generation stay null (→ 503, never ALLOW) until phase 6 composes Julian's factories.
+// Factories return null without server model env; the engine then answers 503 before any reservation.
 export const gatewayDeps = (): GatewayDeps => ({
   repository: createSupabaseRepository(),
-  detection: null,
-  generation: null,
+  detection: createDetectionPort(),
+  generation: createGenerationPort(),
 });

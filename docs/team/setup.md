@@ -60,6 +60,20 @@ Verify authenticated health identifies the loaded revision, then run a real asse
 
 Bridge binds loopback (implementation default port 8787); only its authenticated fixed routes are tunneled. Prefer an existing named HTTPS tunnel. Temporary quick tunnel is permitted for rehearsal; its URL can change on restart and needs MODEL_BRIDGE_URL update and redeploy. No raw Ollama/Laya public ports; no unauthenticated bridge. T04 launch guide must include locked Python dependencies, local SQLite ledger location, readiness, shutdown and recovery. Keep Mac on power and awake; operator checks connection throughout judging.
 
+## G2 runtime on the Mac
+
+G2 runs the app, Laya and Ollama on Julian's Mac. `createDetectionPort()` and `createGenerationPort()` call fixed loopback endpoints (Laya `127.0.0.1:8000`, Ollama `127.0.0.1:11434`) and read only `LAYA_API_KEY` from the server process environment. Without it both return `null` and the gateway answers 503 `SEMANTIC_UNAVAILABLE` before any reservation; never a fake. Durable reservation, usage and audit stay in the gateway's Postgres records; there is no Python ledger. The engine enforces the revisions in `src/shared/contracts/runtime-manifest.json`; any other value is a 503.
+
+The Mac's `.env.local` holds `LAYA_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`. Bartosz types the Supabase values in person; never in chat, never committed, never printed. No model variable is `NEXT_PUBLIC_`.
+
+1. `git switch main && git pull --ff-only && npm ci`.
+2. Start Laya and Ollama with the verified procedure in `src/features/detection/providers/HANDOFF.md`; confirm authenticated health and that the revision/digest match the runtime manifest.
+3. `npm run dev`, then sign in at `http://localhost:3000` (Bartosz types passwords). For curl, `read -s DEMO_EMPLOYEE_PASSWORD; export DEMO_EMPLOYEE_PASSWORD` and `npm run -s dev:session -- employee`.
+4. Ask a benign question (ALLOW) and a known injection (BLOCK); record run ids, statuses and usage only, never answer text.
+5. Outage check with the **analyst** account: stop Laya, ask → "Request withheld" (503); restart Laya, ask again → answer. Never retry an unknown call to make it look clean.
+
+Authenticated bridge/tunnel to Vercel: P8 after G2; until then preview/production return 503 for model paths.
+
 ## Supabase and accounts — T02
 
 Integrator commits additive migration on branch, gets review, applies it once to shared Supabase and records migration SHA/time/result in supabase/APPLIED.md. Dependent app merges follow successful application. Never alter an applied file. Preview/local/prod share data; coordinate reset explicitly with the team.
