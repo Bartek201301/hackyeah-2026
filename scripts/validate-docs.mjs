@@ -3,11 +3,12 @@ import { resolve, dirname, relative } from "node:path";
 import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 
-// The repository's locked ESLint dependency supplies AJV 6. The contracts use only
-// assertions shared by draft-07 and 2020-12; reject new unsupported keywords here.
-// T01 will add the direct AJV 2020 runtime dependency for application validation.
+// Direct AJV 8 dependency, draft-07 mode. The contracts use only assertions shared by
+// draft-07 and 2020-12; reject new unsupported keywords here. App validation is 2020-12
+// in src/shared/contracts/validate.ts.
 const require = createRequire(import.meta.url);
 const Ajv = require("ajv");
+const addFormats = require("ajv-formats");
 const root = process.cwd();
 const read = (file) => readFileSync(resolve(root, file), "utf8");
 const json = (file) => JSON.parse(read(file));
@@ -66,7 +67,8 @@ function compatible(schema) {
 const definitions = compatible({
   definitions: { ...api.components.schemas, GatewayPolicy: policy, ThreatFeed: feed },
 }).definitions;
-const ajv = new Ajv({ allErrors: true, strictKeywords: true, unknownFormats: ["binary"] });
+const ajv = new Ajv({ allErrors: true, strict: true });
+addFormats(ajv);
 function validate(name, value) {
   const test = ajv.compile({ $ref: `#/definitions/${name}`, definitions });
   assert(test(value), `${name}: ${JSON.stringify(test.errors)}`);
@@ -165,5 +167,5 @@ console.log(
   `Documentation checks passed: ${Object.keys(examples).length + 2} schema examples, ${operationIds.size} operations, ${links} local links, 20 mapped requirements, 24 semantic cases, 6 slides.`,
 );
 console.log(
-  "Schema assertions checked with locked AJV 6 using the shared draft-07/2020-12 subset; this is not a full OpenAPI conformance certification.",
+  "Schema assertions checked with AJV 8 (draft-07 mode) using the shared draft-07/2020-12 subset; this is not a full OpenAPI conformance certification.",
 );

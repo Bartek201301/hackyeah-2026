@@ -1,0 +1,8 @@
+{
+  "laya_package": "laya[serve]==0.3.24",
+  "laya_models": "typed-decisions",
+  "laya_checkpoint_revision": null,
+  "ollama_model": "qwen3:8b",
+  "ollama_model_digest": null,
+  "verified_at": null
+}
