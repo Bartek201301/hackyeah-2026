@@ -17,6 +17,13 @@ G1. Also reviewing your audit/budget interfaces as asked in `docs/team/developer
 - **Item 8, `0` versus `null`.** Confirmed in code at `src/shared/gateway/unavailable.ts:30` — "Nothing
   was executed, so these zeros are true values, not unknowns." The `Not measured` rule stands.
 - **Item 10, test runner.** Partly answered: `npm run test` (vitest) exists. See new item 16.
+- **Item 6, role discovery.** Answered by T02 phase 3 and by Bartosz directly: features add no Supabase
+  auth, cookie handling or role checks, and a screen that needs the role for display asks him to pass it
+  as a prop from the app page. This feature needs no such prop — no screen branches on a role. Verified:
+  `src/features/audit/**` imports only `@/shared/contracts`, `@/shared/contracts/client`, `@/shared/ui`,
+  `@/shared/cn`, `lucide-react`, `next/link` and `react`, and contains no reference to Supabase,
+  cookies, `getActor` or a role comparison. The refusal half of the item is shipped: the scope control is
+  offered to everyone and the gateway's 403 is a rendered state.
 
 ## Blocking
 
