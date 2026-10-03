@@ -28,6 +28,18 @@ export const ollamaFixture = () => ({
 });
 
 describe("Ollama private wire mapping", () => {
+  it("uses a fixed schema and deterministic options only for internal security verification", () => {
+    const input = generationInput();
+    input.purpose = "security_verification_v1";
+    const body = serializeOllama(input);
+    expect(body.format?.additionalProperties).toBe(false);
+    expect(body.options).toMatchObject({ temperature: 0, seed: 42 });
+    expect(body.think).toBe(false);
+    input.tools = registeredTools();
+    expect(() => serializeOllama(input)).toThrow("invalid_input");
+    const ordinary = serializeOllama(generationInput());
+    expect(ordinary).not.toHaveProperty("format");
+  });
   it("sends fixed model with no thinking/streaming and central policy caps", () => {
     const input = generationInput();
     input.limits.max_output_tokens = 64;

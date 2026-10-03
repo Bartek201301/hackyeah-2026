@@ -91,6 +91,7 @@ interface GenerationPort {
       messages: readonly ModelMessage[];
       tools: readonly RegisteredTool[];
       limits: GatewayPolicy["execution"];
+      purpose?: "security_verification_v1"; // internal fixed rubric/schema; never public request input
     },
     signal: AbortSignal,
   ): Promise<GenerationResult>;

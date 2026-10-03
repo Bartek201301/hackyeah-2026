@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import api from "../../../../docs/contracts/openapi.json";
 import type { GenerationPort, GenerationResult, RegisteredTool, ToolCall } from "@/shared/contracts";
 import { check } from "@/shared/contracts/validate";
+import verifier from "@/shared/contracts/security-verification.json";
 import {
   bytes,
   count,
@@ -55,11 +56,14 @@ function toolId(value: unknown): asserts value is string {
 }
 export function serializeOllama(input: GenerationInput) {
   return inputOnly(() => {
-    keys(object(input), ["call_id", "messages", "tools", "limits"]);
+    keys(object(input), ["call_id", "messages", "tools", "limits"], ["purpose"]);
+    requireValue(input.purpose === undefined || input.purpose === "security_verification_v1");
+    const verification = input.purpose === "security_verification_v1";
     uuid(input.call_id);
     executionLimits(input.limits);
     requireValue(Array.isArray(input.messages) && input.messages.length > 0 && input.messages.length <= 32);
     requireValue(Array.isArray(input.tools) && input.tools.length <= registry.length);
+    requireValue(!verification || input.tools.length === 0);
     const offered = new Set<string>();
     const tools = input.tools.map((tool) => {
       const known = registry.find((candidate) => candidate.name === tool.name);
@@ -117,14 +121,22 @@ export function serializeOllama(input: GenerationInput) {
     });
     requireValue(pending.size === 0);
     // Full serialized messages + schemas + tool results, not just user text.
-    requireValue(bytes({ messages, tools }) <= input.limits.max_input_utf8_bytes);
+    const format = verification ? verifier.schema : undefined;
+    requireValue(
+      bytes({ messages, tools, ...(format ? { format } : {}) }) <= input.limits.max_input_utf8_bytes,
+    );
     return {
       model: QWEN_MODEL,
       think: false,
       stream: false,
       messages,
       tools,
-      options: { num_ctx: input.limits.context_tokens, num_predict: input.limits.max_output_tokens },
+      ...(format ? { format } : {}),
+      options: {
+        num_ctx: input.limits.context_tokens,
+        num_predict: input.limits.max_output_tokens,
+        ...(verification ? { temperature: 0, seed: 42 } : {}),
+      },
     };
   });
 }

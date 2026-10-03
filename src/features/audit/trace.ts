@@ -59,6 +59,7 @@ export type AssessmentView = {
   /** The full SHA-256 behind the shortened `hash`, for the title attribute. */
   hashFull: string | null;
   ranges: string;
+  chatChecks?: { stage: string; scores: string; verification: string }[];
 };
 
 /**
@@ -234,6 +235,22 @@ export function assessmentView(semantic: Assessment): AssessmentView {
     hash: formatHash(semantic.text_sha256),
     hashFull: semantic.text_sha256,
     ranges: `${formatCount(semantic.coverage_ranges.length)} · ${formatTokens(assessedTokens)}`,
+    chatChecks: semantic.chat_checks?.map((row) => {
+      const v = row.verification;
+      const keys = ["instruction_manipulation", "sensitive_exposure", "resource_abuse", "uncertain"] as const;
+      const risks = v
+        ? keys.filter((risk) => v.verdict[risk] === true).map((risk) => risk.replaceAll("_", " "))
+        : [];
+      return {
+        stage: row.operation === "chat_input" ? "Question" : "Proposed answer",
+        scores: `Laya: manipulation ${formatScore(row.laya_scores.instruction_manipulation)}, exposure ${formatScore(row.laya_scores.sensitive_exposure)}, resource abuse ${formatScore(row.laya_scores.resource_abuse)}`,
+        verification: !v
+          ? "No completed Qwen verification recorded."
+          : risks.length
+            ? `Qwen verification: ${risks.join(", ")}.`
+            : "Qwen verification: no attack identified in context. Access checks still apply.",
+      };
+    }),
   };
 }
 
