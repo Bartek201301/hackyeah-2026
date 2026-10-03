@@ -6,8 +6,7 @@ import { ReviewPanel } from "./ReviewPanel";
 import { FeedPanel } from "./FeedPanel";
 import { PolicyPanel } from "./PolicyPanel";
 import { SourcesPanel } from "./SourcesPanel";
-import { WorkbenchNav } from "./WorkbenchNav";
-import { VIEW_DESCRIPTIONS, VIEW_LABELS, parseView, resolveView, shouldShowAdminViews } from "../lib/views";
+import { VIEW_DESCRIPTIONS, VIEW_LABELS, parseView, resolveView } from "../lib/views";
 
 /*
  * Workbench shell. Server component: only the panels are interactive, so the client bundle covers
@@ -36,14 +35,15 @@ type WorkbenchPageProps = {
 
 export async function WorkbenchPage({ searchParams, role, dealIds }: WorkbenchPageProps) {
   const params = (await searchParams) ?? {};
-  const isAdmin = shouldShowAdminViews(role);
   // A non-admin who types an admin-only view lands on Ask, rather than on a screen that refuses itself.
   const view = resolveView(parseView(params.view), role);
 
   return (
     <>
-      <PageHeader title={VIEW_LABELS[view]} description={VIEW_DESCRIPTIONS[view]} />
-      <WorkbenchNav active={view} showAdminViews={isAdmin} />
+      {/* Ask is a conversation, so it opens with its own greeting instead of a page title. Every
+          other view is a form or a list and keeps the header, now that the only navigation is the
+          app sidebar. */}
+      {view !== "chat" && <PageHeader title={VIEW_LABELS[view]} description={VIEW_DESCRIPTIONS[view]} />}
 
       {view === "chat" && <ChatPanel />}
       {view === "sources" && <SourcesPanel dealIds={dealIds} />}
