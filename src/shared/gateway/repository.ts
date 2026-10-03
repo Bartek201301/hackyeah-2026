@@ -225,6 +225,9 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
           .eq("trace_id", traceId)
           .eq("organisation_id", actor.organisation_id)
           .order("created_at")
+          // One transaction writes intent and decision with the same timestamp (cancel_run,
+          // record_access_decision); the enum's declaration order puts intent first.
+          .order("event_type")
           .order("id")
           .limit(201),
       );
