@@ -59,6 +59,22 @@ export function shouldShowAdminViews(role: ActorContext["role"] | undefined): bo
   return role === undefined || role === "admin";
 }
 
+/**
+ * The view actually rendered, given who is asking.
+ *
+ * Hiding the link was never a control, and neither is this: the gateway refuses every admin call
+ * from a non-admin, which is what keeps the data safe. But a non-admin who types `?view=policy`
+ * reached the administrator shell and watched it refuse itself, which reads like a broken screen
+ * rather than a boundary. An admin-only view requested by a known non-admin now falls back to the
+ * default view, the same way an unrecognised view does.
+ *
+ * An unknown role still keeps every view, for the reason `shouldShowAdminViews` gives: a missing
+ * prop must not strip an administrator's own controls.
+ */
+export function resolveView(requested: WorkbenchView, role: ActorContext["role"] | undefined): WorkbenchView {
+  return isAdminOnlyView(requested) && !shouldShowAdminViews(role) ? DEFAULT_VIEW : requested;
+}
+
 /** Chat is the canonical view, so it gets the bare path rather than `?view=chat`. */
 export function viewHref(view: WorkbenchView): string {
   return view === DEFAULT_VIEW ? "/workbench" : `/workbench?view=${view}`;
