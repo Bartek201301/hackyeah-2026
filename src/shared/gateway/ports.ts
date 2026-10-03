@@ -62,6 +62,20 @@ export type FinalOutcome = {
   /** Safe audit payload: stage, decision, reasons, findings, semantic, usage. Never prompt or answer text. */
   event: Record<string, unknown>;
 };
+/** actor_activity row. jsonb and nullable versions are checked against AuditProjection before release. */
+export type ActivityRow = {
+  trace_id: string;
+  actor_id: string;
+  operation: string;
+  state: string;
+  decision: ApiResponse["decision"];
+  reasons: string[];
+  usage: Usage;
+  policy_version: number | null;
+  feed_version: number | null;
+  created_at: string;
+};
+export type EventRow = { event_type: string; payload: Record<string, unknown>; created_at: string };
 /** Names follow protocols.md; startRun/readRun/claimRun are additions. Every method throws GatewayError
  *  carrying the RPC's ErrorCode, or STATE_UNAVAILABLE for anything else. */
 export interface RepositoryPort {
@@ -98,6 +112,11 @@ export interface RepositoryPort {
     callId: string,
     actuals: { unit: BudgetUnit; actual: number | null }[],
   ): Promise<{ settled: number; unresolved: number; overrun: boolean }>;
+  /** Owner, or an admin of the same organisation; null otherwise. Events ordered, at most 201 (cap + 1). */
+  readTrace(
+    actor: ActorContext,
+    traceId: string,
+  ): Promise<{ activity: ActivityRow; events: EventRow[] } | null>;
   /** false = the run was already terminal (settle once). */
   finalizeRun(input: {
     runId: string;
