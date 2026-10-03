@@ -103,12 +103,14 @@ function harness(over: Partial<Opts> = {}) {
     async startRun(input) {
       log.push("startRun");
       started.push(input);
+      // A non-pending harness run stands for the run an earlier request with this key created.
+      const replay = run.state !== "pending";
       return {
-        run_id: input.traceId,
+        run_id: replay ? run.id : input.traceId,
         kind: "chat",
-        state: "pending",
-        stage: "queued",
-        replay: false,
+        state: replay ? run.state : "pending",
+        stage: replay ? run.stage : "queued",
+        replay,
         policy_version: 1,
         feed_version: 1,
       };
@@ -619,6 +621,32 @@ describe("startChat and readChat", () => {
       requestSha256: sha256Hex(JSON.stringify({ message: MESSAGE, deal_id: DEAL })),
       inputPrivate: { message: MESSAGE, deal_id: DEAL },
     });
+  });
+
+  it("a replayed key on a finished run returns its stored outcome, not a bare 202", async () => {
+    const result = {
+      status: 403,
+      decision: "BLOCK",
+      reasons: ["input_signature:SIG-001"],
+      semantic: SEMANTIC_NOT_REQUIRED,
+      usage: notExecutedUsage("illustrative-v1"),
+      data: null,
+      error: {
+        code: "ACCESS_DENIED",
+        message: "This request was refused by the control policy.",
+        retryable: false,
+      },
+    };
+    const h = harness({ run: { state: "blocked", stage: "input_signature", result_private: result } });
+    const out = await h.start({ message: MESSAGE });
+    valid(out);
+    expect(out.status).toBe(403);
+    expect(out.body).toMatchObject({
+      trace_id: RUN_ID,
+      decision: "BLOCK",
+      reasons: ["input_signature:SIG-001"],
+    });
+    expect(out.body).toEqual((await h.read()).body);
   });
 
   it("reads a pending run as 202 and an unknown run as 404", async () => {

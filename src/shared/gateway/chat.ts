@@ -132,6 +132,8 @@ export async function startChat(
     traceId: randomUUID(),
     inputPrivate: input,
   });
+  // A replayed key returns the existing outcome (protocols.md idempotency), exactly as run_read does.
+  if (TERMINAL.has(run.state)) return readChat(deps, actor, run.run_id);
   return {
     status: 202,
     body: envelope({
