@@ -166,6 +166,7 @@ function harness(over: Partial<Opts> = {}) {
       return true;
     },
     listSources: unused,
+    listImports: unused,
     listActivity: unused,
     readMetricsRows: unused,
     exportActivity: unused,

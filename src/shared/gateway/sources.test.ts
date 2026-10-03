@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ActorContext } from "@/shared/contracts";
 import { check } from "@/shared/contracts/validate";
-import type { GatewayDeps, RepositoryPort, SourceRow } from "./ports";
-import { LIST_LIMIT, listSources, sourceScope } from "./sources";
+import type { GatewayDeps, ImportRow, RepositoryPort, SourceRow } from "./ports";
+import { importScope, LIST_LIMIT, listImports, listSources, sourceScope } from "./sources";
 
 const DEAL_A = "11111111-1111-4111-8111-111111111111";
 const DEAL_B = "22222222-2222-4222-8222-222222222222";
@@ -121,6 +121,102 @@ describe("listSources", () => {
 
   it("returns an empty list rather than an error when nothing is visible", async () => {
     const outcome = await listSources(deps([]), actorOf("external"));
+    expect(outcome.status).toBe(200);
+    expect(outcome.body.data).toEqual({ items: [] });
+  });
+});
+
+const RUN = "44444444-4444-4444-8444-444444444444";
+
+const importRow = (over: Partial<ImportRow> = {}): ImportRow => ({
+  id: "55555555-5555-4555-8555-555555555555",
+  run_id: RUN,
+  status: "approved",
+  classification: "internal",
+  ...over,
+});
+
+// TEST FAKE: unit tests only; the app never composes these.
+const importDeps = (rows: ImportRow[], seen: { limit?: number } = {}): GatewayDeps => {
+  const repository: Pick<RepositoryPort, "listImports"> = {
+    async listImports(_actor, limit) {
+      seen.limit = limit;
+      return rows;
+    },
+  };
+  return { repository: repository as RepositoryPort, detection: null, generation: null };
+};
+
+describe("importScope — whose imports a role may follow", () => {
+  it("lets an administrator see the whole organisation", () => {
+    expect(importScope(actorOf("admin"))).toEqual({ uploadedBy: null });
+  });
+
+  it("narrows every other role to their own uploads", () => {
+    for (const role of ["analyst", "employee", "external"] as const) {
+      // Deal membership does not widen an import list: ownership is the only non-admin scope.
+      expect(importScope(actorOf(role, [DEAL_A]))).toEqual({ uploadedBy: actorOf(role).actor_id });
+    }
+  });
+});
+
+describe("listImports", () => {
+  it("asks the repository for at most the contract's 50 rows", async () => {
+    const seen: { limit?: number } = {};
+    await listImports(importDeps([], seen), actorOf("admin"));
+    expect(seen.limit).toBe(LIST_LIMIT);
+  });
+
+  it("returns a contract-valid envelope with exactly the projected fields", async () => {
+    const outcome = await listImports(importDeps([importRow()]), actorOf("employee"));
+    expect(outcome.status).toBe(200);
+    expect(check("Response", outcome.body)).toEqual({ ok: true, value: outcome.body });
+    expect(outcome.body.data).toEqual({
+      items: [{ id: importRow().id, run_id: RUN, status: "approved", classification: "internal" }],
+    });
+  });
+
+  it("copies no column the projection does not name", async () => {
+    const extra = {
+      ...importRow(),
+      storage_key: "quarantine/aster.pdf",
+      sha256: "f".repeat(64),
+    } as ImportRow;
+    const outcome = await listImports(importDeps([extra]), actorOf("admin"));
+    expect(JSON.stringify(outcome.body.data)).not.toContain("quarantine/aster.pdf");
+    expect(JSON.stringify(outcome.body.data)).not.toContain("f".repeat(64));
+  });
+
+  it("skips a document whose import run has not settled instead of failing the list", async () => {
+    const outcome = await listImports(
+      importDeps([importRow({ run_id: null }), importRow({ id: "66666666-6666-4666-8666-666666666666" })]),
+      actorOf("admin"),
+    );
+    expect(outcome.status).toBe(200);
+    expect(outcome.body.data).toEqual({
+      items: [
+        {
+          id: "66666666-6666-4666-8666-666666666666",
+          run_id: RUN,
+          status: "approved",
+          classification: "internal",
+        },
+      ],
+    });
+  });
+
+  it("withholds the whole list when one row cannot be mapped", async () => {
+    const outcome = await listImports(
+      importDeps([importRow(), importRow({ status: "pending" })]),
+      actorOf("admin"),
+    );
+    expect(outcome.status).toBe(503);
+    expect(outcome.body.error?.code).toBe("STATE_UNAVAILABLE");
+    expect(outcome.body.data).toBeNull();
+  });
+
+  it("returns an empty list rather than an error when nothing is visible", async () => {
+    const outcome = await listImports(importDeps([]), actorOf("external"));
     expect(outcome.status).toBe(200);
     expect(outcome.body.data).toEqual({ items: [] });
   });

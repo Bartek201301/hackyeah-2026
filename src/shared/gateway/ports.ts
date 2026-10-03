@@ -105,6 +105,8 @@ export type ImportSource = {
   classification: "public" | "internal" | "restricted";
   audience_evidence: "verified" | "unverified";
 };
+/** run_id is nullable in the table: an upload document exists before its import run settles. */
+export type ImportRow = { id: string; run_id: string | null; status: string; classification: string };
 /** A registered dataset batch as loaded for import_connector; payloads are untrusted until validated. */
 export type DatasetBatch = {
   source: ImportSource;
@@ -239,6 +241,8 @@ export interface RepositoryPort {
   ): Promise<{ activity: MetricsActivityRow[]; reservations: MetricsReservationRow[] }>;
   /** Activity rows of one window for the audit CSV, newest first, at most `limit`. */
   exportActivity(input: WindowQuery): Promise<ActivityRow[]>;
+  /** Imports visible to this actor (importScope), newest first, at most `limit`. */
+  listImports(actor: ActorContext, limit: number): Promise<ImportRow[]>;
 }
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {

@@ -9,6 +9,7 @@ import type {
   ActivityRow,
   DatasetBatch,
   EventRow,
+  ImportRow,
   MetricsActivityRow,
   MetricsReservationRow,
   RepositoryPort,
@@ -16,7 +17,7 @@ import type {
   SourceRow,
   WindowQuery,
 } from "./ports";
-import { sourceScope } from "./sources";
+import { importScope, sourceScope } from "./sources";
 
 const CODES = new Set<string>(Object.keys(STATUS));
 
@@ -432,6 +433,21 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
 
     exportActivity(input) {
       return windowActivity<ActivityRow>(ACTIVITY_COLUMNS, input);
+    },
+
+    async listImports(actor, limit) {
+      const { uploadedBy } = importScope(actor);
+      let query = db
+        .from("documents")
+        .select("id, run_id, status, classification")
+        .eq("organisation_id", actor.organisation_id)
+        // Settled imports only, so the 50-item cap is spent on rows that have an outcome.
+        .not("run_id", "is", null);
+      if (uploadedBy) query = query.eq("uploaded_by", uploadedBy);
+      const rows = await data<ImportRow[] | null>(
+        query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit),
+      );
+      return rows ?? [];
     },
   };
 }
