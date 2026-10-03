@@ -41,9 +41,19 @@ comparison rate, both feed indicators, and the version badge with compare-and-sw
 "Semantic assessment — Required. This cannot be disabled." The same screen reached as an analyst
 refuses itself: "Not permitted". That contrast is worth 20 seconds.
 
-**Role-filtered source lists, from real rows.** An employee sees four sources; an administrator sees
-all seven, restricted included. Same endpoint, same organisation, filtered server-side before
-serialization.
+**Role-filtered source lists, from real rows — the whole ladder.** One endpoint, one organisation,
+four prepared accounts, four different lists, filtered server-side before serialization:
+
+| Account  | Sees                                                     | Count |
+| -------- | -------------------------------------------------------- | ----- |
+| reviewer | PUB-01, PUB-02                                           | 2     |
+| employee | + INT-01, INT-02                                         | 4     |
+| analyst  | + RES-01, RES-02 — assigned deal only, **OTH-01 hidden** | 6     |
+| admin    | + OTH-01                                                 | 7     |
+
+Two lines worth saying out loud: the external reviewer sees **no internal source at all**, and the
+analyst sees two of the three restricted sources — the difference is deal membership, not
+classification. Verified on production for all four accounts (run 3b).
 
 **The fail-closed state**, which remains a good story on its own: _"every protected operation
 withholds its result until identity, policy, content and budget have all been checked, and when a

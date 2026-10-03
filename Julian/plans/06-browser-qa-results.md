@@ -433,3 +433,57 @@ recorded before touching code.
    `:focus-visible` is true with a visible outline on every stop — but not re-walked per role, since
    the layout is role-independent apart from the nav.
 4. Outage drills, as instructed.
+
+---
+
+# Run 3b — the full role ladder on one endpoint
+
+| Field  | Value                                                        |
+| ------ | ------------------------------------------------------------ |
+| Date   | 2026-10-03, ~22:15 UTC                                       |
+| Target | <https://hackyeah-2026.vercel.app>, main `ca5c458`           |
+| Roles  | **reviewer (external)** and **analyst**, completing runs 2–3 |
+
+Run 3 left the two most interesting roles unchecked: analyst, the only role where restricted
+sources appear at all, and reviewer, the strictest filter in the matrix. Both are now done, so
+`GET /sources` has been exercised by every prepared account against real seeded rows.
+
+## One endpoint, one organisation, four accounts, four different lists
+
+| Account      | Role     | `GET /api/v1/sources`                                     | Count |
+| ------------ | -------- | --------------------------------------------------------- | ----- |
+| **reviewer** | external | PUB-01, PUB-02                                            | **2** |
+| **employee** | employee | + INT-01, INT-02                                          | **4** |
+| **analyst**  | analyst  | + RES-01, RES-02 — the assigned deal, **OTH-01 excluded** | **6** |
+| **admin**    | admin    | + OTH-01                                                  | **7** |
+
+Each row is a superset of the one above it, which is what a correct classification ladder looks
+like. Two results carry the real weight:
+
+- The **reviewer sees no internal source at all** — only the two public ones. "External reviewer
+  reads internal company data" is precisely the failure this product claims to prevent, and the
+  strictest filter holds.
+- The **analyst sees RES-01 and RES-02 but not OTH-01**. All three are restricted; the difference is
+  deal membership. This is the deal-scoped branch of `listSources` running against live rows, and it
+  is the first evidence that deal scope works outside unit tests.
+
+Filtering happens in the query, before serialization — the privileged gateway client bypasses RLS,
+so a row the actor may not see is never fetched, not merely dropped afterwards.
+
+## The rest of the matrix for these two roles
+
+| Check                | reviewer                                                    | analyst                                   |
+| -------------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| `GET /api/v1/policy` | **403** `ACCESS_DENIED`, no data                            | **403** `ACCESS_DENIED`, no data          |
+| `GET /api/v1/feeds`  | **403** `ACCESS_DENIED`, no data                            | **403** `ACCESS_DENIED`, no data          |
+| Nav                  | Ask · Sources and import · Public summary                   | Ask · Sources and import · Public summary |
+| Injection prompt     | **Blocked** · `input_signature:SIG-001` · trace `c70f80d3…` | **Blocked** · trace `55017f2c…`           |
+
+All four prepared accounts now return the identical block for the identical prompt, and all four
+are refused the administrator endpoints except the administrator.
+
+**Why the reviewer was missed until now:** every QA brief named specific roles — run 1 admin, run 2
+employee, run 3 employee/analyst/admin — and the external role reaches the fewest screens, so it
+looked least interesting. That was backwards: fewest permissions means strictest filter, which makes
+it the best test of whether the filter is a filter. It is also in the rehearsal checklist, which
+calls for four labelled profiles before judges arrive.
