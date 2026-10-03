@@ -342,3 +342,94 @@ Consequence for the demo, now recorded in [04-judge-script.md](04-judge-script.m
 bridge lands, demonstrate the literal text only, and if a judge paraphrases it live, say plainly
 that the deterministic list did not match, the required assessment was unavailable, and nothing was
 released — the withholding is the guarantee, the paraphrase was not detected.
+
+---
+
+# Run 3 — production, three roles
+
+| Field    | Value                                                                    |
+| -------- | ------------------------------------------------------------------------ |
+| Date     | 2026-10-04, ~00:10–00:35 UTC                                             |
+| Target   | <https://hackyeah-2026.vercel.app> (production redeploys on every merge) |
+| Build    | main `38ece27`, plus the phase 02 dataset seed applied during the run    |
+| Browser  | Chrome, signed in as **analyst**, then **employee**, then **admin**      |
+| Viewport | 1440×900 and 500×760                                                     |
+| Scope    | No outage tests, as instructed. No writes beyond sending test questions. |
+
+**Two status changes, both good.** Production chat is alive: `STATE_UNAVAILABLE` is gone, so the
+missing `SUPABASE_SECRET_KEY` is fixed. And the dataset sources are seeded — `GET /sources` returns
+real rows, which means the role filter shipped in #53 is now verified against live data instead of
+fakes only.
+
+**Still no `ALLOW`.** `LAYA_API_KEY` is deliberately absent from Vercel, so every question that is
+not caught by a literal indicator is withheld as `SEMANTIC_UNAVAILABLE`. That is correct fail-closed
+behaviour, not a defect, and it is unchanged by the seed: `documents` and `excerpts` are still empty
+until the import pipeline lands in phases 03–05.
+
+## Chat decisions — identical across all three roles
+
+| Role     | Injection prompt                                      | Benign question                       |
+| -------- | ----------------------------------------------------- | ------------------------------------- |
+| analyst  | **Blocked** · `input_signature:SIG-001` · `55017f2c…` | **Service unavailable** · `204607b9…` |
+| employee | **Blocked** · `input_signature:SIG-001` · `35aeaeb2…` | **Service unavailable** · `607184db…` |
+| admin    | **Blocked** · `input_signature:SIG-001` · `fca3dfc2…` | **Service unavailable** · `b7fd77e3…` |
+
+Blocked reads "This request was refused by the control policy." with the reason badge; the benign
+case reads "The required content assessment is unavailable, so the result is withheld." with a
+**Try again**. Every outcome carries a working trace link. No answer text, no Sources card, and no
+stale progress card or **Cancel run** in any run.
+
+Note on the brief: it expected the benign case to say "Request withheld". The implemented copy is
+"Service unavailable" plus the assessment sentence — more specific, and "Request withheld" is the
+fail-closed title reserved for an _unrecognised_ status. No change proposed; the judge script now
+quotes the real text.
+
+## Role separation, checked at the endpoint and not only in the nav
+
+| Probe (as employee)   | Result                                              |
+| --------------------- | --------------------------------------------------- |
+| `GET /api/v1/policy`  | **403** `ACCESS_DENIED`, `decision: BLOCK`, no data |
+| `GET /api/v1/feeds`   | **403** `ACCESS_DENIED`, `decision: BLOCK`, no data |
+| `GET /api/v1/sources` | **200** — 4 items                                   |
+
+| Role     | Sources returned                                       | Restricted visible |
+| -------- | ------------------------------------------------------ | ------------------ |
+| employee | PUB-01, PUB-02, INT-01, INT-02                         | no                 |
+| admin    | PUB-01, PUB-02, INT-01, INT-02, RES-01, RES-02, OTH-01 | yes, all 7         |
+
+Nav as analyst and as employee shows Ask · Sources and import · Public summary only; as admin all
+five appear.
+
+## Admin control screen — the first real data this product has rendered
+
+`?view=policy` as admin loads the live documents: **Version 1** badge, "Saving submits version 2",
+**70 populated fields** across Imports, Semantic assessment, Execution, Budgets and Comparison rate,
+and the feed section listing SIG-001 and SIG-002. The API behind it returns `policy_version: 1`,
+`feed_version: 1`, mode `balanced`, generation model `qwen3:8b`, feed expiry `2026-10-10` — which
+also confirms the active feed does **not** expire before the demo.
+
+## Finding — admin-only screens render for a non-admin by direct URL
+
+As analyst, typing `/workbench?view=policy` renders the Policy and feed shell: the nav hides the
+link, but the view itself is not role-gated. Nothing leaks — the data call is refused and the screen
+says **"Not permitted — This account is not permitted to perform this operation."** with no policy
+values, which is both fail-closed and the correct wording for a role denial with no content reason.
+Same for `?view=review`.
+
+So this is a credibility problem, not an exposure one: a judge who types a URL reaches an
+administrator screen that then refuses itself. It is workbench scope and a small change
+(gate the view list by role in `views.ts`, not only the nav). Recorded, not fixed — this run was
+recorded before touching code.
+
+## Not run
+
+1. `GET /sources` as **analyst** — the seed landed after the analyst pass, so the one case that
+   proves deal-scoped restricted visibility is still unverified live. Needs an analyst session;
+   employee (no restricted) and admin (all 7) are both confirmed.
+2. 375 px. Chrome clamps this window to 500 px wide on macOS; 500 px is clean with no horizontal
+   overflow and nothing escaping the viewport. 375 px remains covered by run 1b, which was
+   human-run, and needs the device toolbar by hand to re-confirm.
+3. Keyboard traversal was checked on the analyst Ask and Policy views — focus moves in DOM order,
+   `:focus-visible` is true with a visible outline on every stop — but not re-walked per role, since
+   the layout is role-independent apart from the nav.
+4. Outage drills, as instructed.
