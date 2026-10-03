@@ -175,21 +175,21 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 
 ### 7.1 AT10 — audit
 
-| ID      | Where it is asserted                                                         | Status                                          |
-| ------- | ---------------------------------------------------------------------------- | ----------------------------------------------- |
-| AT10-1  | —                                                                            | not run; needs T03 routes and two real sessions |
-| AT10-2  | `scope.test.ts` — refusal state, and figures beside a refusal ignored        | unit; the real-403 half needs T03               |
-| AT10-3  | `safety.test.ts` §"the list is never an aggregate"                           | unit                                            |
-| AT10-4  | `safety.test.ts` — four leak assertions against the view models              | unit at model level; DOM scan not run           |
-| AT10-5  | `safety.test.ts` — reason codes survive, `Finding` has no `value` key        | unit at model level                             |
-| AT10-6  | `export.test.ts` covers the refusal and row-cap handling                     | the byte assertion is not run; needs the route  |
-| AT10-7  | `envelope.test.ts` incomplete + unknown usage; `trace.test.ts` unknown group | unit                                            |
-| AT10-8  | `envelope.test.ts` event cap; `activity.test.ts` page cap                    | unit for the flags; the copy itself needs a DOM |
-| AT10-9  | `envelope.test.ts` and `metrics.test.ts` unavailable states                  | unit                                            |
-| AT10-10 | `activity.test.ts` unauthenticated mapping                                   | unit; "clears earlier numbers" by construction  |
-| AT10-11 | `metrics.test.ts` invalid-input mapping                                      | partial; no range picker exists yet             |
-| AT10-12 | `export.test.ts` — the export trace id is reported                           | unit; "body never rendered" by construction     |
-| AT10-13 | `activity.test.ts` rate-limited mapping                                      | unit; the absent retry control needs a DOM      |
+| ID      | Where it is asserted                                                            | Status                                                 |
+| ------- | ------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| AT10-1  | —                                                                               | not run; needs T03 routes and two real sessions        |
+| AT10-2  | `scope.test.ts` — refusal state, and figures beside a refusal ignored           | unit; the real-403 half needs T03                      |
+| AT10-3  | `safety.test.ts` §"the list is never an aggregate"                              | unit                                                   |
+| AT10-4  | `safety.test.ts` — four leak assertions against the view models                 | unit at model level; DOM scan not run                  |
+| AT10-5  | `safety.test.ts` — reason codes survive, `Finding` has no `value` key           | unit at model level                                    |
+| AT10-6  | `export.test.ts` covers the refusal and row-cap handling                        | the byte assertion is not run; needs the route         |
+| AT10-7  | `envelope.test.ts` incomplete + unknown usage; `trace.test.ts` unknown group    | unit                                                   |
+| AT10-8  | `envelope.test.ts` event cap; `activity.test.ts` page cap and cursor            | unit; the paging control exists, its click needs a DOM |
+| AT10-9  | `envelope.test.ts` and `metrics.test.ts` unavailable states                     | unit                                                   |
+| AT10-10 | `activity.test.ts` unauthenticated mapping                                      | unit; "clears earlier numbers" by construction         |
+| AT10-11 | `metrics.test.ts` invalid-input mapping; `range.test.ts` day parsing and bounds | unit; the screen cannot construct a wider range        |
+| AT10-12 | `export.test.ts` — the export trace id is reported                              | unit; "body never rendered" by construction            |
+| AT10-13 | `activity.test.ts` rate-limited mapping                                         | unit; the absent retry control needs a DOM             |
 
 ### 7.2 AT15 — reporting honesty
 

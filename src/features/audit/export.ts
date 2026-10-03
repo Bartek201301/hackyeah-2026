@@ -14,6 +14,8 @@
  */
 import type { ReadFailure } from "./envelope";
 import { classifyFailure, readError } from "./envelope";
+import type { UtcDay } from "./range";
+import { dayBounds } from "./range";
 import type { ReportingScope } from "./scope";
 
 /** The contract caps one export at 1000 rows. */
@@ -26,13 +28,15 @@ export type ExportState =
   | { kind: "overCap"; message: string }
   | ReadFailure;
 
-export function exportPath(scope: ReportingScope): string {
-  return `/audit/export?scope=${scope}`;
+/** The export asks for the same scope and the same single UTC day the screen is showing. */
+export function exportPath(scope: ReportingScope, day: UtcDay): string {
+  const { from, to } = dayBounds(day);
+  const query = new URLSearchParams({ scope, from, to });
+  return `/audit/export?${query.toString()}`;
 }
 
 /** `audit-own-2026-10-03.csv`; used when the server sends no filename of its own. */
-export function fallbackFilename(scope: ReportingScope, now: Date): string {
-  const day = now.toISOString().slice(0, 10);
+export function fallbackFilename(scope: ReportingScope, day: UtcDay): string {
   return `audit-${scope}-${day}.csv`;
 }
 
@@ -64,7 +68,7 @@ export function classifyExportResponse(
   body: unknown,
   headers: { traceId: string | null; contentDisposition: string | null },
   scope: ReportingScope,
-  now: Date,
+  day: UtcDay,
 ): ExportState {
   const isCsv = (contentType ?? "").toLowerCase().includes("text/csv");
 
@@ -72,7 +76,7 @@ export function classifyExportResponse(
     return {
       kind: "done",
       traceId: headers.traceId,
-      filename: parseContentDisposition(headers.contentDisposition) ?? fallbackFilename(scope, now),
+      filename: parseContentDisposition(headers.contentDisposition) ?? fallbackFilename(scope, day),
     };
   }
 
