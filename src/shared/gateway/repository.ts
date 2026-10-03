@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ErrorCode } from "@/shared/contracts";
 import { createSupabaseAdmin } from "@/shared/supabase/admin";
 import { GatewayError, STATUS } from "./envelope";
-import type { RepositoryPort, RunRecord } from "./ports";
+import type { ActivityRow, EventRow, RepositoryPort, RunRecord } from "./ports";
 
 const CODES = new Set<string>(Object.keys(STATUS));
 
@@ -163,6 +163,31 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
     async finishCall(callId, actuals) {
       const result = await data(db.rpc("finish_call", { p_call_id: callId, p_actuals: actuals }));
       return { settled: result.settled, unresolved: result.unresolved, overrun: result.overrun };
+    },
+
+    // Organisation first on both queries; the actor filter is dropped only for an admin of that organisation.
+    async readTrace(actor, traceId) {
+      let activity = db
+        .from("actor_activity")
+        .select(
+          "trace_id, actor_id, operation, state, decision, reasons, usage, policy_version, feed_version, created_at",
+        )
+        .eq("trace_id", traceId)
+        .eq("organisation_id", actor.organisation_id);
+      if (actor.role !== "admin") activity = activity.eq("actor_id", actor.actor_id);
+      const row = await data<ActivityRow | null>(activity.maybeSingle());
+      if (!row) return null;
+      const events = await data<EventRow[] | null>(
+        db
+          .from("audit_events")
+          .select("event_type, payload, created_at")
+          .eq("trace_id", traceId)
+          .eq("organisation_id", actor.organisation_id)
+          .order("created_at")
+          .order("id")
+          .limit(201),
+      );
+      return { activity: row, events: events ?? [] };
     },
 
     async finalizeRun({ runId, leaseToken, operationId, outcome }) {
