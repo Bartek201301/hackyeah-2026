@@ -566,3 +566,51 @@ decision on a shared project; flagged, not acted on.
   production, and P05 importing the corpus is what would prove them.
 - **375 px** still needs a human with the device toolbar: Chrome clamps an automated window to
   500 px on macOS.
+
+---
+
+# Run 5 — the upload lifecycle, MIX-01.csv as the analyst (2026-10-03 ~23:1x UTC)
+
+First browser exercise of `POST /imports/upload` (#73) through the workbench, on the branch that
+wires the lifecycle. Signed in as **analyst**, `docs/demo/uploads/MIX-01.csv`, classification
+**restricted**, deal `00000000-…-0101` (the analyst's only assigned deal).
+
+**Not the dev server.** The local `next dev` page never finishes hydrating in an automated tab — it
+holds its "Loading…" fallback with the real content `display:none` behind it, reproducible on clean
+`main`, because `document.visibilityState` is `hidden` for such a tab and React defers the work. A
+local **production build** (`next start`) hydrates there normally, so that is what this run used.
+Running both servers at once signed the local session out: two servers refreshing the same Supabase
+session rotate the refresh token out from under each other. One server at a time.
+
+## What the screen did, second by second
+
+|     |                                                                                                        |
+| --- | ------------------------------------------------------------------------------------------------------ |
+| +0s | Upload file                                                                                            |
+| +2s | **Import progress — "Queued — queued"**, with the audited trace link                                   |
+| +3s | **Service unavailable — "The required content assessment is unavailable, so the result is withheld."** |
+
+Trace `692989f3-b557-40a3-9ae2-064515ba2258`. The lifecycle itself is proven end to end: the upload
+answered 202 with a pending run, the screen called `POST /runs/{id}/execute` exactly once with the
+upload's own Idempotency-Key, showed the server's stage while it ran, and settled on the gateway's
+answer. Before this branch the panel stopped at "Request accepted" and never executed anything, so
+an upload sat there looking hung.
+
+## Fail-closed, and visible in the lists
+
+- **Configured sources** gained `MIX-01.csv · Restricted · Upload` — the source row and the
+  quarantined original are created by `startUpload`, before any assessment.
+- **Imports** still says "This account has no imports yet." Nothing was published: the document row
+  arrives only with `finalize_import`, and a 503 publishes nothing.
+
+That is the correct outcome, and it is the one a judge should understand: the file is accepted,
+stored privately, and nothing derived from it is released because a required check could not run.
+
+## What this run does NOT prove
+
+The **decision mapping** — ALLOW / REDACT / REVIEW / BLOCK — was not exercised. Semantic assessment
+cannot run in this environment at all: `LAYA_API_KEY` is not defined locally and no model service is
+listening (11434, 8787, 8080 all closed), so `createDetectionPort` returns null and every import and
+every chat ends in `SEMANTIC_UNAVAILABLE`. MIX-01 should settle as **REDACT** (one clean fact line
+against a contact, a credential and an injection), but that needs either the key locally or a
+deployed environment with the bridge up. Covered by unit and panel tests meanwhile.

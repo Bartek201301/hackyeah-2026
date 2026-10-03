@@ -34,7 +34,7 @@ export const VIEW_LABELS: Record<WorkbenchView, string> = {
 
 export const VIEW_DESCRIPTIONS: Record<WorkbenchView, string> = {
   chat: "Ask a governed question and see the decision, the checked answer and its sources.",
-  sources: "Register a source or upload one CSV or text PDF, then see the import outcome.",
+  sources: "Upload one CSV, then see what the gateway published from it.",
   review: "Administrators approve or reject a held candidate at an exact version.",
   policy: "Administrators read and update the central policy and threat feed.",
   export: "Request a public summary and download its checked PDF.",
