@@ -5,7 +5,8 @@ description: "Przegląd bezpieczeństwa funkcji HackYeah 2026: walidacja wejści
 
 # Przegląd bezpieczeństwa HackYeah
 
-Przeczytaj `AGENTS.md`, `SPEC.md` i pliki objęte zadaniem. Pracuj w przydzielonym zakresie.
+Przeczytaj `AGENTS.md`, `SPEC.md`, odpowiednią część `docs/ARCHITECTURE.md` i pliki objęte zadaniem.
+Pracuj w przydzielonym zakresie.
 Jeśli zlecono przegląd, zwróć ustalenia; poprawki wykonuj tylko w zakresie zleconej implementacji.
 Brak decyzji o logowaniu lub dostępie w SPEC jest otwartym kontraktem, a nie zgodą na otwarty zapis.
 
@@ -30,6 +31,10 @@ Instrukcje projektu i oficjalna dokumentacja używanej wersji mają pierwszeńst
    Nagłówek MIME i rozszerzenie podane przez klienta nie dowodzą typu zawartości.
 6. Zweryfikuj obsługę niezaufanego HTML, URL-i i zewnętrznych żądań, jeśli występują w zmianie.
    Sprawdź limity kosztownych integracji według rzeczywistego ryzyka danej funkcji.
+7. Dla warstwy kontroli sprawdź, czy wszystkie objęte nią interakcje i działania przechodzą
+   przez centralną politykę, a ocena semantyczna nie przyznaje uprawnień. Sprawdź budżet,
+   feed zagrożeń, ślad audytu i testy pozytywne/negatywne przy zmianie zachowania.
+   Nie akceptuj wyjątku bezpieczeństwa zaszytego pod scenariusz demo.
 
 ## Dostosowanie do projektu
 

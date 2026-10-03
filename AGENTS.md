@@ -10,8 +10,22 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Zasady zespołu — wspólne dla Codex, Claude i pracy ręcznej
 
-Czytaj ten plik i SPEC.md przed pracą. Kod po angielsku, dokumentacja i UI po polsku.
+Czytaj ten plik, SPEC.md i odpowiednią część docs/ARCHITECTURE.md przed pracą.
+SPEC opisuje wymagania wyzwania, architektura — niezmienniki i otwarte decyzje.
+Kod po angielsku, dokumentacja i UI po polsku.
 Nie deklaruj „działa” bez uruchomionych kontroli. Build nie potwierdza działania bazy ani demo.
+
+## Zasada bezpieczeństwa i zakres produktu
+
+**Modele AI mogą oceniać semantykę, ryzyko, intencję lub pewność. Deterministyczny kod
+i centralna polityka podejmują decyzje egzekwujące.** Model nie nadaje sobie uprawnień;
+sam prompt nie stanowi granicy bezpieczeństwa. Każda zarządzana interakcja i działanie
+agenta/narzędzia przechodzą przez warstwę kontroli i pozostawiają ślad audytowy.
+Źródło polityki jest centralne; nie rozpraszaj progów, wyjątków ani sygnatur w feature'ach.
+
+Rdzeniem jest AI Control Layer. Workflow bankowy i inne aplikacje są tylko kandydatami
+na demo referencyjne. Zachowuj niezależność od domeny, dostawcy modelu i dostawcy semantyki.
+Laya to możliwa implementacja oceny, nie obowiązkowy element produktu.
 
 ## Cztery role i własność
 
@@ -29,6 +43,12 @@ Nie deklaruj „działa” bez uruchomionych kontroli. Build nie potwierdza dzia
   Fałszywy alarm zgłoś z reprodukcją; nie wyłączaj kontroli samodzielnie.
 - Nie refaktoruj poza zakresem. Nie usuwaj istniejących plików bez zgody człowieka.
   Po dwóch nieudanych próbach tego samego problemu zatrzymaj się i opisz blokadę oraz alternatywy.
+- Pracuj wyłącznie nad zleconym zadaniem. Przeczytaj istniejące kontrakty i użyj ich;
+  nie dodawaj zależności ani frameworków bez potrzeby, nie przebudowuj architektury przy małej zmianie.
+  Problem poza zakresem zapisz w SPEC/DECYZJE albo PR i kontynuuj bieżące zadanie.
+- Nie zmieniaj po cichu wspólnych kontraktów, nie obchodź silnika polityki, nie osłabiaj kontroli
+  dla demo i nie koduj znanych promptów sędziów jako wyjątków. Wybieraj działający pionowy wycinek.
+  Zachowuj testy, audyt i telemetrię; oddziel fakty deterministyczne od ocen semantycznych.
 
 ## Architektura i kontrakty
 
@@ -43,6 +63,9 @@ Nie deklaruj „działa” bez uruchomionych kontroli. Build nie potwierdza dzia
 - Wspólne typy i schemat uzgadniamy przed zależną implementacją. Nazwy pól odpowiadają kolumnom.
   Potem zmiany kompatybilne: nowe typy i opcjonalne pola. Zmianę łamiącą kontrakt najpierw uzgodnij
   z integratorem i wszystkimi odbiorcami; nie wdrażaj jej jednostronnie.
+- Kontrakty warstwy kontroli (kontekst interakcji, findings, ocena semantyczna, decyzja,
+  audyt, budżet i feed) są do uzgodnienia; przykładowe nazwy w architekturze nie są nakazem.
+  Zmiana zachowania kontroli wymaga testów pozytywnych, negatywnych i konfiguracji.
 - Używaj shared/ui, tokenów kolorów i lucide-react. Strona: PageHeader, EmptyState, czytelny błąd
   (Notice) i stan wysyłania (Button loading). Prywatne pliki CSS są zabronione.
 

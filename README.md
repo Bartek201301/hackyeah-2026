@@ -1,6 +1,9 @@
 # hackyeah-2026
 
-Next.js App Router + Supabase + Vercel. Trzech builderów, jeden integrator.
+Wyzwanie HackYeah / Goldman Sachs **AI Control Layer**: konfigurowalna warstwa kontroli
+interakcji aplikacji, agentów, modeli, MCP, narzędzi i danych. Obecny kod jest szkieletem
+Next.js App Router + Supabase + Vercel, a nie działającą warstwą kontroli.
+Trzech builderów, jeden integrator; podział funkcji pozostaje do uzgodnienia.
 
 1. Node **24.14.1** (plik `.nvmrc`), npm **11.11.0** (`npm install -g npm@11.11.0`).
 2. `npm ci`
@@ -9,6 +12,7 @@ Next.js App Router + Supabase + Vercel. Trzech builderów, jeden integrator.
 
 - Zasady dla wszystkich narzędzi: [AGENTS.md](AGENTS.md).
 - Zadanie, podział funkcji i kontrakty: [SPEC.md](SPEC.md).
+- Przepływ, niezmienniki i otwarte granice: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Konfiguracja usług i potwierdzenia zespołu: [SETUP-ME.md](SETUP-ME.md).
 - Uzasadnienie: [DECYZJE.md](DECYZJE.md).
 - Wspólne skille AI: [instrukcja ECC](docs/ai/ecc/README.md) — przegląd bazy,

@@ -1,72 +1,98 @@
-# SPEC — wspólny kontrakt produktu
+# SPEC — wyzwanie AI Control Layer
 
-Status: **OCZEKUJEMY NA WYBÓR ZADANIA**. Nie implementujemy jeszcze domeny.
-Dokument aktualizuje integrator po uzgodnieniu z zespołem; postęp pracy zapisujemy w PR.
+Status: **wyzwanie wybrane, zakres produktu i przydział pracy otwarte**. Źródłem wymagań
+jest przekazany zespołowi opis wyzwania HackYeah / Goldman Sachs „AI Control Layer”.
+Nie przypisujemy mu wag punktowych ani dodatkowych wymagań jury bez potwierdzenia.
+Postęp implementacji zapisujemy w PR; ten dokument utrzymuje integrator po uzgodnieniu z zespołem.
 
-## 1. Zadanie i kryteria jury
+## 1. Cel i granica produktu
 
-- Nazwa / link do oficjalnej treści: do ustalenia.
-- Odbiorca i problem (2–3 zdania): do ustalenia.
-- Rozwiązanie w jednym zdaniu: do ustalenia.
-- Ograniczenia, wymagane dane i integracje: do ustalenia.
+Budujemy lekką, elastyczną **warstwę kontroli** pośredniczącą między aplikacjami, agentami,
+LLM, klientami/serwerami MCP, narzędziami, API oraz danymi. Może przyjąć postać gatewaya,
+proxy, middleware, wrappera SDK lub równoważnego pośrednika. Musi chronić także komunikację
+agent–agent i żądane przez agentów działania. Przepływ i niezmienniki opisuje
+[architektura](docs/ARCHITECTURE.md).
 
-| Kryterium jury             | Waga z regulaminu | Co pokażemy jako dowód |
-| -------------------------- | ----------------- | ---------------------- |
-| Do uzupełnienia po wyborze | Nie zakładamy wag | Do ustalenia           |
+Aplikacja bankowości inwestycyjnej, inbox, symulacja Excela/PowerPointa lub inny workflow
+mogą służyć jako **demo referencyjne**. Nie są zależnością rdzenia ani celem samym w sobie.
+Obecne nazwy robocze nie określają nazwy końcowej ani domeny produktu.
 
-## 2. Zespół i granice pracy
+## 2. Obowiązkowe zdolności i dowód
 
-| Rola       | Osoba / GitHub | Katalog / odpowiedzialność                      |
-| ---------- | -------------- | ----------------------------------------------- |
-| Integrator | Do przypisania | shared, app, baza, konfiguracja, scalenia, demo |
-| Builder A  | Do przypisania | Jeden feature — do ustalenia                    |
-| Builder B  | Do przypisania | Jeden feature — do ustalenia                    |
-| Builder C  | Do przypisania | Jeden feature — do ustalenia                    |
+| Zdolność                                  | Minimalny dowód do przygotowania                                                                                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Centralna, konfigurowalna polityka        | Zmiana progu, kontroli, uprawnienia, modelu lub narzędzia zmienia wynik przewidywalnie; reload bez przebudowy tam, gdzie praktyczny.                                                       |
+| Obrona hybrydowa                          | Deterministyczne sprawdzenia tożsamości, uprawnień, limitów i sygnatur wraz z semantyczną oceną intencji/ryzyka; decyzja egzekwowana przez kod i politykę.                                 |
+| Firewall działań                          | Kontrola żądań narzędzi, MCP, HTTP, bazy, plików, kodu, modelu, transferu danych i kosztownych/destrukcyjnych operacji, stosownie do wybranych integracji.                                 |
+| Budżety i zasoby                          | Limity kosztu API, tokenów, żądań, czasu, pętli agenta i zużycia zasobów, także dla modeli lokalnych; przewidywalne blokowanie, ograniczanie lub routing.                                  |
+| Zewnętrzne dane o zagrożeniach            | Konfigurowalne sygnatury i wskaźniki zagrożeń; zmiana feedu wpływa na wynik bez wpisywania ataków w kod demo.                                                                              |
+| Raportowanie i audyt                      | Dane audytowe do widoku zarządczego i technicznego; eksport, jeśli praktyczny. Dashboard jest prezentacją danych, nie jedynym zapisem.                                                     |
+| Telemetria                                | Rzeczywiste pomiary opóźnienia całości i narzutu warstwy, etapów kontroli, P50/P95/P99, przepustowości, udziału blokad/redakcji, tokenów/kosztu i zasobów modelu lokalnego, gdy mierzalne. |
+| Automatyczny zestaw testów bezpieczeństwa | Jedna oczywista komenda uruchamia przypadki pozytywne, negatywne i zmiany konfiguracji bez płatnych API. Dokładną komendę ustalimy przy implementacji w istniejącej konwencji npm.         |
 
-Każdy feature ma jednego właściciela. Integrator tworzy trasy i fundament kontraktów przed
-rozpoczęciem zależnych gałęzi. Loginy posłużą też do dodania CODEOWNERS (kierowanie recenzji).
+Wagi kryteriów jury, oficjalny URL oraz ostateczny sposób prezentacji: **do potwierdzenia**.
+Nie deklarujemy wyników benchmarku bez pomiaru ani gotowości systemu na podstawie buildu.
 
-## 3. Funkcje i kryteria akceptacji
+## 3. Scenariusze testowe
 
-| ID  | Historyjka: jako / chcę / aby | Feature / właściciel     | Priorytet | Wejście → wynik | Zależności / kontrakt | Jak sprawdzimy sukces |
-| --- | ----------------------------- | ------------------------ | --------- | --------------- | --------------------- | --------------------- |
-| F1  | Do ustalenia                  | Builder A / do ustalenia | MUST      | Do ustalenia    | Do ustalenia          | Do ustalenia          |
-| F2  | Do ustalenia                  | Builder B / do ustalenia | MUST      | Do ustalenia    | Do ustalenia          | Do ustalenia          |
-| F3  | Do ustalenia                  | Builder C / do ustalenia | MUST      | Do ustalenia    | Do ustalenia          | Do ustalenia          |
+Pozytywne: poprawna interakcja, autoryzowane narzędzie, zwykłe wywołanie modelu i dozwolony
+zasób. Negatywne: PII i sekrety, prompt injection bezpośredni i pośredni, niedozwolone narzędzie
+lub model, eksfiltracja i transfer poufnych danych, nadmierna samodzielność agenta,
+wyczerpanie budżetu, zapętlona egzekucja, wzorce złośliwego kodu i niebezpiecznej
+deserializacji oraz historyczne sygnatury. Testy obejmą zmianę progów, feedów, budżetów,
+włączenie/wyłączenie kontroli i przeładowanie konfiguracji. Gdzie możliwe, wyniki są deterministyczne.
 
-Zakres NICE i świadomie pomijane funkcje: ustalimy z treści zadania. NICE zaczyna się dopiero,
-gdy MUST działa na wdrożonym demo. Statusy, blokady i adresy gałęzi pozostają w PR.
+Zakładamy, że sędziowie wyślą dowolne wejścia i działania, zmienią konfigurację i sprawdzą logi
+oraz wydajność. Nie wiążemy zabezpieczeń ze skryptem pokazu.
 
-## 4. Kontrakty przed równoległą implementacją
+## 4. Zespół i granice pracy
 
-Status uzgodnienia: **NIEUZGODNIONE**. Zależna implementacja zaczyna się po uzgodnieniu tabeli.
+| Rola       | Osoba / GitHub | Obecna odpowiedzialność                                                                  |
+| ---------- | -------------- | ---------------------------------------------------------------------------------------- |
+| Integrator | Do przypisania | `src/shared/**`, `src/app/**`, baza, konfiguracja, zależności, CI, scalenia i publikacja |
+| Builder A  | Do przypisania | Jeden uzgodniony `src/features/<nazwa>/**`                                               |
+| Builder B  | Do przypisania | Jeden uzgodniony `src/features/<nazwa>/**`                                               |
+| Builder C  | Do przypisania | Jeden uzgodniony `src/features/<nazwa>/**`                                               |
 
-| Encja / akcja | Pola / argumenty i wynik | Kto zapisuje / wywołuje | Kto czyta / odbiera | Dostęp / walidacja |
-| ------------- | ------------------------ | ----------------------- | ------------------- | ------------------ |
-| Do ustalenia  | Do ustalenia             | Do ustalenia            | Do ustalenia        | Do ustalenia       |
+Możliwy podział tematyczny: platforma/polityka, detektory i semantyka, audyt/raporty,
+red team/integracje. To **kierunek podziału**, nie przypisanie katalogów ani osób.
+Integrator tworzy wspólne kontrakty i trasy przed pracą zależną. Loginy umożliwią CODEOWNERS.
 
-Wspólne typy: src/shared/types.ts. Wynik akcji: istniejący ActionResult<T>.
-Po akceptacji zmiany kompatybilne i addytywne; potrzeby zmian zgłaszamy w PR integratora.
-Dane w bazie są wspólne dla local, preview i production. Dostęp i logowanie ustalamy świadomie
-z zadaniem; sam publishable key nie ogranicza dostępu do rekordów.
+## 5. Kontrakty przed równoległą implementacją
 
-## 5. Demo — maksymalnie 3 minuty
+Status: **nieuzgodnione**. `src/shared/types.ts` zawiera obecnie tylko `Id`, `IsoDateTime`
+i `ActionResult<T>`; nie zawiera kontraktów warstwy kontroli. Uzgodnimy ich minimalny kształt
+przed zależną implementacją, bez zmiany nazw tylko dla zgodności z przykładami w architekturze.
 
-1. Punkt wejścia i problem odbiorcy: do ustalenia.
-2. Kluczowa czynność użytkownika: do ustalenia.
-3. Widoczny wynik oraz dowód kryterium jury: do ustalenia.
-4. Puenta i ograniczenia rozwiązania: do ustalenia.
+| Granica                         | Co trzeba uzgodnić                                                   | Właściciel              |
+| ------------------------------- | -------------------------------------------------------------------- | ----------------------- |
+| Interakcja i kontekst działania | Aktor, tożsamość/rola, cel, zasób, dane, trace ID                    | Integrator z odbiorcami |
+| Wynik kontroli i decyzja        | Fakty deterministyczne, ocena semantyczna, polityka, werdykt i powód | Integrator z odbiorcami |
+| Audyt i budżet                  | Zdarzenie, metryki, licznik/limit, wpływ decyzji                     | Integrator z odbiorcami |
+| Feed zagrożeń                   | Źródło, wersja, wskaźnik i sposób aktualizacji                       | Integrator z odbiorcami |
 
-Dane demo przygotowuje integrator w seed.sql. Powtórne uruchomienie nie może dublować danych.
-Reset tylko w uzgodnionym oknie. Przed pokazem przerywamy zapisy testowe i ćwiczymy na production.
+Pola trwałych encji odpowiadają kolumnom. Zmiany po uzgodnieniu pozostają kompatybilne
+lub wymagają koordynacji wszystkich odbiorców; nikt nie zmienia wspólnego kontraktu jednostronnie.
+Local, preview i production dzielą jeden projekt Supabase. Dostęp, RLS i tożsamość ustalamy
+świadomie; publishable key nie jest kontrolą dostępu.
 
-## 6. Warunek ukończenia i decyzje
+## 6. Demo i warunek ukończenia
 
-- Pełny check oraz CI zielone, PR zaakceptowany przez kolegę.
-- Kryteria historyjki sprawdzone; UI ma stan pusty, ładowanie i obsługę błędów.
-- Zależna migracja wykonana przez integratora i odnotowana; żaden sekret nie trafia do Git.
-- Ścieżka między funkcjami działa na preview, a cała prezentacja na production.
+Demo do 3 minut powinno pokazać legalną interakcję, próbę naruszenia, zmianę konfiguracji
+wpływającą na werdykt oraz ślad audytowy i pomiar. Domena referencyjna pozostaje otwarta.
+Dane testowe przygotowuje integrator w powtarzalnym seedzie; reset wymaga uzgodnienia z zespołem.
 
-| Decyzja z zadania | Uzasadnienie / źródło | Status  |
-| ----------------- | --------------------- | ------- |
-| Do ustalenia      | Do ustalenia          | Otwarte |
+Ukończenie wymaga zielonego `npm run check` i CI, koleżeńskiej recenzji, testów kontroli,
+sprawdzonej ścieżki na preview i próby demo na production. Wymagane migracje wykonuje
+integrator i zapisuje w `supabase/APPLIED.md`. Build nie potwierdza działania bazy, polityk,
+konfiguracji na żywo ani pokazu.
+Każdy ekran produktu zachowuje czytelny stan pusty, ładowania/wysyłania i błędu.
+
+## OPEN QUESTIONS
+
+- Nazwa końcowa i domena demo referencyjnego.
+- Kształt konfiguracji oraz sposób przeładowania w wybranej topologii.
+- Dostawca modelu semantycznego (lokalny lub zdalny), tryb synchroniczny/asynchroniczny i routing.
+- Znaczenie `ESCALATE` i odbiorca eskalacji.
+- Trwałość audytu i liczników budżetu; topologia wdrożenia i uwierzytelnianie.
+- Przydział ludzi, katalogów i kolejność pionowych wycinków po zatwierdzeniu kontraktów.

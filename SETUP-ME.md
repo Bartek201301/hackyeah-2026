@@ -78,17 +78,20 @@ Przed próbą i prezentacją zatrzymaj zapisy testowe. Cofnięcie wdrożenia nie
 Status konfiguracji i adresy: **do potwierdzenia przez właściciela/integratora**.
 CI nie korzysta z bazy; zielone CI nie jest potwierdzeniem zdrowia wdrożenia.
 
-## 5. Po wyborze zadania
+## 5. Po wyborze wyzwania AI Control Layer
 
-1. Wypełnij SPEC: jury, odbiorca, MUST/NICE, trzy funkcje, nazwiska/loginy i demo do 3 minut.
-2. Uzgodnij minimalne wspólne typy, wejścia/wyniki akcji i dostęp do danych przed zależnym kodem.
-3. Integrator na krótkiej gałęzi przygotowuje kontrakty, migracje, trasy i nawigację:
-   `npm run new-feature <nazwa>` dla każdej uzgodnionej funkcji.
+1. Potwierdź oficjalny URL i wagi jury; SPEC już zawiera zdolności wyzwania, ale nie przypisuje
+   na siłę trzech funkcji builderom. Uzgodnij ludzi, pionowe wycinki i demo do 3 minut.
+2. Uzgodnij minimalne wspólne typy interakcji, polityki, decyzji, audytu i budżetu oraz dostęp
+   do danych przed zależnym kodem. Zachowaj niezmienniki z docs/ARCHITECTURE.md.
+3. Integrator na krótkiej gałęzi przygotowuje potrzebne kontrakty, migracje, trasy i nawigację;
+   `npm run new-feature <nazwa>` służy tylko uzgodnionym funkcjom.
 4. Pełny check, koleżeńska recenzja, potrzebne kompatybilne migracje, merge fundamentu.
 5. Builderzy tworzą gałęzie od aktualnego origin/main i pracują wyłącznie w przydzielonych katalogach.
 6. Sprawdź dwie niezależne feature PR: po pierwszym merge drugi pobiera origin/main,
    scala go ze swoją gałęzią i ponawia CI. Potwierdź przepływ między funkcjami na preview.
-7. Cały zespół ćwiczy demo na production; odnotuj wynik, pozostałe ograniczenia i okno bez zapisów.
+7. Cały zespół ćwiczy demo na production, także legalne i wrogie interakcje, zmianę polityki,
+   audyt i pomiar; odnotuj wynik, ograniczenia i okno bez zapisów.
 
 ## 6. Typowe blokady
 

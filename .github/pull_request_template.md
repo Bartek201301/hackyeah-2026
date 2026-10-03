@@ -13,6 +13,8 @@
 
 - [ ] `npm run check` przechodzi
 - [ ] Zaktualizowano gałąź względem `origin/main`
+- Dla zmian kontroli: przypadek dozwolony, blokowany, zmiana konfiguracji i ślad audytu
+  (lub uzasadnienie, dlaczego nie dotyczą tego PR):
 - [ ] Dla UI: sprawdzono ekran, ładowanie, pusty stan i błąd
 - Preview / dowód sprawdzenia:
 - Migracja: nie dotyczy / plik i potwierdzenie integratora:

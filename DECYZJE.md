@@ -1,7 +1,9 @@
 # Decyzje techniczne
 
 Cztery osoby: trzy budują osobne funkcje, integrator utrzymuje wspólny fundament i scala.
-Stack pozostaje: Next.js App Router, Supabase, Vercel. Nie zmieniamy architektury przed wyborem zadania.
+Wyzwaniem jest AI Control Layer. Next.js App Router, Supabase i Vercel to obecny szkielet
+repozytorium, nie wymóg narzucający postać pośrednika lub trwałą zależność od bazy.
+Wymagania są w SPEC.md, a niezmienniki w docs/ARCHITECTURE.md.
 
 1. **Własność zamiast równoczesnych edycji.** Każdy builder ma jeden feature; shared, app,
    migracje, zależności i konfiguracja należą do integratora. Wspólne zmiany też przechodzą PR.
@@ -25,4 +27,16 @@ Stack pozostaje: Next.js App Router, Supabase, Vercel. Nie zmieniamy architektur
 
 Nie dodajemy Docker, monorepo, nowego frameworka testowego ani automatycznych zmian schematu
 na każdej gałęzi. Testy narzędzi używają wbudowanego node:test. Logowanie, realne encje,
-integracje i końcowy podział funkcji zależą od wybranego zadania.
+integracje i końcowy podział funkcji zależą od uzgodnionych kontraktów wyzwania.
+
+## Kierunek dla AI Control Layer
+
+- Jedna centralna, edytowalna polityka ma sterować kontrolami, progami, dostępem,
+  modelami, narzędziami, budżetami i feedami. Format i reload są otwarte; kod nie ma
+  powielać decyzji polityki w wielu modułach.
+- Obrona łączy sprawdzenia deterministyczne z oceną semantyczną. Ocena AI dostarcza sygnał,
+  a kod i polityka egzekwują werdykt. Dostawca semantyczny pozostaje wymienialny.
+- Kontrolujemy również działania agenta, koszty i zasoby. Audyt, telemetria i automatyczne
+  testy przypadków pozytywnych/negatywnych są częścią produktu, nie dodatkiem do dashboardu.
+- Nazwa, domena demo, silnik, format konfiguracji, baza audytu i topologia wdrożenia
+  pozostają otwarte. Nie traktujemy przykładu bankowego ani lokalnego modelu jako zależności rdzenia.
