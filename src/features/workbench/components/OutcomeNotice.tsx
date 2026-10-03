@@ -28,6 +28,16 @@ export function OutcomeNotice({ outcome }: { outcome: GatewayOutcome }) {
             ))}
           </p>
         )}
+        {outcome.kind === "unauthenticated" && (
+          <p>
+            <Link
+              href="/login"
+              className="font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            >
+              Go to sign in
+            </Link>
+          </p>
+        )}
         {href ? (
           <p>
             <Link

@@ -1,5 +1,7 @@
 import { Card, CardHeader, EmptyState, PageHeader } from "@/shared/ui";
+import { getActor } from "@/shared/auth/actor";
 import { ChatPanel } from "./ChatPanel";
+import { FeedPanel } from "./FeedPanel";
 import { PolicyPanel } from "./PolicyPanel";
 import { SourcesPanel } from "./SourcesPanel";
 import { WorkbenchNav } from "./WorkbenchNav";
@@ -35,14 +37,33 @@ export async function WorkbenchPage({ searchParams }: WorkbenchPageProps) {
   const params = (await searchParams) ?? {};
   const view = parseView(params.view);
 
+  /*
+   * Role drives presentation only. Hiding a link is not authorization: every route the panels call
+   * is checked server-side regardless of what is shown. When the role cannot be read the admin
+   * views stay visible, because a failed membership read must not strip an administrator's
+   * controls — the gateway still denies everyone else.
+   */
+  let isAdmin = true;
+  try {
+    const actor = await getActor();
+    if (actor) isAdmin = actor.role === "admin";
+  } catch {
+    isAdmin = true;
+  }
+
   return (
     <>
       <PageHeader title={VIEW_LABELS[view]} description={VIEW_DESCRIPTIONS[view]} />
-      <WorkbenchNav active={view} />
+      <WorkbenchNav active={view} showAdminViews={isAdmin} />
 
       {view === "chat" && <ChatPanel />}
       {view === "sources" && <SourcesPanel />}
-      {view === "policy" && <PolicyPanel />}
+      {view === "policy" && (
+        <div className="flex flex-col gap-6">
+          <PolicyPanel />
+          <FeedPanel />
+        </div>
+      )}
 
       {(view === "review" || view === "export") && (
         <Card>

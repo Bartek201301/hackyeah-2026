@@ -154,9 +154,29 @@ export function checkPolicyInvariants(policy: GatewayPolicy): Invariant[] {
   return problems;
 }
 
-/** Compare-and-swap: the submitted version must be exactly the loaded head plus one. */
+/**
+ * Compare-and-swap submission.
+ *
+ * technical-spec §5: "Persist immutable snapshots and CAS head update. Version supplied must equal
+ * expected+1." So `expected_version` is the head the client believes is current — the version it
+ * loaded — and the submitted *document's* own `version` is that head plus one. Sending the
+ * incremented value as `expected_version` would compare against a version that does not exist yet.
+ *
+ * Still listed as B12 in Julian/plans/02-open-questions.md: the two fields need confirming against
+ * the real endpoint, because OpenAPI alone does not say which is which.
+ */
 export function nextPolicyVersion(loadedVersion: number): number {
   return loadedVersion + 1;
+}
+
+export type PolicySubmission = { expected_version: number; policy: GatewayPolicy };
+
+/** Build the update: CAS against the loaded head, document version incremented. */
+export function toPolicySubmission(loaded: GatewayPolicy, edited: GatewayPolicy): PolicySubmission {
+  return {
+    expected_version: loaded.version,
+    policy: { ...edited, version: nextPolicyVersion(loaded.version) },
+  };
 }
 
 export type FeedIndicatorKind = "literal" | "domain";
