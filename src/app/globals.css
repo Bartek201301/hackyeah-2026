@@ -4,45 +4,61 @@
  * DESIGN TOKENS — the only source of colours, radii and shadows in the app.
  * Owner: integrator. Features use only classes from these tokens
  * (e.g. bg-brand, text-muted, border-border, rounded-card) and components from @/shared/ui.
- * Changing the brand colour = changing one line: --color-brand.
+ * Neutral, light-only system: white content, light-grey sidebar, near-black text and primary actions.
+ * Colour is reserved for decisions (danger = BLOCK, success = ALLOW, warning = REVIEW/withheld),
+ * always next to a text label. Contrast ratios are listed in DESIGN.md.
  */
 @theme {
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand: saturated indigo. One strong colour per screen — the rest is white and greys. */
-  --color-brand: oklch(0.56 0.21 272);
-  --color-brand-hover: oklch(0.5 0.21 272);
-  --color-brand-strong: oklch(0.47 0.22 276);
-  --color-brand-soft: oklch(0.94 0.035 272);
+  /* Primary action: near-black with white text. */
+  --color-brand: oklch(0.205 0 0);
+  --color-brand-hover: oklch(0.32 0 0);
+  --color-brand-strong: oklch(0.145 0 0);
+  --color-brand-soft: oklch(0.96 0 0);
   --color-on-brand: oklch(1 0 0);
 
-  /* Background slightly lavender-grey, cards white — the card "floats" above the background. */
-  --color-bg: oklch(0.955 0.01 264);
+  /* White content surface on a very light grey page/sidebar. */
+  --color-bg: oklch(0.985 0 0);
   --color-surface: oklch(1 0 0);
-  --color-surface-muted: oklch(0.975 0.006 264);
-  --color-fg: oklch(0.2 0.02 264);
-  --color-muted: oklch(0.55 0.02 264);
-  --color-border: oklch(0.92 0.01 264);
+  --color-surface-muted: oklch(0.97 0 0);
+  --color-fg: oklch(0.205 0 0);
+  --color-muted: oklch(0.5 0 0);
+  /* Decorative dividers and card edges. */
+  --color-border: oklch(0.922 0 0);
+  /* Form-control outlines only: 3:1 against white. */
+  --color-border-strong: oklch(0.66 0 0);
 
-  /* Dark accent: chart tooltips, promo card. Use sparingly. */
-  --color-ink: oklch(0.2 0.015 264);
-  --color-on-ink: oklch(0.97 0.005 264);
+  /* Dark accent: chart tooltips. Use sparingly. */
+  --color-ink: oklch(0.205 0 0);
+  --color-on-ink: oklch(0.985 0 0);
 
-  --color-danger: oklch(0.6 0.21 25);
-  --color-danger-soft: oklch(0.95 0.035 25);
-  --color-success: oklch(0.55 0.15 150);
-  --color-success-soft: oklch(0.94 0.05 150);
-  --color-warning: oklch(0.72 0.15 75);
-  --color-warning-soft: oklch(0.96 0.06 85);
+  --color-danger: oklch(0.55 0.22 27);
+  --color-danger-soft: oklch(0.97 0.02 20);
+  --color-success: oklch(0.5 0.13 152);
+  --color-success-soft: oklch(0.965 0.04 155);
+  --color-warning: oklch(0.66 0.15 65);
+  --color-warning-soft: oklch(0.97 0.05 90);
 
-  --radius-control: 0.875rem;
-  --radius-card: 1.5rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
 
-  --shadow-card: 0 1px 2px oklch(0.2 0.02 264 / 0.03), 0 8px 24px oklch(0.2 0.02 264 / 0.05);
-  --shadow-brand: 0 8px 24px oklch(0.56 0.21 272 / 0.35);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.04);
+  --shadow-brand: none;
 }
 
 body {
-  background: var(--color-bg);
+  background: var(--color-surface);
   color: var(--color-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

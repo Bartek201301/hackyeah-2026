@@ -18,9 +18,9 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col items-center gap-3 rounded-card border border-danger/30 bg-danger-soft px-6 py-12 text-center"
+      className="flex flex-col items-center gap-3 rounded-card border border-danger/25 bg-danger-soft px-6 py-10 text-center"
     >
-      <TriangleAlert className="size-8 text-danger" aria-hidden />
+      <TriangleAlert className="size-6 text-danger" aria-hidden />
       <h2 className="text-base font-semibold text-fg">{title}</h2>
       <p className="max-w-md text-sm text-muted">{description}</p>
       {action && <div className="mt-2">{action}</div>}

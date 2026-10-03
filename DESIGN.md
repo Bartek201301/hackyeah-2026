@@ -4,7 +4,9 @@ Read before building screens. The existing `/ui` page demonstrates shared compon
 
 ## Application
 
-Retain the existing light dashboard system: white cards, soft neutral/lavender background, brand indigo, readable dark text. Use existing tokens from shared UI; no feature-private CSS or raw color overrides. The standalone pitch may use its specified black/white/cobalt style.
+Calm, neutral, light-only system inspired by familiar AI chat products: a white content column, a very light grey sidebar, near-black text, thin light-grey borders, near-black primary buttons with white text, subtle grey hover, small radii and almost no shadows. Typeface is Geist. Colour is reserved for decisions and always sits next to a text label: BLOCK = `danger` (red), ALLOW = `success` (green), REVIEW/withheld = `warning` (amber). `border` is decorative (cards, dividers); `border-strong` is only for form-control outlines. Use existing tokens from shared UI; no feature-private CSS or raw color overrides. The standalone pitch may use its specified black/white/cobalt style.
+
+Token contrast (WCAG 2.x, computed from the oklch values in `globals.css`): `fg` on `surface`/`bg` 17.9/17.2; `muted` on `surface`/`bg`/`surface-muted` 6.0/5.8/5.5; `on-brand` on `brand` 17.9; `fg` on `brand-soft` 16.0; `on-brand` on `danger` 5.4; `danger` on `surface`/`danger-soft` 5.4/4.9; `success` on `surface`/`success-soft` 5.6/5.2; `fg` on `warning-soft` 16.3; `warning` on `surface` 3.2 (non-text only); `border-strong` on `surface` 3.1. Do not use `warning` as text colour.
 
 Use `PageHeader` on each page, `Card`/`CardHeader` for sections, `StatCard` for measured totals, `Badge` for status, `Notice` for errors, `EmptyState`, `LoadingState`/`Skeleton`, and labelled `Field` controls with `Button loading`. Request missing shared primitives from the integrator. Use lucide-react icons with text labels where meaning is not obvious.
 

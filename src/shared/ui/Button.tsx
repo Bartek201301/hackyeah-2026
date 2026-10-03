@@ -6,15 +6,15 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand text-on-brand shadow-brand hover:bg-brand-hover",
-  secondary: "bg-surface text-fg border border-border hover:bg-surface-muted",
-  ghost: "text-fg hover:bg-brand-soft",
+  primary: "bg-brand text-on-brand hover:bg-brand-hover",
+  secondary: "bg-surface text-fg border border-border shadow-card hover:bg-surface-muted",
+  ghost: "text-fg hover:bg-surface-muted",
   danger: "bg-danger text-on-brand hover:opacity-90",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-3.5 text-sm",
-  md: "h-11 px-5 text-sm",
+  sm: "h-9 px-3 text-sm",
+  md: "h-10 px-4 text-sm",
 };
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -39,9 +39,9 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-colors",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-        "disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control font-medium transition-colors",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         variants[variant],
         sizes[size],
         className,
