@@ -98,11 +98,20 @@ _Blocks: W3 form labelling._
 original locator or inspection reference without a raw download URL? `Review` contains neither.
 _Blocks: W3 "original locator" requirement in DESIGN._
 
-**B12. Policy and feed form baseline.** Should the forms use the complete document from `GET` as the
-edit baseline, or a typed projection? Which version fields are read-only in the UI, given both the
-document's own `version` and the request's `expected_version`? How should conflict feedback name the
-current head?
-_Blocks: W4._
+**B12. Policy and feed version semantics — please confirm my reading.** Both forms now use the
+complete document from `GET` as the edit baseline, and submit:
+
+- `expected_version` = the head as loaded
+- the document's own `version` = that head + 1
+
+from technical-spec §5 "Version supplied must equal expected+1". The alternative reading — sending
+head + 1 as `expected_version` — would compare against a version that does not exist yet, so I went
+with CAS semantics. **If the endpoint expects the other convention, every policy and feed save will
+conflict**, so this is worth one line of confirmation when the route lands.
+
+Still open: what should conflict feedback name as the current head, and will the response carry it?
+Right now a 409 just reloads.
+_Blocks: nothing; a wrong guess here breaks every save._
 
 **B13. Field-level validation detail.** The envelope error carries only `code`, `message` and
 `retryable`. What safe field-level detail will policy and feed rejections return? Without it, the

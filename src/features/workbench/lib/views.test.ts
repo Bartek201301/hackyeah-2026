@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VIEW, VIEW_DESCRIPTIONS, VIEW_LABELS, WORKBENCH_VIEWS, parseView, viewHref } from "./views";
+import {
+  ADMIN_ONLY_VIEWS,
+  DEFAULT_VIEW,
+  VIEW_DESCRIPTIONS,
+  VIEW_LABELS,
+  WORKBENCH_VIEWS,
+  isAdminOnlyView,
+  parseView,
+  viewHref,
+} from "./views";
 
 describe("parseView", () => {
   it("accepts every known view", () => {
@@ -46,5 +55,18 @@ describe("view copy", () => {
       expect(VIEW_DESCRIPTIONS[view]).toBeTruthy();
       expect(VIEW_DESCRIPTIONS[view]).not.toMatch(/[ąćęłńóśźż]/i);
     }
+  });
+});
+
+describe("admin-only views", () => {
+  it("marks review and policy as admin-only and nothing else", () => {
+    expect([...ADMIN_ONLY_VIEWS].sort()).toEqual(["policy", "review"]);
+    for (const view of WORKBENCH_VIEWS) {
+      expect(isAdminOnlyView(view)).toBe(view === "review" || view === "policy");
+    }
+  });
+
+  it("never marks the default view admin-only, so chat is always reachable", () => {
+    expect(isAdminOnlyView(DEFAULT_VIEW)).toBe(false);
   });
 });

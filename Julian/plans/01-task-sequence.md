@@ -12,15 +12,15 @@ Status against merged main `15f5b88`. "Built" means the screen and its tested lo
 correctly against the live 503 seam; it does **not** mean the workflow has run end to end, because no
 gateway endpoint has landed yet.
 
-| Task | Slice             | Prerequisite                        | Status                                     |
-| ---- | ----------------- | ----------------------------------- | ------------------------------------------ |
-| W0   | Testable core     | G1 only                             | **Built**                                  |
-| W1   | Chat (T06)        | chat/run routes live                | **Built**, awaiting a live endpoint        |
-| W2   | Imports (T05)     | source/import routes + parser       | **Built**, awaiting a live endpoint        |
-| W3   | Review (T07)      | review routes + findings projection | Blocked on **B8** (contract decision)      |
-| W4   | Policy/feed (T07) | policy/feed routes                  | **Policy built**; feed form still to do    |
-| W5   | Export (T09)      | export routes + PDF service         | Blocked on **B16** (contract decision)     |
-| W6   | Browser QA        | deployed app + prepared accounts    | Blocked on deployment and a sign-in screen |
+| Task | Slice             | Prerequisite                        | Status                                        |
+| ---- | ----------------- | ----------------------------------- | --------------------------------------------- |
+| W0   | Testable core     | G1 only                             | **Built**                                     |
+| W1   | Chat (T06)        | chat/run routes live                | **Built**, awaiting a live endpoint           |
+| W2   | Imports (T05)     | source/import routes + parser       | **Built**, awaiting a live endpoint           |
+| W3   | Review (T07)      | review routes + findings projection | Blocked on **B8** (contract decision)         |
+| W4   | Policy/feed (T07) | policy/feed routes                  | **Built** (policy + feed), awaiting endpoints |
+| W5   | Export (T09)      | export routes + PDF service         | Blocked on **B16** (contract decision)        |
+| W6   | Browser QA        | deployed app + prepared accounts    | Blocked on deployment and a sign-in screen    |
 
 Views live on one route, selected by `?view=`, following the precedent the audit feature set — see
 **B2** in [02-open-questions.md](02-open-questions.md). W3 and W5 render a named "waiting on a
