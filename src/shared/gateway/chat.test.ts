@@ -142,6 +142,9 @@ function harness(over: Partial<Opts> = {}) {
       finishes.push({ callId, actuals });
       return { settled: 1, unresolved: 0, overrun: false };
     },
+    async readTrace() {
+      return null; // the chat engine never reads audit traces
+    },
     async finalizeRun(input) {
       log.push("finalizeRun");
       finals.push(input.outcome);
