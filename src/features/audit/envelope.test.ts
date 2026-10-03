@@ -191,6 +191,59 @@ describe("the gateway as it answers today", () => {
     expect(classifyTraceRead(503, seamResponse).kind).toBe("stateUnavailable");
   });
 
+  /*
+   * Captured verbatim from the real GET /api/v1/audit/{id} after T03 landed, called without a
+   * session. It replaces an assumption: the synthetic fixture written before the route existed had
+   * `decision: null`, and the real gateway sends `decision: "BLOCK"`.
+   *
+   * That difference is the most dangerous one this feature can get wrong. A screen that read the
+   * decision instead of the error would tell a signed-out reader that their request was Blocked —
+   * announcing a security refusal that never happened.
+   */
+  const realUnauthenticated = {
+    decision: "BLOCK",
+    reasons: [],
+    policy_version: null,
+    feed_version: null,
+    semantic: {
+      status: "not_required",
+      scores: { instruction_manipulation: null, sensitive_exposure: null, resource_abuse: null },
+      checkpoint_revision: null,
+      windows_planned: 0,
+      windows_completed: 0,
+      coverage_complete: false,
+      text_sha256: null,
+      coverage_ranges: [],
+    },
+    usage: {
+      generation_input_tokens: 0,
+      generation_output_tokens: 0,
+      generation_ms: 0,
+      semantic_input_tokens: 0,
+      semantic_ms: 0,
+      reserved_generation_tokens: 0,
+      unresolved_reservation: false,
+      comparison_micro_usd: 0,
+      comparison_rate_version: "none",
+    },
+    timings: { total_ms: 0, deterministic_ms: 0, semantic_ms: 0, provider_ms: 0, persistence_ms: 0 },
+    data: null,
+    error: { code: "UNAUTHENTICATED", message: "Sign in to use this operation.", retryable: false },
+    trace_id: "14a29bf7-3896-42ef-a2cf-c72b5b8f0cd5",
+  };
+
+  it("reads a real signed-out refusal as a session problem, not as a blocked operation", () => {
+    const state = classifyTraceRead(401, realUnauthenticated);
+    expect(state.kind).toBe("unauthenticated");
+    expect(state.kind).not.toBe("ok");
+    // The envelope's own decision is BLOCK; nothing in the screen state repeats it.
+    expect(JSON.stringify(state)).not.toContain("BLOCK");
+  });
+
+  it("does not turn the refusal's zeroed usage into a trace with zero consumption", () => {
+    expect(readProjections(realUnauthenticated)).toBeNull();
+  });
+
   it("never reads the envelope root as the audited trace, even when the root is all zeros", () => {
     // The seam's zeros are true for the read itself. Rendering them as an audited operation
     // would claim a measurement that no audited operation produced.
