@@ -210,15 +210,15 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 
 ### 7.3 AT16 — browser and release
 
-| ID     | Status                                                                                                                                                           |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AT16-1 | not run; needs a session per role. Login exists since T02 phase 3, so this is now a browser task                                                                 |
-| AT16-2 | feature side by construction — every label is passed explicitly. **App side fails:** `src/app/loading.tsx` renders the Polish `LoadingState` default on `/audit` |
-| AT16-3 | code half done — every interactive element now carries a focus ring; the walk itself is not run                                                                  |
-| AT16-4 | not run                                                                                                                                                          |
-| AT16-5 | by construction — every `Badge` in this feature carries text, never colour alone                                                                                 |
-| AT16-6 | by construction — an in-flight guard plus a disabled button; the network log itself is not run                                                                   |
-| AT16-7 | feature side by construction; the app-level Polish default above is the open item                                                                                |
+| ID     | Status                                                                                                                                                                                                           |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AT16-1 | not run; needs a session per role. Login exists since T02 phase 3, so this is now a browser task                                                                                                                 |
+| AT16-2 | by construction on both sides — every label here is passed explicitly, and the shared Polish defaults were removed by PR #38, so the loading boundary on `/audit` is English too. The DOM scan itself is not run |
+| AT16-3 | code half done — every interactive element now carries a focus ring; the walk itself is not run                                                                                                                  |
+| AT16-4 | not run                                                                                                                                                                                                          |
+| AT16-5 | by construction — every `Badge` in this feature carries text, never colour alone                                                                                                                                 |
+| AT16-6 | by construction — an in-flight guard plus a disabled button; the network log itself is not run                                                                                                                   |
+| AT16-7 | by construction; the app-level Polish default this row tracked is resolved                                                                                                                                       |
 
 ### 7.4 What this table says plainly
 
