@@ -83,11 +83,12 @@ export type MetricsActivityRow = {
   reasons: string[];
   usage: Usage;
 };
-/** reservations row as selected for metrics; `state` decides settled against still outstanding. */
+/** reservations row as selected for metrics; `state` decides settled against still outstanding.
+ *  `charged` = reconciled conservatively: spent at the reserved amount, actual unknown. */
 export type MetricsReservationRow = {
   unit: BudgetUnit;
   amount: number;
-  state: "reserved" | "settled" | "unresolved" | "released";
+  state: "reserved" | "settled" | "unresolved" | "released" | "charged";
 };
 /** One reporting window; `ownActorId` null means the whole organisation. */
 export type WindowQuery = {
@@ -192,6 +193,25 @@ export interface RepositoryPort {
     actor: ActorContext,
     traceId: string,
   ): Promise<{ activity: ActivityRow; events: EventRow[] } | null>;
+  /**
+   * cancel_run: own run only (NOT_FOUND otherwise). pending → cancelled with `result` stored;
+   * running → cancel_requested. `accepted` is false when the run was in any other state, which is
+   * returned unchanged. A replayed key returns the current state, accepted.
+   */
+  cancelRun(input: {
+    actor: ActorContext;
+    runId: string;
+    idempotencyKey: string;
+    requestSha256: string;
+    result: StoredResult;
+  }): Promise<{
+    kind: Run["kind"];
+    state: Run["state"];
+    stage: string;
+    policy_version: number;
+    feed_version: number;
+    accepted: boolean;
+  }>;
   /** false = the run was already terminal (settle once). */
   finalizeRun(input: {
     runId: string;

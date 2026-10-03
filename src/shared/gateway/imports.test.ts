@@ -76,6 +76,8 @@ type Opts = {
   csv: string;
   uploadSource: Record<string, unknown> | null;
   dealInOrg: boolean;
+  /** Once this log entry exists, readRun shows the owner's cancel (state cancel_requested). */
+  cancelAfter: string | null;
 };
 
 // TEST FAKE: unit tests only; the app never composes these.
@@ -93,6 +95,7 @@ function harness(over: Partial<Opts> = {}) {
     csv: MIX_01,
     uploadSource: {},
     dealInOrg: true,
+    cancelAfter: null,
     ...over,
   };
   const log: string[] = [];
@@ -146,7 +149,8 @@ function harness(over: Partial<Opts> = {}) {
       return { operation_id: OP_ID, state: "intent", replay: false, policy_version: 1, feed_version: 1 };
     },
     async readRun(_actor, id) {
-      return id === run.id ? run : null;
+      if (id !== run.id) return null;
+      return o.cancelAfter && log.includes(o.cancelAfter) ? { ...run, state: "cancel_requested" } : run;
     },
     async claimRun() {
       log.push("claimRun");
@@ -173,6 +177,7 @@ function harness(over: Partial<Opts> = {}) {
     searchPermittedExcerpts: unused,
     readPermittedExcerpts: unused,
     recordAccessDecision: unused,
+    cancelRun: unused,
     async loadDatasetBatch(actor, sourceId, batchId, limit) {
       log.push("loadDatasetBatch");
       if (!o.batch || actor.organisation_id !== ORG || sourceId !== SOURCE || batchId !== BATCH) return null;
@@ -433,6 +438,16 @@ describe("executeImport", () => {
     expect(out.body.usage.unresolved_reservation).toBe(true);
     expect(h.calls("storeQuarantine") + h.calls("finalizeImport")).toBe(0);
     expect([h.finals[0].run_state, h.finals[0].operation_state]).toEqual(["incomplete", "unknown"]);
+  });
+
+  it("a cancel before the first Laya call: 409 CANCELLED, no reservation, nothing published", async () => {
+    const h = harness({ cancelAfter: "claimRun" });
+    const out = await h.execute();
+    valid(out);
+    expect(out.status).toBe(409);
+    expect(out.body).toMatchObject({ error: { code: "CANCELLED" }, data: null });
+    expect(h.calls("reserve") + h.calls("finalizeImport")).toBe(0);
+    expect([h.finals[0].run_state, h.finals[0].operation_state]).toEqual(["cancelled", "completed"]);
   });
 
   it("without a composed detection adapter: 503 before any reservation, failed, nothing published", async () => {

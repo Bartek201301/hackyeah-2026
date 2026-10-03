@@ -231,6 +231,27 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       return { activity: row, events: events ?? [] };
     },
 
+    async cancelRun({ actor, runId, idempotencyKey, requestSha256, result }) {
+      const run = await data(
+        db.rpc("cancel_run", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_run_id: runId,
+          p_idempotency_key: idempotencyKey,
+          p_request_sha256: requestSha256,
+          p_result: result,
+        }),
+      );
+      return {
+        kind: run.kind,
+        state: run.state,
+        stage: run.stage,
+        policy_version: run.policy_version,
+        feed_version: run.feed_version,
+        accepted: run.accepted === true,
+      };
+    },
+
     async finalizeRun({ runId, leaseToken, operationId, outcome }) {
       const result = await data(
         db.rpc("finalize_run", {
