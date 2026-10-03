@@ -61,4 +61,14 @@ describe("createSupabaseRepository window queries", () => {
     expect(calls).toContainEqual(["eq", "actor_id", "me"]);
     expect(calls.filter(([name, column]) => name === "eq" && column === "actor_id")).toHaveLength(1);
   });
+
+  it("keeps the own-scope filter for any identifier, including a falsy one", async () => {
+    // Own scope is decided by the caller passing an id, not by that id being truthy: dropping the
+    // filter would widen the read to the whole organisation on data that only looked empty.
+    const { calls, repository } = recording();
+    await repository.exportActivity({ ...window, ownActorId: "" });
+    await repository.readMetricsRows({ ...window, ownActorId: "" });
+    expect(calls).toContainEqual(["eq", "actor_id", ""]);
+    expect(calls).toContainEqual(["eq", "operations.actor_id", ""]);
+  });
 });

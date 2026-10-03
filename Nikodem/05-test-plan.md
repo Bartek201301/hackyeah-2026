@@ -177,12 +177,12 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 
 | ID      | Where it is asserted                                                                                                                         | Status                                                                 |
 | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| AT10-1  | —                                                                                                                                            | not run; needs T03 routes and two real sessions                        |
-| AT10-2  | `scope.test.ts` — refusal state, and figures beside a refusal ignored                                                                        | unit; the real-403 half needs T03                                      |
+| AT10-1  | —                                                                                                                                            | not run; the routes exist now, so this needs only two real sessions    |
+| AT10-2  | `scope.test.ts` — refusal state, and figures beside a refusal ignored; `metrics.test.ts` asserts the server refuses before any read          | unit on both sides; the real 403 needs a non-admin session             |
 | AT10-3  | `safety.test.ts` §"the list is never an aggregate"                                                                                           | unit                                                                   |
 | AT10-4  | `dom-safety.test.tsx` renders the components from a hostile payload and scans the tree; `safety.test.ts` guards the models                   | **asserted in the DOM**                                                |
 | AT10-5  | `dom-safety.test.tsx` — the decision, both reason codes and the no-breach sentence are present, the finding renders four fields and no fifth | **asserted in the DOM**                                                |
-| AT10-6  | `export.test.ts` covers the refusal and row-cap handling                                                                                     | the byte assertion is not run; needs the route                         |
+| AT10-6  | `export.test.ts` covers the refusal and row-cap handling; `auditExport.test.ts` asserts the bytes of a hostile row                           | neutralisation asserted server-side; a real download is not run        |
 | AT10-7  | `envelope.test.ts` incomplete + unknown usage; `trace.test.ts` unknown group                                                                 | unit                                                                   |
 | AT10-8  | `envelope.test.ts` event cap; `activity.test.ts` page cap and cursor                                                                         | unit for the flags; **the control and its press asserted in the DOM**  |
 | AT10-9  | `envelope.test.ts` and `metrics.test.ts` unavailable states                                                                                  | unit                                                                   |
@@ -224,12 +224,12 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 
 **Updated after the DOM runner (PR #43) and the first live record.** AT10-4 and AT10-5 are no longer
 "model level": `dom-safety.test.tsx` renders the components and scans the tree. AT15-8 is asserted
-against a real stored record in `live-trace.test.ts`. What remains needs a browser a human drives, or
-the two endpoints that are still the 503 seam.
+against a real stored record in `live-trace.test.ts`. What remains needs a browser a human drives.
 
-Every assertion that can be made without a browser or without live data is made. What remains is one
-runner and one set of routes, not a backlog of unwritten tests: **AT10-1, AT10-6, AT10-12, AT16-1,
-AT16-4 and AT16-6 cannot be satisfied by anything this feature can add.** P5 narrowed AT10-6 and AT10-12 to
-their observable halves: the handling is asserted, the bytes and the network log are not. AT10-4 and AT10-5 — the two
-security assertions a judge is most likely to care about — are covered at the layer below the DOM and
-will stay "model level" until a DOM runner exists.
+Every assertion that can be made without a browser is made. Two of the three blockers this section used
+to name are gone: the DOM runner arrived with happy-dom, so AT10-4 and AT10-5 are asserted against a
+rendered tree rather than at model level, and the three reads were delegated to me and built, so no gate
+is waiting on the 503 seam any more. What is left is **AT10-1, AT10-12, AT16-1, AT16-4 and AT16-6** — a
+second session, a real network log, a role other than admin, two viewports and a keyboard walk. None of
+them is a test this feature can add; each is an observation someone has to make. AT10-6 now has its
+server half asserted on the bytes themselves, and only the browser download is unobserved.
