@@ -13,5 +13,5 @@ export function LoadingState({ label = "Loading…" }: { label?: string }) {
 
 /** Grey placeholder rectangle where content is loading. Set its size with classes: <Skeleton className="h-4 w-40" /> */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-control bg-border", className)} />;
+  return <div className={cn("animate-pulse rounded-control bg-surface-muted", className)} />;
 }
