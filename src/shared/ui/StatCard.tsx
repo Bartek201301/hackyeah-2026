@@ -28,14 +28,16 @@ export function StatCard({
   highlight = false,
 }: StatCardProps) {
   return (
-    <Card variant={highlight ? "highlight" : "default"} className="flex flex-col gap-6">
+    <Card variant={highlight ? "highlight" : "default"} className="flex flex-col gap-5">
       <div className="flex items-start justify-between gap-3">
         <IconTile icon={icon} tone={highlight ? "onBrand" : "neutral"} />
         {change && (
           <span
             className={cn(
-              "rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums",
-              trend === "down" ? "bg-danger text-on-brand" : "bg-success-soft text-success",
+              "rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums",
+              trend === "down"
+                ? "border-danger bg-danger text-on-brand"
+                : "border-success/25 bg-success-soft text-success",
             )}
           >
             {change}
@@ -43,16 +45,16 @@ export function StatCard({
         )}
       </div>
       <div className="flex flex-col gap-1">
-        <span className={cn("text-sm font-medium", highlight ? "text-on-brand/80" : "text-muted")}>
+        <span className={cn("text-sm font-medium", highlight ? "text-on-brand/85" : "text-muted")}>
           {label}
         </span>
         <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-          <span className="text-3xl font-bold tracking-tight tabular-nums">{value}</span>
+          <span className="text-2xl font-semibold tracking-tight tabular-nums">{value}</span>
           {hint && (
             <span
               className={cn(
                 "max-w-32 pb-1 text-xs leading-tight",
-                highlight ? "text-on-brand/70" : "text-muted",
+                highlight ? "text-on-brand/85" : "text-muted",
               )}
             >
               {hint}

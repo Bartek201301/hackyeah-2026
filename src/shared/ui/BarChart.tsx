@@ -16,7 +16,7 @@ type BarChartProps = {
   height?: number;
 };
 
-/** Simple library-free bar chart: blue bars + optional grey ones for comparison. Tooltip on hover. */
+/** Simple library-free bar chart: dark bars + optional grey ones for comparison. Tooltip on hover. */
 export function BarChart({
   data,
   valueLabel = "Value",
@@ -60,11 +60,11 @@ export function BarChart({
               className="pointer-events-none absolute bottom-full z-10 mb-2 hidden flex-col gap-1 whitespace-nowrap rounded-control bg-ink px-3 py-2 text-xs text-on-ink shadow-card group-hover:flex"
             >
               <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-brand" aria-hidden /> {fmt(d.value)} {valueLabel}
+                <span className="size-2 rounded-full bg-on-ink" aria-hidden /> {fmt(d.value)} {valueLabel}
               </span>
               {hasCompare && (
                 <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-on-ink" aria-hidden /> {fmt(d.compare ?? 0)}{" "}
+                  <span className="size-2 rounded-full bg-muted" aria-hidden /> {fmt(d.compare ?? 0)}{" "}
                   {compareLabel}
                 </span>
               )}
