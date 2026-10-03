@@ -15,7 +15,7 @@ Trzech builderów, jeden integrator; podział funkcji pozostaje do uzgodnienia.
 - Opis pomysłu i mapa wymagań: [idea](docs/product/idea.md).
 - Przepływ, niezmienniki i otwarte granice: [architektura](docs/product/architecture.md).
 - Konfiguracja usług i potwierdzenia zespołu: [setup](docs/team/setup.md).
-- Lokalne narzędzia agentów: [Agent Reach](docs/team/agent-reach.md).
+- Jedna konfiguracja narzędzi zespołu: [CodeGraph, Agent Reach i Ponytail](docs/team/agent-tools.md).
 - Uzasadnienie: [decyzje](docs/team/decisions.md).
 - Wspólne skille AI: [instrukcja ECC](docs/ai/ecc/README.md) — przegląd bazy,
   bezpieczeństwa i demo w przeglądarce. Codex i Claude Code dostają je razem z repo;

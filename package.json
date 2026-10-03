@@ -11,6 +11,8 @@
     "check:rules": "node scripts/check-rules.mjs",
     "check": "npm run check:fast && npm run build",
     "doctor": "node scripts/doctor.mjs",
+    "setup:agent-tools": "bash scripts/setup-agent-tools.sh",
+    "codegraph:status": "codegraph status",
     "format": "prettier --write",
     "new-feature": "node scripts/new-feature.mjs",
     "format:check": "prettier --check .",
@@ -26,6 +28,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@colbymchenry/codegraph": "1.6.2",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "20.19.43",
     "@types/react": "19.3.0",

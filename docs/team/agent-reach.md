@@ -3,6 +3,7 @@
 Agent Reach to narzędzie dla lokalnych asystentów, a nie zależność aplikacji Next.js.
 Repozytorium zawiera powtarzalną komendę instalacji; `git pull` sam nie instaluje
 programów na cudzym komputerze. Każda osoba uruchamia instalację u siebie.
+Wspólna konfiguracja trzech narzędzi jest w [instrukcji zespołu](agent-tools.md).
 
 ## Instalacja
 
