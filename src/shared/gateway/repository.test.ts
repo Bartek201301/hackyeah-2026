@@ -1,10 +1,49 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
+import policyJson from "../../../docs/contracts/policy.example.json";
 import { createSupabaseRepository } from "./repository";
 
 // TEST FAKE: only rpc() is used by these paths; the real client is exercised by test:db and the routes.
 const fakeRpc = (rpc: () => Promise<unknown>) =>
   createSupabaseRepository({ rpc } as unknown as SupabaseClient);
+
+it("policy mutation sends trusted identity and validated hashes to the atomic RPC", async () => {
+  const calls: unknown[][] = [];
+  const result = { trace_id: "t", policy_version: 2, feed_version: 1 };
+  const repository = createSupabaseRepository({
+    rpc: async (...args: unknown[]) => (calls.push(args), { data: result, error: null }),
+  } as unknown as SupabaseClient);
+  const input = {
+    actor: {
+      actor_id: "actor",
+      organisation_id: "org",
+      role: "admin",
+      deal_ids: [],
+      audience: "actor",
+      scopes: [],
+    },
+    idempotencyKey: "key",
+    expectedVersion: 1,
+    policy: { ...policyJson, version: 2 },
+    requestSha256: "request",
+    documentSha256: "document",
+  } as Parameters<typeof repository.updatePolicy>[0];
+  expect(await repository.updatePolicy(input)).toEqual(result);
+  expect(calls).toEqual([
+    [
+      "update_policy",
+      {
+        p_organisation_id: "org",
+        p_actor_id: "actor",
+        p_idempotency_key: "key",
+        p_expected_version: 1,
+        p_document: input.policy,
+        p_request_sha256: "request",
+        p_document_sha256: "document",
+      },
+    ],
+  ]);
+});
 const finalize = (repository: ReturnType<typeof createSupabaseRepository>) =>
   repository.finalizeRun({
     runId: "r",

@@ -119,6 +119,9 @@ function harness(over: Partial<Opts> = {}) {
   };
 
   const repository: RepositoryPort = {
+    async updatePolicy() {
+      throw new Error("not used");
+    },
     async loadActivePolicyAndFeed() {
       log.push("loadActivePolicyAndFeed");
       return {
