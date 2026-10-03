@@ -7,6 +7,7 @@ import {
   WORKBENCH_VIEWS,
   isAdminOnlyView,
   parseView,
+  resolveView,
   shouldShowAdminViews,
   viewHref,
 } from "./views";
@@ -82,5 +83,43 @@ describe("shouldShowAdminViews", () => {
 
   it("shows everything when the role was not passed, rather than hiding controls", () => {
     expect(shouldShowAdminViews(undefined)).toBe(true);
+  });
+});
+
+describe("resolveView", () => {
+  it("sends a non-admin asking for an admin-only view back to the default view", () => {
+    for (const role of ["analyst", "employee", "external"] as const) {
+      for (const view of ADMIN_ONLY_VIEWS) {
+        expect(resolveView(view, role)).toBe(DEFAULT_VIEW);
+      }
+    }
+  });
+
+  it("leaves every non-admin view exactly as requested", () => {
+    for (const role of ["analyst", "employee", "external", "admin"] as const) {
+      for (const view of WORKBENCH_VIEWS.filter((v) => !isAdminOnlyView(v))) {
+        expect(resolveView(view, role)).toBe(view);
+      }
+    }
+  });
+
+  it("gives an administrator the admin-only view they asked for", () => {
+    for (const view of ADMIN_ONLY_VIEWS) {
+      expect(resolveView(view, "admin")).toBe(view);
+    }
+  });
+
+  it("keeps every view when the role was not passed", () => {
+    // Same rule as shouldShowAdminViews: a missing prop must not strip an administrator's controls.
+    for (const view of WORKBENCH_VIEWS) {
+      expect(resolveView(view, undefined)).toBe(view);
+    }
+  });
+
+  it("is presentation only — it never stands in for the gateway check", () => {
+    // Documented as a guard against re-reading this as access control: the admin endpoints answer
+    // 403 to these roles regardless of which view the shell happens to render.
+    expect(resolveView("policy", "analyst")).toBe(DEFAULT_VIEW);
+    expect(isAdminOnlyView(DEFAULT_VIEW)).toBe(false);
   });
 });

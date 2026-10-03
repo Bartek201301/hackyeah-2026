@@ -7,7 +7,7 @@ import { FeedPanel } from "./FeedPanel";
 import { PolicyPanel } from "./PolicyPanel";
 import { SourcesPanel } from "./SourcesPanel";
 import { WorkbenchNav } from "./WorkbenchNav";
-import { VIEW_DESCRIPTIONS, VIEW_LABELS, parseView, shouldShowAdminViews } from "../lib/views";
+import { VIEW_DESCRIPTIONS, VIEW_LABELS, parseView, resolveView, shouldShowAdminViews } from "../lib/views";
 
 /*
  * Workbench shell. Server component: only the panels are interactive, so the client bundle covers
@@ -36,9 +36,9 @@ type WorkbenchPageProps = {
 
 export async function WorkbenchPage({ searchParams, role, dealIds }: WorkbenchPageProps) {
   const params = (await searchParams) ?? {};
-  const view = parseView(params.view);
-
   const isAdmin = shouldShowAdminViews(role);
+  // A non-admin who types an admin-only view lands on Ask, rather than on a screen that refuses itself.
+  const view = resolveView(parseView(params.view), role);
 
   return (
     <>
