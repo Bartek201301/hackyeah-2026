@@ -13,6 +13,8 @@ Zasady: AGENTS.md. Zadanie i przypisania: docs/product/requirements.md. Nie zak�
    (`sb_publishable_...`). Secret/service_role i legacy JWT nie są akceptowane przez ten projekt.
 6. `npm run doctor`, następnie `npm run dev`. Otwórz http://localhost:3000/health i `/ui`.
 7. Potwierdź instalację, check, działanie strony i **HEALTH: OK**. Sam start serwera nie wystarczy.
+8. Jeśli używasz Agent Reach, zainstaluj go lokalnie według [instrukcji](agent-reach.md)
+   i sprawdź własny wynik `agent-reach doctor`.
 
 | Osoba / rola (przypisanie po wyborze) | npm ci + check | dev + /ui | doctor + /health |
 | ------------------------------------- | -------------- | --------- | ---------------- |
