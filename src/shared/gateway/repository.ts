@@ -7,6 +7,7 @@ import { createSupabaseAdmin } from "@/shared/supabase/admin";
 import { GatewayError, STATUS } from "./envelope";
 import type {
   ActivityRow,
+  DatasetBatch,
   EventRow,
   MetricsActivityRow,
   MetricsReservationRow,
@@ -230,6 +231,65 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit),
       );
       return rows ?? [];
+    },
+
+    // Organisation and kind filter in the query; the batch is read only for a source that passed both.
+    async loadDatasetBatch(actor, sourceId, batchId, limit) {
+      const source = await data<DatasetBatch["source"] | null>(
+        db
+          .from("sources")
+          .select("id, classification, audience_evidence")
+          .eq("id", sourceId)
+          .eq("organisation_id", actor.organisation_id)
+          .eq("kind", "dataset")
+          .maybeSingle(),
+      );
+      if (!source) return null;
+      const rows = await data<DatasetBatch["rows"] | null>(
+        db
+          .from("dataset_rows")
+          .select("row_number, payload")
+          .eq("organisation_id", actor.organisation_id)
+          .eq("source_id", source.id)
+          .eq("batch_id", batchId)
+          .order("row_number")
+          .limit(limit),
+      );
+      return rows?.length ? { source, rows } : null;
+    },
+
+    async hasPublishedDocument(organisationId, sourceId) {
+      const rows = await data<{ id: string }[] | null>(
+        db
+          .from("documents")
+          .select("id")
+          .eq("organisation_id", organisationId)
+          .eq("source_id", sourceId)
+          .in("status", ["approved", "partial"])
+          .limit(1),
+      );
+      return (rows?.length ?? 0) > 0;
+    },
+
+    async storeQuarantine(key, bytes) {
+      await data(
+        db.storage.from("quarantine").upload(key, bytes, { contentType: "application/json", upsert: false }),
+      );
+    },
+
+    async finalizeImport({ runId, leaseToken, operationId, outcome, publication }) {
+      const result = await data(
+        db.rpc("finalize_import", {
+          p_run_id: runId,
+          p_lease_token: leaseToken,
+          p_operation_id: operationId,
+          p_outcome: outcome,
+          p_document: publication.document,
+          p_excerpts: publication.excerpts,
+          p_reviews: publication.reviews,
+        }),
+      );
+      return result.finalized === true;
     },
 
     async listActivity({ organisationId, actorId, after, limit }) {
