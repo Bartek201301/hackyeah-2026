@@ -1,6 +1,6 @@
 # Public summary and PDF download — research brief
 
-**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T09/G3. **Baseline inspected:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)); G1's typed client and export service are absent. No PDF or live export was generated during research.
+**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T09/G3. **Initial baseline:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)). **G1 update:** merged main `f04054b` ([PR #7](https://github.com/Bartek201301/hackyeah-2026/pull/7)) supplies the [workbench entry point](../../../src/features/workbench/index.ts) and generic [typed client](../../../src/shared/contracts/client.ts), while export operations remain 503 unavailable. No PDF or live export was generated during research.
 
 ## User outcome and existing contract
 

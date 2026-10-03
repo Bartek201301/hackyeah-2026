@@ -1,6 +1,6 @@
 # Minimal controlled chat — research brief
 
-**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T06/G2; no implementation or live behavior is claimed. **Baseline inspected:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)). G1 has not merged: main has only `src/features/example`, with no workbench entry point or typed gateway client. Recheck the G1 handoff before using any client symbol.
+**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T06/G2; no live behavior is claimed. **Initial baseline:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)). **G1 update:** merged main `f04054b` ([PR #7](https://github.com/Bartek201301/hackyeah-2026/pull/7)) now has the [workbench entry point](../../../src/features/workbench/index.ts) and browser-safe [typed client](../../../src/shared/contracts/client.ts); every `/api/v1/*` operation still returns an explicit 503 unavailable response. Recheck later endpoint handoffs before claiming real chat behavior.
 
 ## User outcome and existing contract
 
@@ -27,7 +27,7 @@ Future tests should inspect S01 analyst citations and the FY2025 conflict, S02 e
 
 ## Contract questions and owners
 
-- **Bartosz:** Which G1 typed-client calls cover create/execute/read/cancel and carry idempotency keys? How does a client recover a created run when the create response is lost, without starting a duplicate operation? The UI should use the published client, not add a second transport contract.
+- **Bartosz:** G1 exports a generic typed `createGatewayClient` and `newIdempotencyKey`, but no operation-specific chat helpers. Should workbench call the typed paths directly, or will Bartosz add helpers? How does a client recover a created run when the create response is lost, without starting a duplicate operation?
 - **Bartosz:** Which trusted response supplies allowed deal choices and safe current-user context to the UI? `deal_id` is optional on chat requests, but browser-selected roles and memberships cannot grant access.
 - **Bartosz + Nikodem:** What is the stable route for an authorized trace link, and does its URL use the response `trace_id` or a run ID? The two identifiers must not be assumed equal.
 

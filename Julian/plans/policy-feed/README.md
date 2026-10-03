@@ -1,6 +1,6 @@
 # Policy and threat-feed screens — research brief
 
-**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T07/G3. **Baseline inspected:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)); G1's client and administration routes are not implemented in the inspected tree. No active policy/feed mutation was performed.
+**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T07/G3. **Initial baseline:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)). **G1 update:** merged main `f04054b` ([PR #7](https://github.com/Bartek201301/hackyeah-2026/pull/7)) supplies the [workbench entry point](../../../src/features/workbench/index.ts) and generic [typed client](../../../src/shared/contracts/client.ts), while policy/feed operations remain 503 unavailable. No active policy/feed mutation was performed.
 
 ## User outcome and existing contract
 
@@ -27,7 +27,7 @@ Future evidence maps to S10/AT09/AT16: stale CAS rejection; invalid shape/regex/
 
 ## Contract questions and owners
 
-- **Bartosz:** What G1 typed-client operations and safe administrator errors will be exposed for policy/feed read and mutation? Should policy/feed forms use an existing complete document from GET as the edit baseline, or a specific typed projection?
+- **Bartosz:** G1's generic client types the policy/feed paths, but live reads/mutations are unavailable. What safe administrator errors will the real endpoints expose? Should forms use the complete document from GET as the edit baseline, or a specific typed projection?
 - **Bartosz:** The schema includes policy `version` and feed `version`, while requests also include `expected_version`. Confirm which version fields are read-only in the UI and how conflict feedback names the current head.
 - **Bartosz:** What safe field-level validation detail will the API return? OpenAPI's generic error has code/message/retryable only; precise input errors may need a coordinated contract change or a single accessible summary.
 - **Bartosz + Nikodem:** Which authorized trace view demonstrates that the next operation used the new policy/feed version? The workbench should link to safe evidence rather than infer enforcement from a success toast.

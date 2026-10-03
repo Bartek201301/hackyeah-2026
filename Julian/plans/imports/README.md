@@ -1,6 +1,6 @@
 # Sources and imports — research brief
 
-**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T05/G3. **Baseline inspected:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)); no G1 typed client or workbench feature exists yet. This is a contract and usability study, not proof of an ingestion path.
+**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T05/G3. **Initial baseline:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)). **G1 update:** merged main `f04054b` ([PR #7](https://github.com/Bartek201301/hackyeah-2026/pull/7)) now has the [workbench entry point](../../../src/features/workbench/index.ts) and generic [typed client](../../../src/shared/contracts/client.ts). All import/source operations still return 503 unavailable; this is a contract and usability study, not proof of an ingestion path.
 
 ## User outcome and existing contract
 
@@ -27,7 +27,7 @@ Future evidence maps to AT03/S05 and AT16: accepted CSV and text PDF; wrong head
 
 ## Contract questions and owners
 
-- **Bartosz:** What typed-client operations and safe policy projection will G1 expose for source registration, allowlisted batch selection, upload, run execution/read and import listing? `batch_id` is required by the connector request but not present in `SourceSummary`; its authorized selection source is not established by the UI contract.
+- **Bartosz:** G1's generic typed client covers the OpenAPI paths; will upload need a multipart helper or direct typed call, and what safe policy projection will supply active limits? `batch_id` is required by the connector request but not present in `SourceSummary`; its authorized selection source is not established by the UI contract.
 - **Bartosz:** How is an import run linked to an `ImportSummary` and review reference? `ImportSummary` has `run_id`, but a newly created run response does not itself specify the eventual import-list entry. Clarify the safe outcome path and retry behavior.
 - **Bartosz + Maciej:** Which parser/result reason categories can be shown to a requester without revealing held content? Maciej owns parsing and findings; Bartosz owns safe projection.
 - **Bartosz:** Does the upload UI need a trusted deal-choice projection and required classification guidance per role? The browser must not invent membership or allow an analyst to declassify.

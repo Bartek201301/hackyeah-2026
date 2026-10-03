@@ -1,6 +1,6 @@
 # Administrator review — research brief
 
-**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T07/G3. **Baseline inspected:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)); G1 and review endpoints are not implemented in the inspected tree. The findings below describe accepted behavior and unresolved handoffs, not a working screen.
+**Researched:** 2026-10-03. **Scope:** Julian's workbench UI research for T07/G3. **Initial baseline:** local `40ac062`, merged main `8c1484b` ([G0 PR #5](https://github.com/Bartek201301/hackyeah-2026/pull/5)). **G1 update:** merged main `f04054b` ([PR #7](https://github.com/Bartek201301/hackyeah-2026/pull/7)) supplies the [workbench entry point](../../../src/features/workbench/index.ts) and generic [typed client](../../../src/shared/contracts/client.ts), while review endpoints remain 503 unavailable. The findings describe accepted behavior and unresolved handoffs, not a working screen.
 
 ## User outcome and existing contract
 
