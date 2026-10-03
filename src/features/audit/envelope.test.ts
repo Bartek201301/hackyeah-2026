@@ -244,6 +244,68 @@ describe("the gateway as it answers today", () => {
     expect(readProjections(realUnauthenticated)).toBeNull();
   });
 
+  /*
+   * Captured from the same live route, called with a session and a malformed identifier. Two things
+   * it settles.
+   *
+   * First, INVALID_INPUT really is reachable on an audit read, but only once the caller is
+   * authenticated: without a session the same request answers 401, because identity is checked
+   * before the shape of the identifier.
+   *
+   * Second, the gateway is not consistent about `decision` on a refusal — this one carries null
+   * where the 401 carried "BLOCK". A screen that read the decision would therefore be wrong in two
+   * different directions on two refusals from the same endpoint. Reading the error first is not a
+   * stylistic preference.
+   */
+  const realInvalidInput = {
+    decision: null,
+    reasons: [],
+    policy_version: null,
+    feed_version: null,
+    semantic: {
+      status: "not_required",
+      scores: { instruction_manipulation: null, sensitive_exposure: null, resource_abuse: null },
+      checkpoint_revision: null,
+      windows_planned: 0,
+      windows_completed: 0,
+      coverage_complete: false,
+      text_sha256: null,
+      coverage_ranges: [],
+    },
+    usage: {
+      generation_input_tokens: 0,
+      generation_output_tokens: 0,
+      generation_ms: 0,
+      semantic_input_tokens: 0,
+      semantic_ms: 0,
+      reserved_generation_tokens: 0,
+      unresolved_reservation: false,
+      comparison_micro_usd: 0,
+      comparison_rate_version: "none",
+    },
+    timings: { total_ms: 0, deterministic_ms: 0, semantic_ms: 0, provider_ms: 0, persistence_ms: 0 },
+    data: null,
+    error: {
+      code: "INVALID_INPUT",
+      message: "The request is not valid for this operation.",
+      retryable: false,
+    },
+    trace_id: "17d18dad-3d38-4312-9e99-7624af2f58d1",
+  };
+
+  it("reads a real malformed-identifier refusal without inventing a trace", () => {
+    expect(classifyTraceRead(400, realInvalidInput).kind).toBe("invalidInput");
+    expect(readProjections(realInvalidInput)).toBeNull();
+  });
+
+  it("reaches opposite decisions on two real refusals, and ignores both", () => {
+    // 401 arrived with decision "BLOCK", 400 with null. Neither reaches a screen state.
+    expect(realUnauthenticated.decision).toBe("BLOCK");
+    expect(realInvalidInput.decision).toBeNull();
+    expect(classifyTraceRead(401, realUnauthenticated).kind).toBe("unauthenticated");
+    expect(classifyTraceRead(400, realInvalidInput).kind).toBe("invalidInput");
+  });
+
   it("never reads the envelope root as the audited trace, even when the root is all zeros", () => {
     // The seam's zeros are true for the read itself. Rendering them as an audited operation
     // would claim a measurement that no audited operation produced.
