@@ -21,7 +21,7 @@ export function Notice({ tone = "info", children }: { tone?: NoticeTone; childre
   return (
     <div
       role={tone === "danger" ? "alert" : "status"}
-      className={cn("flex items-start gap-2 rounded-control border px-3 py-2 text-sm", styles[tone])}
+      className={cn("flex items-start gap-2 rounded-control border px-4 py-3 text-sm", styles[tone])}
     >
       {icons[tone]}
       <div>{children}</div>
