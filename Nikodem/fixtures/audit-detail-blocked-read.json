@@ -1,0 +1,142 @@
+{
+  "trace_id": "00000000-0000-4000-8000-000000000393",
+  "decision": "ALLOW",
+  "reasons": [],
+  "policy_version": 1,
+  "feed_version": 1,
+  "semantic": {
+    "status": "not_required",
+    "scores": {
+      "instruction_manipulation": null,
+      "sensitive_exposure": null,
+      "resource_abuse": null
+    },
+    "checkpoint_revision": null,
+    "windows_planned": 0,
+    "windows_completed": 0,
+    "coverage_complete": false,
+    "text_sha256": null,
+    "coverage_ranges": []
+  },
+  "usage": {
+    "generation_input_tokens": 0,
+    "generation_output_tokens": 0,
+    "generation_ms": 0,
+    "semantic_input_tokens": 0,
+    "semantic_ms": 0,
+    "reserved_generation_tokens": 0,
+    "unresolved_reservation": false,
+    "comparison_micro_usd": 0,
+    "comparison_rate_version": "illustrative-v1"
+  },
+  "timings": {
+    "total_ms": 22,
+    "deterministic_ms": 3,
+    "semantic_ms": 0,
+    "provider_ms": 0,
+    "persistence_ms": 17
+  },
+  "data": {
+    "items": [
+      {
+        "trace_id": "00000000-0000-4000-8000-000000000312",
+        "actor_id": "00000000-0000-4000-8000-000000000401",
+        "operation": "excerpt_read",
+        "created_at": "2026-10-03T08:31:44Z",
+        "decision": "BLOCK",
+        "reasons": ["ACCESS_DENIED"],
+        "state": "denied",
+        "policy_version": 1,
+        "feed_version": 1,
+        "usage": {
+          "generation_input_tokens": 0,
+          "generation_output_tokens": 0,
+          "generation_ms": 0,
+          "semantic_input_tokens": 0,
+          "semantic_ms": 0,
+          "reserved_generation_tokens": 0,
+          "unresolved_reservation": false,
+          "comparison_micro_usd": 0,
+          "comparison_rate_version": "illustrative-v1"
+        },
+        "events": [
+          {
+            "stage": "intent",
+            "event_type": "intent",
+            "created_at": "2026-10-03T08:31:44Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [],
+            "semantic": {
+              "status": "not_required",
+              "scores": {
+                "instruction_manipulation": null,
+                "sensitive_exposure": null,
+                "resource_abuse": null
+              },
+              "checkpoint_revision": null,
+              "windows_planned": 0,
+              "windows_completed": 0,
+              "coverage_complete": false,
+              "text_sha256": null,
+              "coverage_ranges": []
+            },
+            "usage": {
+              "generation_input_tokens": 0,
+              "generation_output_tokens": 0,
+              "generation_ms": 0,
+              "semantic_input_tokens": 0,
+              "semantic_ms": 0,
+              "reserved_generation_tokens": 0,
+              "unresolved_reservation": false,
+              "comparison_micro_usd": 0,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          },
+          {
+            "stage": "access_check",
+            "event_type": "decision",
+            "created_at": "2026-10-03T08:31:44Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [
+              {
+                "code": "DEAL_MEMBERSHIP_ABSENT",
+                "category": "access",
+                "severity": "block",
+                "stage": "access_check",
+                "locator": null
+              }
+            ],
+            "semantic": {
+              "status": "not_required",
+              "scores": {
+                "instruction_manipulation": null,
+                "sensitive_exposure": null,
+                "resource_abuse": null
+              },
+              "checkpoint_revision": null,
+              "windows_planned": 0,
+              "windows_completed": 0,
+              "coverage_complete": false,
+              "text_sha256": null,
+              "coverage_ranges": []
+            },
+            "usage": {
+              "generation_input_tokens": 0,
+              "generation_output_tokens": 0,
+              "generation_ms": 0,
+              "semantic_input_tokens": 0,
+              "semantic_ms": 0,
+              "reserved_generation_tokens": 0,
+              "unresolved_reservation": false,
+              "comparison_micro_usd": 0,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "error": null
+}

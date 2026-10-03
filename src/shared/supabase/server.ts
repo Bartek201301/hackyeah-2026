@@ -10,8 +10,8 @@ import { getSupabaseEnv } from "@/shared/env";
  * gdzie się da. Import w komponencie z "use client" zakończy build błędem.
  */
 export async function createSupabaseServer() {
-  const { url, key } = getSupabaseEnv();
   const cookieStore = await cookies();
+  const { url, key } = getSupabaseEnv();
 
   return createServerClient(url, key, {
     cookies: {

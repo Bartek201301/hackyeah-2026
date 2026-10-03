@@ -4,7 +4,7 @@ Scope: T00 documentation, contracts, fixtures, task instructions and standalone 
 
 ## Results
 
-- `node scripts/validate-docs.mjs`: passed. Ten schema examples, 24 public operations, local Markdown targets, all 20 requirements mapped to tasks/tests, four fixture roles, 24 frozen semantic cases and six slides checked. JSON Schema assertions use the existing locked AJV 6 dependency with a guarded draft-07/2020-12 compatible subset; no full OpenAPI conformance certification claimed.
+- `node scripts/validate-docs.mjs`: passed. Ten schema examples, 24 public operations, local Markdown targets, all 20 requirements mapped to tasks/tests, four fixture roles, 24 frozen semantic cases and six slides checked. JSON Schema assertions use the existing locked AJV 6 dependency with a guarded draft-07/2020-12 compatible subset; no full OpenAPI conformance certification claimed. Since G1 the script uses the direct AJV 8 dependency in draft-07 mode, because the direct dependency now shadows ESLint's AJV 6.
 - Manual contract review: checked policy/default authority, fail-closed behavior, classification versus status, trusted role/deal scope, exact-version review, coverage/timeout accounting, atomic reservations, raw-data bypass prevention, public export and audit privacy. Runtime enforcement remains future work.
 - Codex/Claude entry review: concise shared AGENTS; CLAUDE imports it; named task and specification links; local review skill output language aligned to English.
 - Historical proposals archived without deletion. Original Laya report retained as evidence. Legacy idea/technology overview replaced by navigation pages; historical research labelled non-authoritative. Archive relative links intentionally retain their original context.
@@ -24,6 +24,6 @@ Touch-swipe handler and reduced-motion CSS are present and source-reviewed; phys
 
 ## Remaining gates
 
-Runtime application, real database/RLS, live Laya/Ollama, prepared accounts, MCP, generated PDF inspection and production walkthrough are T01–T12 work, not performed by documentation preparation. Repository full-check/build gates and peer review remain unresolved for this handoff until evidence says otherwise. The PR must show those limitations explicitly.
+Runtime application, real database/RLS, live Laya/Ollama, prepared accounts, MCP, generated PDF inspection and production walkthrough are T01–T12 work, not performed by documentation preparation. Repository full-check/build gate and peer merge are resolved: CI `team-check` was green on `40ac062` and `8c1484b`, and G0 closure is recorded in issue #6. Peer review had no formal Approve.
 
 T00 branch creation was 13:38:17 UTC. Verification was performed around 14:00 UTC; preparation consumed at least about 22 minutes, plus earlier research/planning. Deduct actual elapsed time at task assignment from the original 19-hour allowance. Do not restart the deadline.
