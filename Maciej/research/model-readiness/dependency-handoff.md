@@ -2,7 +2,7 @@
 
 Researched 3 October 2026. T01/T04; R01/R19. Outcome: a small reproducible model/parser environment with clear ownership. Only Bartosz commits dependency manifests, locks, environment examples and launch wrappers. No dependencies were installed or changed by this research.
 
-## Baseline and exact candidates
+## Baseline, candidates and compatibility constraints
 
 Merged main `8c1484b` retains the starter dependency set. Unmerged G1 `0773c59` proposes AJV 8.20.0, ajv-formats 3.0.1, openapi-fetch 0.17.0, openapi-typescript 7.13.0 and Vitest 4.1.11. Its manifest does not yet include csv-parse, pdfjs-dist or a Python lock. Consume the eventual merged runner rather than introducing a competing test stack because older task text mentioned tsx.
 
@@ -15,7 +15,7 @@ The following candidates were read from official package metadata on the researc
 | torch            | 2.14.1                                         | [Metadata](https://pypi.org/pypi/torch/2.14.1/json); matches the reported M4 experiment, not a verified M5 result.                                                                                                    |
 | transformers     | 5.18.0                                         | [Metadata](https://pypi.org/pypi/transformers/5.18.0/json); matches the report. Requires tokenizers >=0.23.1,<0.24, hub >=1.31,<3 and safetensors >=0.8.                                                              |
 | tokenizers       | 0.23.2                                         | [Metadata](https://pypi.org/pypi/tokenizers/0.23.2/json); satisfies the stated transformers range. Verify offsets with the actual checkpoint.                                                                         |
-| huggingface-hub  | 2.1.1                                          | [Metadata](https://pypi.org/pypi/huggingface-hub/2.1.1/json); permitted by transformers metadata. Its HTTP dependency differs from bridge HTTPX; resolve the complete graph, do not assume shared transport behavior. |
+| huggingface-hub  | `>=1.31,<2` until the full graph is resolved    | `transformers==5.18.0` permits this range, but `tokenizers==0.23.2` requires `<2.0`; the former `2.1.1` candidate is incompatible. Let the resolver select an exact version in the intersection, then lock and smoke-test it. [Tokenizers metadata](https://pypi.org/pypi/tokenizers/0.23.2/json), [Transformers metadata](https://pypi.org/pypi/transformers/5.18.0/json). |
 | safetensors      | 0.8.0                                          | [Metadata](https://pypi.org/pypi/safetensors/0.8.0/json); satisfies declared lower bound.                                                                                                                             |
 | FastAPI          | 0.142.2                                        | [Metadata](https://pypi.org/pypi/fastapi/0.142.2/json); candidate for Laya serve and bridge. No broad `standard` extras required by this research.                                                                    |
 | Uvicorn          | 0.54.0                                         | [Metadata](https://pypi.org/pypi/uvicorn/0.54.0/json); candidate ASGI runner, test single-worker lifecycle and shutdown.                                                                                              |
