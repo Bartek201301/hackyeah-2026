@@ -1,8 +1,8 @@
 {
   "laya_package": "laya[serve]==0.3.24",
   "laya_models": "typed-decisions",
-  "laya_checkpoint_revision": null,
+  "laya_checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
   "ollama_model": "qwen3:8b",
-  "ollama_model_digest": null,
-  "verified_at": null
+  "ollama_model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "verified_at": "2026-10-03T16:59:10Z"
 }
