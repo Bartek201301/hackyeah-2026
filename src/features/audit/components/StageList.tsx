@@ -1,5 +1,6 @@
 import { Badge, Card, CardHeader, EmptyState, Notice } from "@/shared/ui";
 import type { AssessmentView, StageRow } from "../trace";
+import { groupStages } from "../trace";
 import { copy } from "../copy";
 import { UsageGroups } from "./UsageGroups";
 
@@ -46,6 +47,9 @@ function StageItem({ row }: { row: StageRow }) {
     <li className="flex flex-col gap-4 border-t border-border pt-5 first:border-0 first:pt-0">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-fg">{row.stage}</span>
+        <Badge tone={row.isSubcall ? "neutral" : "brand"}>
+          {row.isSubcall ? copy.stages.toolSubcall : copy.stages.rootStage}
+        </Badge>
         <Badge tone="brand">{row.eventType}</Badge>
         <span className="text-xs tabular-nums text-muted">{row.when}</span>
         {row.elapsed && <span className="text-xs tabular-nums text-muted">{row.elapsed}</span>}
@@ -91,11 +95,16 @@ function StageItem({ row }: { row: StageRow }) {
 }
 
 /**
- * The stored stages in recorded order. Durations stay per stage: the gateway's spans overlap,
- * so a total here would be arithmetic the audit record does not support. A finding shows its
- * code, category, severity and position reference, never a value or a quoted fragment.
+ * The stored stages in recorded order. Durations stay per stage: the gateway's spans overlap, so a
+ * total here would be arithmetic the audit record does not support. A finding shows its code,
+ * category, severity and position reference, never a value or a quoted fragment.
+ *
+ * Tool subcalls are folded into a native disclosure — no shared disclosure block exists — and are
+ * labelled as subcalls of the root request above them, so a reader cannot count them as requests.
  */
 export function StageList({ rows }: { rows: StageRow[] }) {
+  const groups = groupStages(rows);
+
   return (
     <Card>
       <CardHeader title={copy.stages.title} description={copy.stages.description} />
@@ -103,9 +112,25 @@ export function StageList({ rows }: { rows: StageRow[] }) {
         <EmptyState title={copy.stages.emptyTitle} description={copy.stages.emptyDescription} />
       ) : (
         <ol className="flex flex-col gap-5">
-          {rows.map((row) => (
-            <StageItem key={row.key} row={row} />
-          ))}
+          {groups.map((group) =>
+            group.kind === "stage" ? (
+              <StageItem key={group.row.key} row={group.row} />
+            ) : (
+              <li key={group.key} className="border-t border-border pt-5 first:border-0 first:pt-0">
+                <details className="flex flex-col gap-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-fg">
+                    {`${copy.stages.showSubcalls} (${group.rows.length})`}
+                  </summary>
+                  <p className="mt-2 text-xs text-muted">{copy.stages.subcallHint}</p>
+                  <ol className="mt-4 flex flex-col gap-5">
+                    {group.rows.map((row) => (
+                      <StageItem key={row.key} row={row} />
+                    ))}
+                  </ol>
+                </details>
+              </li>
+            ),
+          )}
         </ol>
       )}
     </Card>

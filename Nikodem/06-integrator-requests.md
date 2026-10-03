@@ -135,6 +135,18 @@ of T08 — a feature that only read `result.data` would silently drop them. If y
 normalises both branches into one envelope, I would rather consume it than duplicate the logic.
 Default: read both branches and treat them as one envelope.
 
+**18. How a tool subcall is marked in `events[]`.** `docs/contracts/data-model.md:58` requires root
+traces to be counted separately from subcall decisions, and `:33` says a suboperation carries its parent
+trace and operation in the audit payload. But an element of `AuditProjection.events[]` has only
+`stage`, `event_type`, `created_at`, `policy_version`, `feed_version`, `findings`, `semantic` and
+`usage` — no parent reference and no subcall flag. Is a subcall a separate trace with a parent pointer
+(so it never appears in `events[]` at all), or an event whose `stage` names the tool?
+Blocks: nothing; the labelling is already shipped on a heuristic.
+Default: a stage whose name contains `search_excerpts` or `read_excerpt` — the two names in
+`RegisteredTool` — is labelled a tool subcall and folded into a disclosure. The header count stays
+`root request` and stages are never summed into a request count, so a wrong heuristic mislabels a group
+but cannot corrupt a figure. A one-field answer would replace the guess with a fact.
+
 ## What I do not need
 
 Raw document access, excerpt text, review candidate contents, policy write access, budget RPCs, or any
