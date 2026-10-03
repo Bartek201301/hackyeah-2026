@@ -17,7 +17,8 @@ import { Send, SquareX } from "lucide-react";
 import { createGatewayClient, newIdempotencyKey } from "@/shared/contracts/client";
 import type { ApiResponse, Run } from "@/shared/contracts";
 import { Badge, Button, Card, CardHeader, Field, Textarea } from "@/shared/ui";
-import { classifyResponse, classifyTerminalErrorCode, type GatewayOutcome } from "../lib/envelope";
+import type { GatewayOutcome } from "../lib/envelope";
+import { classifyChatResponse } from "../lib/chatFlow";
 import { readChatResult, readChatRun, type ChatResult } from "../lib/chatData";
 import { checkCitations, type CitationView } from "../lib/citations";
 import { POLL_INTERVAL_MS, canCancel, progressLabel, shouldKeepPolling } from "../lib/runState";
@@ -32,8 +33,9 @@ const client = createGatewayClient();
 const envelopeOf = (data: unknown, error: unknown): ApiResponse | null =>
   ((data ?? error) as ApiResponse | undefined) ?? null;
 
-const classify = (status: number, body: ApiResponse | null): GatewayOutcome =>
-  classifyTerminalErrorCode(body) ?? classifyResponse(status, body);
+/* Lifecycle-aware: a pending run carries decision null by contract and must read as progress,
+ * not as a fail-closed service error. See lib/chatFlow.ts. */
+const classify = (status: number, body: ApiResponse | null) => classifyChatResponse(status, body);
 
 export function ChatPanel() {
   const [message, setMessage] = useState("");
@@ -61,10 +63,8 @@ export function ChatPanel() {
 
   /** Apply one response: narrow the operation-specific shape, then classify. */
   const apply = useCallback((status: number, body: ApiResponse | null) => {
-    const next = classify(status, body);
+    const { outcome: next, run: polled } = classify(status, body);
     setOutcome(next);
-
-    const polled = readChatRun(body?.data ?? null);
     if (polled) setRun(polled);
 
     if (!next.showsResult) {
@@ -102,11 +102,14 @@ export function ChatPanel() {
 
     idempotencyKey.current ??= newIdempotencyKey();
     const { data, error, response } = await client.POST("/chat", {
+      // No deal_id for G2 (B6): deal labels are not available yet, and a browser-chosen deal could
+      // never grant access anyway. Retrieval scope comes from the actor's trusted memberships.
       body: { message: trimmed },
       params: { header: { "Idempotency-Key": idempotencyKey.current } },
     });
-    const created = apply(response.status, envelopeOf(data, error));
-    const startedRun = readChatRun(envelopeOf(data, error)?.data ?? null);
+    const createdBody = envelopeOf(data, error);
+    const created = apply(response.status, createdBody);
+    const startedRun = readChatRun(createdBody?.data ?? null);
 
     // Execute only a run the gateway actually created, and only once.
     if (created.kind === "progress" && startedRun && !executed.current) {

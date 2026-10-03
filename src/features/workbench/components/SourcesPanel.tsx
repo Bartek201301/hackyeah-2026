@@ -45,7 +45,7 @@ const itemsOf = <T,>(body: ApiResponse | null): T[] => {
   return Array.isArray(items) ? (items as T[]) : [];
 };
 
-export function SourcesPanel() {
+export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
   const [draft, setDraft] = useState<UploadDraft>(EMPTY_UPLOAD_DRAFT);
   const [errors, setErrors] = useState<Partial<Record<UploadField, string>>>({});
   const [busy, setBusy] = useState(false);
@@ -167,13 +167,27 @@ export function SourcesPanel() {
             </Select>
           </Field>
 
-          <Field label="Deal (optional)" hint="Narrows scope. It cannot grant access.">
-            <Input
+          {/* Identifiers until a server-side deal-label projection exists (B6). */}
+          <Field
+            label="Deal (optional)"
+            hint={
+              dealIds.length > 0
+                ? "Narrows scope to one of your assigned deals. It cannot grant access."
+                : "No assigned deal is available to this account."
+            }
+          >
+            <Select
               value={draft.dealId}
               onChange={(e) => set("dealId", e.target.value)}
-              placeholder="Deal identifier"
-              disabled={busy}
-            />
+              disabled={busy || dealIds.length === 0}
+            >
+              <option value="">No deal</option>
+              {dealIds.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </Select>
           </Field>
 
           {/* Required by business validation for a text PDF; a CSV carries these per row. */}
