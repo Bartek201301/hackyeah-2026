@@ -12,6 +12,7 @@ import type {
   ImportRow,
   MetricsActivityRow,
   MetricsReservationRow,
+  PermittedExcerpt,
   RepositoryPort,
   RunRecord,
   SourceRow,
@@ -451,6 +452,63 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit),
       );
       return rows ?? [];
+    },
+
+    // Permissions derived in SQL from trusted memberships; only the actor's identity is passed.
+    async searchPermittedExcerpts(actor, { query, dealId, audience, limit }) {
+      const rows = await data<PermittedExcerpt[] | null>(
+        db.rpc("search_permitted_excerpts", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_audience: audience,
+          p_query: query,
+          p_limit: limit,
+          p_deal_id: dealId,
+        }),
+      );
+      return rows ?? [];
+    },
+
+    async readPermittedExcerpts(actor, audience, ids) {
+      const rows = await data<PermittedExcerpt[] | null>(
+        db.rpc("read_permitted_excerpts", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_audience: audience,
+          p_ids: ids,
+        }),
+      );
+      return rows ?? [];
+    },
+
+    async recordAccessDecision({
+      actor,
+      operation,
+      idempotencyKey,
+      requestSha256,
+      decision,
+      reasons,
+      usage,
+      event,
+    }) {
+      const result = await data(
+        db.rpc("record_access_decision", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_operation: operation,
+          p_idempotency_key: idempotencyKey,
+          p_request_sha256: requestSha256,
+          p_decision: decision,
+          p_reasons: reasons,
+          p_usage: usage,
+          p_payload: event,
+        }),
+      );
+      return {
+        trace_id: result.trace_id,
+        policy_version: result.policy_version,
+        feed_version: result.feed_version,
+      };
     },
   };
 }
