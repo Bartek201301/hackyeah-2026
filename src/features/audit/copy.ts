@@ -39,6 +39,7 @@ export const copy = {
     reservedTokens: "Reserved generation tokens",
     unresolved: "Unresolved reservation retained",
     reservedHint: "Retained until the reservation is reconciled. Never added to actual use.",
+    noReservation: "No reservation is outstanding.",
     unknownHint: "No value was recorded. Unknown use is not zero use.",
   },
   decision: {
@@ -48,6 +49,8 @@ export const copy = {
     block: "Blocked",
     pending: "Pending",
     pendingHint: "No decision recorded yet.",
+    none: "No decision recorded",
+    noneHint: "The operation did not complete, so no decision was stored and no result was released.",
     reviewHint: "Output is withheld until an administrator decides.",
   },
   stages: {

@@ -32,7 +32,7 @@ function Pair({ label, value, title }: { label: string; value: string; title?: s
  * read as a sum of the stage events below it.
  */
 export function TraceSummary({ trace, incomplete, cancelled, eventsCapped, serverMessage }: Props) {
-  const badge = decisionBadge(trace.decision);
+  const badge = decisionBadge(trace.decision, trace.state);
   const usage = usageView(trace.usage);
 
   return (

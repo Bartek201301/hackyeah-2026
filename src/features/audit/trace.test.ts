@@ -18,11 +18,41 @@ describe("decision badge", () => {
     expect(decisionBadge("BLOCK")).toMatchObject({ label: "Blocked", tone: "danger" });
   });
 
-  it("reads a missing decision as pending, never as allowed", () => {
-    const badge = decisionBadge(null);
+  it("reads a missing decision as pending only while the operation is still running", () => {
+    const badge = decisionBadge(null, "running");
     expect(badge.label).toBe("Pending");
     expect(badge.tone).toBe("neutral");
     expect(badge.hint).toBe("No decision recorded yet.");
+    expect(decisionBadge(null, "queued").label).toBe("Pending");
+  });
+
+  /*
+   * Observed against the real gateway: a withheld chat was stored with decision null and
+   * state "failed". Calling that "Pending" tells the reader to wait for a decision that will never
+   * arrive, which is the same class of error as rendering an unknown value as zero.
+   */
+  it("does not call a finished operation pending when no decision was stored", () => {
+    const badge = decisionBadge(null, "failed");
+    expect(badge.label).toBe("No decision recorded");
+    expect(badge.tone).toBe("warning");
+    expect(badge.hint).toBe(
+      "The operation did not complete, so no decision was stored and no result was released.",
+    );
+    expect(decisionBadge(null, "cancelled").label).toBe("No decision recorded");
+    expect(decisionBadge(null, "incomplete").label).toBe("No decision recorded");
+  });
+
+  it("claims nothing about completion when no state is known", () => {
+    const badge = decisionBadge(null);
+    expect(badge.label).toBe("No decision recorded");
+    expect(badge.tone).toBe("neutral");
+    expect(badge.hint).toBe("No decision recorded yet.");
+  });
+
+  it("never reads a missing decision as allowed, whatever the state", () => {
+    for (const state of [undefined, "running", "failed", "complete", "nonsense"]) {
+      expect(decisionBadge(null, state).label).not.toBe("Allowed");
+    }
   });
 
   it("states that a block is a refused request, not a confirmed breach", () => {
@@ -45,6 +75,19 @@ describe("resource use", () => {
     expect(view.unknown).toEqual([]);
     expect(view.reserved).toEqual([{ label: "Reserved generation tokens", value: "4,096 tokens" }]);
     expect(view.actual.some((row) => row.value.includes("4,096"))).toBe(false);
+    expect(view.hasReservation).toBe(true);
+  });
+
+  /*
+   * Observed against the real gateway: a withheld chat reserved nothing, and the screen still said
+   * "Retained until the reservation is reconciled" beside `0 tokens` — describing a retention that
+   * was not happening.
+   */
+  it("does not claim a retention when nothing is reserved", () => {
+    const none = usageView(usage({ reserved_generation_tokens: 0, unresolved_reservation: false }));
+    expect(none.hasReservation).toBe(false);
+    const unresolved = usageView(usage({ reserved_generation_tokens: 0, unresolved_reservation: true }));
+    expect(unresolved.hasReservation).toBe(true);
   });
 
   it("separates generation from the Laya assessment instead of merging them", () => {
@@ -105,6 +148,39 @@ describe("assessment", () => {
     expect(view.coverageComplete).toBe(false);
     expect(view.coverageWarning).toBe("Coverage incomplete: 2 of 3 windows assessed.");
     expect(view.windows).toBe("2 / 3");
+  });
+
+  /*
+   * Observed against the real gateway: every stage of a withheld chat carried
+   * coverage_complete: false with windows_planned: 0, so the screen shouted
+   * "Coverage incomplete: 0 of 0 windows assessed." on stages where no assessment was ever required.
+   * A warning about partial coverage needs something to have been planned.
+   */
+  it("does not warn about coverage when no window was ever planned", () => {
+    const notRun = assessment({
+      status: "not_required",
+      coverage_complete: false,
+      windows_planned: 0,
+      windows_completed: 0,
+    });
+    const view = assessmentView(notRun);
+    expect(view.coverageWarning).toBeNull();
+    // The status still says plainly that this is not a pass.
+    expect(view.statusLabel).toBe("Assessment not required");
+    expect(view.statusHint).toContain("not a pass");
+  });
+
+  it("still warns when windows were planned and not completed, even at zero completed", () => {
+    const view = assessmentView(
+      assessment({ coverage_complete: false, windows_planned: 4, windows_completed: 0 }),
+    );
+    expect(view.coverageWarning).toBe("Coverage incomplete: 0 of 4 windows assessed.");
+  });
+
+  it("marks a not-required assessment as unmeasured so no scores are displayed", () => {
+    expect(assessmentView(assessment({ status: "not_required" })).measured).toBe(false);
+    expect(assessmentView(assessment({ status: "unavailable" })).measured).toBe(true);
+    expect(assessmentView(assessment()).measured).toBe(true);
   });
 
   it("marks unmeasured scores and never fills them with zero", () => {
