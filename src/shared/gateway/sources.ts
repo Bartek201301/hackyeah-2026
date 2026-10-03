@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import type { ActorContext, SourceSummary } from "@/shared/contracts";
+import type { ActorContext, ImportSummary, SourceSummary } from "@/shared/contracts";
 import { check } from "@/shared/contracts/validate";
 import { envelope, errorOutcome } from "./envelope";
 import { isUuid } from "./http";
@@ -54,6 +54,42 @@ export async function listSources(deps: GatewayDeps, actor: ActorContext): Promi
       label: row.label,
       classification: row.classification,
       kind: row.kind,
+    });
+    if (!checked.ok) return errorOutcome("STATE_UNAVAILABLE");
+    items.push(checked.value);
+  }
+  return {
+    status: 200,
+    body: envelope({ trace_id: randomUUID(), decision: "ALLOW", data: { items } }),
+  };
+}
+
+/*
+ * import_list: which imports an actor may follow, not what they contain.
+ *
+ * requirements.md §2: an administrator oversees the organisation's imports; everyone else follows
+ * their own. Same 50-item cap and same projection discipline as source_list, and no audit write —
+ * status of your own upload is metadata, not protected content.
+ */
+
+/** null = the whole organisation; otherwise only this actor's own uploads. */
+export function importScope(actor: ActorContext): { uploadedBy: string | null } {
+  return { uploadedBy: actor.role === "admin" ? null : actor.actor_id };
+}
+
+/** Imports this actor may see, newest first. Never partial: one unmappable row withholds the list. */
+export async function listImports(deps: GatewayDeps, actor: ActorContext): Promise<Outcome> {
+  const rows = await deps.repository.listImports(actor, LIST_LIMIT);
+  const items: ImportSummary[] = [];
+  for (const row of rows) {
+    // ImportSummary requires a run: a document still waiting for its import run to settle has no
+    // outcome to report, and skipping it here keeps one such row from withholding the whole list.
+    if (!row.run_id) continue;
+    const checked = check("ImportSummary", {
+      id: row.id,
+      run_id: row.run_id,
+      status: row.status,
+      classification: row.classification,
     });
     if (!checked.ok) return errorOutcome("STATE_UNAVAILABLE");
     items.push(checked.value);
