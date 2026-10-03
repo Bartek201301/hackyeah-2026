@@ -21,7 +21,7 @@ flowchart LR
 
 Polityka powinna być czytelnym, wersjonowanym JSON-em z możliwością zmiany podczas działania. Supabase może przechowywać osobną sesję demo, politykę i audyt każdego odwiedzającego; lokalny i publiczny podgląd korzystają z tej samej ścieżki. **Nie trenować Laya podczas 24-godzinnej budowy.** Zadaniowy checkpoint można sprawdzić lokalnie jako opcjonalny sygnał semantyczny. Niedostępność semantyki musi być widoczna i obsłużona polityką; nie wolno podmieniać jej na wynik testowego mocka w pokazie.
 
-Oficjalna [strona zadania](https://hackyeah.pl/tasks-prizes) mówi, że zgłoszenie AI Control Layer musi być po angielsku. Użytkownik potwierdził angielski interfejs sędziowski; przed pracą UI integrator powinien jawnie uzgodnić tę zmianę z regułą polskiego UI w `AGENTS.md`. Czterostronicowego briefu partnera nie znaleziono w repozytorium ani w przeszukanych lokalnych katalogach. [Wymagania zespołu](requirements.md) są na razie źródłem szczegółów i wag; zgodność z pełnym briefem pozostaje do potwierdzenia.
+Oficjalna [strona zadania](https://hackyeah.pl/tasks-prizes) mówi, że zgłoszenie AI Control Layer musi być po angielsku. Użytkownik potwierdził angielski interfejs sędziowski, a reguła języka w `AGENTS.md` została odpowiednio zmieniona. Czterostronicowego briefu partnera nie znaleziono w repozytorium ani w przeszukanych lokalnych katalogach. [Wymagania zespołu](requirements.md) są na razie źródłem szczegółów i wag; zgodność z pełnym briefem pozostaje do potwierdzenia.
 
 ## Wybór scenariusza i miejsca kontroli
 

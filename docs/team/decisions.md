@@ -21,7 +21,7 @@ Wymagania są w docs/product/requirements.md, a niezmienniki w docs/product/arch
    Integrator wykonuje tylko zapisane migracje i kontroluje resety. Gałąź nie jest izolacją bazy.
 8. **Dostęp ustalamy z zadaniem.** Szablon SQL włącza RLS, ale nie daje otwartego zapisu. Nie dodajemy
    logowania na zapas; wybieramy jawne polityki, kiedy znamy użytkowników i wymagania.
-9. **Spójne UI.** Wspólne komponenty i tokeny, lucide-react, polskie komunikaty, obsługa stanów ekranu.
+9. **Spójne UI.** Wspólne komponenty i tokeny, lucide-react, angielskie komunikaty, obsługa stanów ekranu.
 10. **Formatowanie bez konfliktów.** Formatujemy własne zmienione pliki. Hook Claude jest dodatkiem,
     a wspólny format:check w CI weryfikuje efekt niezależnie od edytora.
 

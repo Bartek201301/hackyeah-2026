@@ -50,6 +50,6 @@ Jeśli Supabase, secret key lub migracja nie są gotowe do H5, nie przedstawiamy
 2. Dostęp integratora do projektu Supabase, secret key, Vercel i potwierdzenie statusu `health_check`; nie wklejać wartości do Git ani rozmowy.
 3. Sposób udostępnienia publicznego preview sędziom i ochrona przed nadużyciem anonimowych sesji.
 4. Oryginalny czterostronicowy brief partnera do porównania z transkrypcją wymagań.
-5. Zgoda zespołu na angielski UI sędziowski i aktualizacja sprzecznej reguły `AGENTS.md` przez integratora.
+5. Angielski UI sędziowski zgodny z potwierdzoną decyzją użytkownika i regułą `AGENTS.md`.
 
 Na start kodowania wystarczy rozstrzygnąć punkty 1–3 i kontrakt z technicznej specyfikacji; punkt 4 jest pilnym sprawdzeniem zgodności. Postęp, adresy preview, wyniki `npm run check`, doctor i prób demo zapisujemy w PR, nie jako domniemane fakty w tej specyfikacji.

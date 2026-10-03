@@ -92,4 +92,4 @@ Pomiary zapisują rzeczywisty czas walidacji, detekcji, semantyki, polityki, tra
 
 ## 8. Kryterium startu implementacji
 
-Integrator z trzema builderami zatwierdza nazwy pól i zachowanie `ALLOW/WARN/REDACT/BLOCK`, po czym zamraża v1 kontraktów `src/shared/**` i schemat migracji. Właściciel potwierdza cztery osoby/loginy, Supabase/Vercel, dostęp do secret key i publiczny tryb wejścia sędziów. Regułę polskiego UI w `AGENTS.md` trzeba jawnie zmienić na **angielski interfejs sędziowski** zgodnie z decyzją użytkownika i wymogiem zgłoszenia, zanim builderzy przygotują UI. Do czasu tych potwierdzeń dokument jest decyzją techniczną do przeglądu, nie dowodem gotowości wdrożeniowej.
+Integrator z trzema builderami zatwierdza nazwy pól i zachowanie `ALLOW/WARN/REDACT/BLOCK`, po czym zamraża v1 kontraktów `src/shared/**` i schemat migracji. Właściciel potwierdza cztery osoby/loginy, Supabase/Vercel, dostęp do secret key i publiczny tryb wejścia sędziów. Angielski interfejs sędziowski jest potwierdzony przez użytkownika i zgodny z regułą `AGENTS.md`. Do czasu pozostałych potwierdzeń dokument jest decyzją techniczną do przeglądu, nie dowodem gotowości wdrożeniowej.

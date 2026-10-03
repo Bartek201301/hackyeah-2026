@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Czytaj ten plik, docs/product/requirements.md i odpowiednią część docs/product/architecture.md przed pracą.
 Wymagania opisują wyzwanie, architektura — niezmienniki i otwarte decyzje.
-Kod po angielsku, dokumentacja i UI po polsku.
+Kod, dokumentacja, UI, dane demo i eksporty po angielsku.
 Nie deklaruj „działa” bez uruchomionych kontroli. Build nie potwierdza działania bazy ani demo.
 
 ## Zasada bezpieczeństwa i zakres produktu
