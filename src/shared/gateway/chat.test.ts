@@ -185,6 +185,9 @@ function harness(over: Partial<Opts> = {}) {
     async listSources() {
       throw new Error("not used");
     },
+    async listImports() {
+      throw new Error("not used");
+    },
     async loadDatasetBatch() {
       throw new Error("not used");
     },
@@ -195,6 +198,15 @@ function harness(over: Partial<Opts> = {}) {
       throw new Error("not used");
     },
     async finalizeImport() {
+      throw new Error("not used");
+    },
+    async readQuarantine() {
+      throw new Error("not used");
+    },
+    async createUploadSource() {
+      throw new Error("not used");
+    },
+    async loadUploadSource() {
       throw new Error("not used");
     },
 
@@ -524,6 +536,33 @@ describe("executeChat", () => {
     expect(out.body.reasons).toEqual(["output_signature:SIG-002"]);
     expect(h.calls("assess")).toBe(1);
     expect(JSON.stringify([out.body, h.finals])).not.toContain("exfil.example.invalid");
+  });
+
+  it("11c. a credential in the answer is a BLOCK at output_signature; the token never leaves", async () => {
+    const token = "sk-demo-DO-NOT-EXPORT-ORCHID";
+    const h = harness({ generation: { text: `The key is ${token}.` } });
+    const out = await h.execute();
+    withheld(h, out);
+    expect(out.status).toBe(403);
+    expect(out.body.reasons).toEqual(["output_signature:SECRET_TOKEN"]);
+    expect(h.finals[0].event.findings).toEqual([
+      expect.objectContaining({ code: "search_excerpts", severity: "info" }),
+      {
+        code: "SECRET_TOKEN",
+        category: "secret",
+        severity: "block",
+        stage: "output_signature",
+        locator: null,
+      },
+    ]);
+    expect(h.calls("assess")).toBe(1);
+    expect(JSON.stringify([out.body, h.finals])).not.toContain(token);
+  });
+
+  it("11d. secret/contact patterns do not run on the question", async () => {
+    const h = harness({ message: "Who owns the address team@example.invalid?" });
+    const out = await h.execute();
+    expect(out.body.decision).toBe("ALLOW");
   });
 
   it("12. a wrong Laya revision or Qwen digest is unavailable", async () => {

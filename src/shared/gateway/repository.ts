@@ -9,6 +9,7 @@ import type {
   ActivityRow,
   DatasetBatch,
   EventRow,
+  ImportRow,
   MetricsActivityRow,
   MetricsReservationRow,
   PermittedExcerpt,
@@ -17,7 +18,7 @@ import type {
   SourceRow,
   WindowQuery,
 } from "./ports";
-import { sourceScope } from "./sources";
+import { importScope, sourceScope } from "./sources";
 
 const CODES = new Set<string>(Object.keys(STATUS));
 
@@ -300,9 +301,57 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       return (rows?.length ?? 0) > 0;
     },
 
-    async storeQuarantine(key, bytes) {
-      await data(
-        db.storage.from("quarantine").upload(key, bytes, { contentType: "application/json", upsert: false }),
+    async storeQuarantine(key, bytes, contentType) {
+      await data(db.storage.from("quarantine").upload(key, bytes, { contentType, upsert: false }));
+    },
+
+    async readQuarantine(key) {
+      const blob = await data(db.storage.from("quarantine").download(key));
+      if (!blob) throw new GatewayError("STATE_UNAVAILABLE");
+      return new Uint8Array(await blob.arrayBuffer());
+    },
+
+    // The deal must belong to the actor's organisation; the insert would otherwise fail on its foreign key.
+    async createUploadSource({ actor, label, classification, dealId }) {
+      if (dealId) {
+        const deal = await data<{ id: string } | null>(
+          db
+            .from("deals")
+            .select("id")
+            .eq("id", dealId)
+            .eq("organisation_id", actor.organisation_id)
+            .maybeSingle(),
+        );
+        if (!deal) return null;
+      }
+      const row = await data<{ id: string } | null>(
+        db
+          .from("sources")
+          .insert({
+            organisation_id: actor.organisation_id,
+            label,
+            kind: "upload",
+            classification,
+            deal_id: dealId,
+            created_by: actor.actor_id,
+            audience_evidence: "unverified",
+          })
+          .select("id")
+          .single(),
+      );
+      if (!row) throw new GatewayError("STATE_UNAVAILABLE");
+      return row.id;
+    },
+
+    async loadUploadSource(actor, sourceId) {
+      return data(
+        db
+          .from("sources")
+          .select("id, classification, audience_evidence, deal_id")
+          .eq("id", sourceId)
+          .eq("organisation_id", actor.organisation_id)
+          .eq("kind", "upload")
+          .maybeSingle(),
       );
     },
 
@@ -385,6 +434,21 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
 
     exportActivity(input) {
       return windowActivity<ActivityRow>(ACTIVITY_COLUMNS, input);
+    },
+
+    async listImports(actor, limit) {
+      const { uploadedBy } = importScope(actor);
+      let query = db
+        .from("documents")
+        .select("id, run_id, status, classification")
+        .eq("organisation_id", actor.organisation_id)
+        // Settled imports only, so the 50-item cap is spent on rows that have an outcome.
+        .not("run_id", "is", null);
+      if (uploadedBy) query = query.eq("uploaded_by", uploadedBy);
+      const rows = await data<ImportRow[] | null>(
+        query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit),
+      );
+      return rows ?? [];
     },
 
     // Permissions derived in SQL from trusted memberships; only the actor's identity is passed.

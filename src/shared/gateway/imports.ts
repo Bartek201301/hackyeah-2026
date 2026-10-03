@@ -1,8 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type { ActorContext, Assessment, ConnectorImport, ErrorCode, Finding } from "@/shared/contracts";
-import { clock, createCalls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
-import { decide, matchSignatures, sha256Hex } from "./checks";
+import { clock, createCalls, loadControls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
+import { decide, matchSensitive, matchSignatures, sha256Hex } from "./checks";
+import { FIELDS, parseCsv, validRow, type NumberedRow, type Row } from "./csv";
 import {
   envelope,
   errorOutcome,
@@ -11,49 +12,61 @@ import {
   SEMANTIC_NOT_REQUIRED,
   SEMANTIC_UNAVAILABLE,
 } from "./envelope";
-import type { FinalOutcome, GatewayDeps, ImportPublication, Outcome, StoredResult } from "./ports";
+import { isUuid } from "./http";
+import type {
+  FinalOutcome,
+  GatewayDeps,
+  ImportPublication,
+  ImportSource,
+  Outcome,
+  StartedRun,
+  StoredResult,
+} from "./ports";
 
-// Connector import (technical-spec §4/§9, T05): admin only. Every non-blank line of every batch row is one
-// unit — complete coverage, no truncation — checked by signatures, then one Laya call, then `decide`.
-// The document, its approved/candidate excerpts and review requests publish with the terminal run in one
-// transaction (finalize_import); any service failure publishes nothing.
+// Connector import and CSV upload (technical-spec §4/§9, T05). Every non-blank line of every row is one
+// unit — complete coverage, no truncation — checked by signatures and secret/contact patterns, then one
+// Laya call, then `decide`. The document, its approved/candidate excerpts and review requests publish with
+// the terminal run in one transaction (finalize_import); any service failure publishes nothing.
 
-const FIELDS = ["text", "source_date", "period", "unit", "fact_key", "basis"] as const;
-const BASES = new Set(["actual", "forecast", "proposal", "event"]);
 const INVALID_ROW = "A batch row does not match the dataset schema, so nothing was imported.";
 const TOO_MANY_ROWS = "The batch has more rows than the import policy allows, so nothing was imported.";
+const INVALID_CSV =
+  "The CSV does not match the upload schema (header text,source_date,period,unit,fact_key,basis), so nothing was imported.";
+const PDF_UNAVAILABLE = "PDF import is not available in this demo build; upload a CSV.";
+const CSV_FIELDS =
+  "CSV derives source_date, period, unit, fact_key and basis from each row; send only the file.";
+const ANALYST_SCOPE = "Analyst uploads are restricted to the assigned deal.";
+const PDF_FIELDS = ["source_date", "period", "unit", "fact_key", "basis"];
+/** The import_upload multipart fields (openapi.json); the PDF metadata fields are refused for a CSV. */
+export const UPLOAD_FIELDS = ["file", "classification", "deal_id", ...PDF_FIELDS] as const;
+const CLASSIFICATIONS = new Set(["public", "internal", "restricted"]);
 
-type Row = Record<(typeof FIELDS)[number], string>;
 type Verdict = { decision: "ALLOW" | "REVIEW" | "BLOCK"; reasons: string[] };
 type Unit = { locator: string; text: string; row: Row };
 type Ending =
   | { decision: "ALLOW" | "REDACT" | "REVIEW" | "BLOCK"; reasons: string[] }
   | { error: ErrorCode; reasons?: string[]; message?: string };
+/** runs.input_private of an upload; the raw file is already in quarantine under `storage_key`. */
+type UploadInput = {
+  source_id: string;
+  document_id: string;
+  storage_key: string;
+  sha256: string;
+  byte_count: number;
+  format: "csv";
+};
 
-const isDate = (d: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)) && new Date(d).toISOString().startsWith(d);
-
-/** The CSV schema: exactly the six fields, non-empty strings, an ISO date, a known basis, bounded text. */
-function validRow(payload: unknown, maxChars: number): payload is Row {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
-  const p = payload as Record<string, unknown>;
-  if (Object.keys(p).length !== FIELDS.length) return false;
-  if (!FIELDS.every((f) => typeof p[f] === "string" && p[f].trim() !== "")) return false;
-  const r = p as Row;
+const isUpload = (input: unknown): input is UploadInput => {
+  const i = input as Partial<UploadInput> | null;
   return (
-    isDate(r.source_date) &&
-    BASES.has(r.basis) &&
-    // Metadata is published beside the text but never semantically assessed, so it is held to short
-    // closed shapes that cannot carry a sentence (FY2025 / 2026-Q4, USD million, bid_ceiling).
-    /^[A-Za-z0-9-]{1,20}$/.test(r.period) &&
-    /^[A-Za-z%$]{1,12}( [A-Za-z]{1,12})?$/.test(r.unit) &&
-    /^[a-z0-9_]{1,40}$/.test(r.fact_key) &&
-    [...r.text].length <= maxChars
+    i?.format === "csv" &&
+    [i.source_id, i.document_id, i.storage_key, i.sha256].every((v) => typeof v === "string") &&
+    typeof i.byte_count === "number"
   );
-}
+};
 
 /** Line units with stable locators; blank lines are dropped, nothing else is. */
-const unitsOf = (rows: { n: number; row: Row }[]): Unit[] =>
+const unitsOf = (rows: NumberedRow[]): Unit[] =>
   rows.flatMap(({ n, row }) =>
     row.text
       .split("\n")
@@ -88,6 +101,11 @@ export async function startConnectorImport(
     traceId: randomUUID(),
     inputPrivate: input,
   });
+  return accepted(deps, actor, run);
+}
+
+/** A replayed key returns the stored outcome; otherwise 202 with the pending Run. */
+async function accepted(deps: GatewayDeps, actor: ActorContext, run: StartedRun): Promise<Outcome> {
   if (TERMINAL.has(run.state)) return readOwnRun(deps, actor, run.run_id, ["import"]);
   return {
     status: 202,
@@ -100,6 +118,88 @@ export async function startConnectorImport(
   };
 }
 
+/**
+ * import_upload: admin (any deal) or analyst (assigned deal, restricted only) stages one CSV. The server
+ * creates an unverified upload source; the raw bytes go to private quarantine; execute parses and checks.
+ */
+export async function startUpload(
+  deps: GatewayDeps,
+  actor: ActorContext,
+  form: FormData,
+  idempotencyKey: string,
+): Promise<Outcome> {
+  if (actor.role !== "admin" && actor.role !== "analyst") return errorOutcome("ACCESS_DENIED");
+  const file = form.get("file");
+  const classification = form.get("classification");
+  const dealId = form.get("deal_id");
+  if (
+    !(file instanceof File) ||
+    typeof classification !== "string" ||
+    !CLASSIFICATIONS.has(classification) ||
+    (dealId !== null && !(typeof dealId === "string" && isUuid(dealId)))
+  )
+    return errorOutcome("INVALID_INPUT");
+  // deal_id narrows scope; it never grants it.
+  if (actor.role === "analyst") {
+    if (!dealId || !actor.deal_ids.includes(dealId)) return errorOutcome("NOT_FOUND");
+    if (classification !== "restricted") return errorOutcome("INVALID_INPUT", { message: ANALYST_SCOPE });
+  } else if (classification === "restricted" && !dealId) return errorOutcome("INVALID_INPUT");
+
+  const controls = await loadControls(deps, actor);
+  if (!controls) return errorOutcome("POLICY_UNAVAILABLE");
+  if (file.size === 0) return errorOutcome("INVALID_INPUT");
+  if (file.size > controls.policy.imports.max_bytes) return errorOutcome("INVALID_INPUT", { status: 413 });
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  // Content decides the type; the file name and the declared MIME type are not trusted.
+  if (Buffer.from(bytes.subarray(0, 5)).toString("latin1") === "%PDF-")
+    return errorOutcome("UNSUPPORTED_FILE", { message: PDF_UNAVAILABLE });
+  if (PDF_FIELDS.some((f) => form.has(f))) return errorOutcome("INVALID_INPUT", { message: CSV_FIELDS });
+  try {
+    if (new TextDecoder("utf-8", { fatal: true }).decode(bytes).includes("\0"))
+      return errorOutcome("UNSUPPORTED_FILE");
+  } catch {
+    return errorOutcome("UNSUPPORTED_FILE");
+  }
+
+  const repo = deps.repository;
+  const sha256 = sha256Hex(bytes);
+  const label =
+    file.name
+      .replace(/[^A-Za-z0-9 ._-]/g, "")
+      .trim()
+      .slice(0, 100) || "upload.csv";
+  const sourceId = await repo.createUploadSource({
+    actor,
+    label,
+    classification: classification as ImportSource["classification"],
+    dealId,
+  });
+  if (!sourceId) return errorOutcome("NOT_FOUND");
+  const documentId = randomUUID();
+  const storageKey = `${actor.organisation_id}/${documentId}/1.csv`;
+  // ponytail: the source and object are written before the run, so a failed start (or a replayed key, which
+  // answers the earlier run) leaves an unlinked source and quarantined object; cleanup is a T12 maintenance task.
+  await repo.storeQuarantine(storageKey, bytes, "text/csv");
+  const run = await repo.startRun({
+    actor,
+    operation: "import_upload",
+    kind: "import",
+    idempotencyKey,
+    // Generated ids are left out so a retried request with the same key replays instead of conflicting.
+    requestSha256: sha256Hex(JSON.stringify({ sha256, classification, deal_id: dealId })),
+    traceId: randomUUID(),
+    inputPrivate: {
+      source_id: sourceId,
+      document_id: documentId,
+      storage_key: storageKey,
+      sha256,
+      byte_count: bytes.byteLength,
+      format: "csv",
+    },
+  });
+  return accepted(deps, actor, run);
+}
+
 export async function executeImport(
   deps: GatewayDeps,
   actor: ActorContext,
@@ -108,12 +208,13 @@ export async function executeImport(
   signal: AbortSignal,
 ): Promise<Outcome> {
   // Re-checked on every request: the role comes from trusted membership, not from the stored run.
-  if (actor.role !== "admin") return errorOutcome("ACCESS_DENIED");
+  if (actor.role !== "admin" && actor.role !== "analyst") return errorOutcome("ACCESS_DENIED");
   const t = clock();
   const repo = deps.repository;
   const opened = await openRun(deps, actor, runId, idempotencyKey, "import", t);
   if (opened.exit) return opened.exit;
   const { run, policy, feed, versions, op, lease } = opened;
+  const upload = isUpload(run.input_private) ? run.input_private : null;
 
   // From here on every exit goes through finalize.
   const overall = AbortSignal.any([signal, AbortSignal.timeout(policy.execution.max_elapsed_ms)]);
@@ -127,51 +228,89 @@ export async function executeImport(
   const count = (d: Verdict["decision"]) => outcomes.filter((u) => u.decision === d).length;
 
   const pipeline = async (): Promise<Ending> => {
-    const input = run.input_private as { source_id?: unknown; batch_id?: unknown } | null;
-    const sourceId = input?.source_id;
-    const batchId = input?.batch_id;
-    if (typeof sourceId !== "string" || typeof batchId !== "string")
-      throw new GatewayError("STATE_UNAVAILABLE");
-    // One row past the cap is fetched so an oversized batch fails instead of being silently cut.
-    const cap = policy.imports.max_csv_rows;
-    const batch = await t.time("persistence_ms", () =>
-      repo.loadDatasetBatch(actor, sourceId, batchId, cap + 1),
-    );
-    if (!batch) return { error: "NOT_FOUND" };
-    if (batch.rows.length > cap)
-      return { error: "INVALID_INPUT", reasons: ["import:too_many_rows"], message: TOO_MANY_ROWS };
-    const { source } = batch;
-    if (await t.time("persistence_ms", () => repo.hasPublishedDocument(actor.organisation_id, source.id)))
-      return { error: "CONFLICT" };
-    const rows: { n: number; row: Row }[] = [];
-    for (const { row_number, payload } of batch.rows) {
-      // One invalid row fails the whole run: no partial publication.
-      if (!validRow(payload, policy.imports.max_text_chars)) {
+    let source: ImportSource;
+    let rows: NumberedRow[];
+    if (upload) {
+      const found = await t.time("persistence_ms", () => repo.loadUploadSource(actor, upload.source_id));
+      // An analyst keeps access only while the deal assignment that allowed the upload still holds.
+      if (!found || (actor.role === "analyst" && !(found.deal_id && actor.deal_ids.includes(found.deal_id))))
+        return { error: "NOT_FOUND" };
+      source = found;
+      const bytes = await t.time("persistence_ms", () => repo.readQuarantine(upload.storage_key));
+      if (bytes.byteLength !== upload.byte_count || sha256Hex(bytes) !== upload.sha256)
+        throw new GatewayError("STATE_UNAVAILABLE");
+      const parsed = await t.time("deterministic_ms", () =>
+        parseCsv(new TextDecoder("utf-8", { fatal: true }).decode(bytes), policy.imports),
+      );
+      if ("locator" in parsed) {
         findings.push({
-          code: "invalid_row",
+          code: "invalid_csv",
           category: "import",
           severity: "block",
           stage,
-          locator: `row:${row_number}`,
+          locator: parsed.locator,
         });
-        return { error: "INVALID_INPUT", reasons: ["import:invalid_row"], message: INVALID_ROW };
+        return { error: "INVALID_INPUT", reasons: ["import:invalid_csv"], message: INVALID_CSV };
       }
-      rows.push({ n: row_number, row: payload });
+      rows = parsed.rows;
+    } else {
+      // A connector import stays admin-only even for a run this actor started before a role change.
+      if (actor.role !== "admin") return { error: "ACCESS_DENIED" };
+      const input = run.input_private as { source_id?: unknown; batch_id?: unknown } | null;
+      const sourceId = input?.source_id;
+      const batchId = input?.batch_id;
+      if (typeof sourceId !== "string" || typeof batchId !== "string")
+        throw new GatewayError("STATE_UNAVAILABLE");
+      // One row past the cap is fetched so an oversized batch fails instead of being silently cut.
+      const cap = policy.imports.max_csv_rows;
+      const batch = await t.time("persistence_ms", () =>
+        repo.loadDatasetBatch(actor, sourceId, batchId, cap + 1),
+      );
+      if (!batch) return { error: "NOT_FOUND" };
+      if (batch.rows.length > cap)
+        return { error: "INVALID_INPUT", reasons: ["import:too_many_rows"], message: TOO_MANY_ROWS };
+      source = batch.source;
+      rows = [];
+      for (const { row_number, payload } of batch.rows) {
+        // One invalid row fails the whole run: no partial publication.
+        if (!validRow(payload, policy.imports.max_text_chars)) {
+          findings.push({
+            code: "invalid_row",
+            category: "import",
+            severity: "block",
+            stage,
+            locator: `row:${row_number}`,
+          });
+          return { error: "INVALID_INPUT", reasons: ["import:invalid_row"], message: INVALID_ROW };
+        }
+        rows.push({ n: row_number, row: payload });
+      }
     }
+    if (await t.time("persistence_ms", () => repo.hasPublishedDocument(actor.organisation_id, source.id)))
+      return { error: "CONFLICT" };
 
     // protocol v1 audiences; P10 may refine them.
     const audience = source.classification === "public" ? "public" : "actor";
     // Unverified audience evidence below restricted: a person decides before anything is searchable.
     const forceReview = source.audience_evidence === "unverified" && source.classification !== "restricted";
+    // A key body spans lines with no marker of their own, so every line of a row holding a PEM block goes.
+    const keyRows = new Map(
+      rows.map(({ row }) => [
+        row,
+        matchSensitive(row.text, "import_signature").filter((f) => f.code === "PEM_KEY"),
+      ]),
+    );
     for (const unit of unitsOf(rows)) {
       stage = "import_signature";
-      const found = await t.time("deterministic_ms", () =>
-        matchSignatures(
-          `${unit.text}\n${unit.row.period} ${unit.row.unit} ${unit.row.fact_key}`,
-          feed,
-          "import_signature",
-        ).map((f) => ({ ...f, locator: unit.locator })),
-      );
+      const found = await t.time("deterministic_ms", () => {
+        const text = `${unit.text}\n${unit.row.period} ${unit.row.unit} ${unit.row.fact_key}`;
+        const sensitive = matchSensitive(text, stage);
+        if (!sensitive.some((f) => f.code === "PEM_KEY")) sensitive.push(...keyRows.get(unit.row)!);
+        return [...matchSignatures(text, feed, stage), ...sensitive].map((f) => ({
+          ...f,
+          locator: unit.locator,
+        }));
+      });
       findings.push(...found);
       let v: Verdict = await t.time("deterministic_ms", () => decide(found, null, policy));
       if (v.decision !== "BLOCK") {
@@ -196,27 +335,40 @@ export async function executeImport(
         : count("ALLOW")
           ? (["partial", "REDACT"] as const)
           : (["blocked", "BLOCK"] as const);
-    // The private original: canonical JSON of the validated rows, under a server-generated key.
-    const snapshot = JSON.stringify(
-      rows.map(({ n: row_number, row }) => ({
-        row_number,
-        ...Object.fromEntries(FIELDS.map((f) => [f, row[f]])),
-      })),
-    );
-    const bytes = Buffer.from(snapshot, "utf8");
-    const documentId = randomUUID();
-    const storageKey = `${actor.organisation_id}/${documentId}/1.json`;
-    await t.time("persistence_ms", () => repo.storeQuarantine(storageKey, bytes));
-    const expiresAt = new Date(Date.now() + policy.retention.review_days * 86_400_000).toISOString();
-    publication = {
-      document: {
-        id: documentId,
-        source_id: source.id,
-        status,
-        storage_key: storageKey,
+    let original: Omit<ImportPublication["document"], "source_id" | "status">;
+    if (upload) {
+      const { document_id: id, storage_key, sha256, format, byte_count } = upload;
+      original = { id, storage_key, sha256, format, byte_count };
+    } else {
+      // The private original: canonical JSON of the validated rows, under a server-generated key.
+      const snapshot = JSON.stringify(
+        rows.map(({ n: row_number, row }) => ({
+          row_number,
+          ...Object.fromEntries(FIELDS.map((f) => [f, row[f]])),
+        })),
+      );
+      const bytes = Buffer.from(snapshot, "utf8");
+      const id = randomUUID();
+      const key = `${actor.organisation_id}/${id}/1.json`;
+      await t.time("persistence_ms", () => repo.storeQuarantine(key, bytes, "application/json"));
+      original = {
+        id,
+        storage_key: key,
         sha256: sha256Hex(snapshot),
         format: "dataset",
         byte_count: bytes.byteLength,
+      };
+    }
+    const expiresAt = new Date(Date.now() + policy.retention.review_days * 86_400_000).toISOString();
+    publication = {
+      document: {
+        id: original.id,
+        source_id: source.id,
+        status,
+        storage_key: original.storage_key,
+        sha256: original.sha256,
+        format: original.format,
+        byte_count: original.byte_count,
       },
       excerpts: outcomes
         .filter((u) => u.decision !== "BLOCK")
@@ -322,7 +474,7 @@ export async function executeImport(
     const outcome: FinalOutcome = {
       run_state,
       operation_state,
-      operation: "import_connector",
+      operation: upload ? "import_upload" : "import_connector",
       stage,
       decision: body.decision,
       reasons: body.reasons,

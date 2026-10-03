@@ -487,3 +487,82 @@ employee, run 3 employee/analyst/admin — and the external role reaches the few
 looked least interesting. That was backwards: fewest permissions means strictest filter, which makes
 it the best test of whether the filter is a filter. It is also in the rehearsal checklist, which
 calls for four labelled profiles before judges arrive.
+
+---
+
+# Run 4 — `GET /imports` on production, admin and employee (2026-10-03 ~22:5x UTC)
+
+Spot-check requested by the integrator after `#70` merged (main `ad70a6b`). Browser session on
+`https://hackyeah-2026.vercel.app`, three accounts, calls issued same-origin from the signed-in
+workbench page so the real session cookie and the real actor record are in play.
+
+**Deploy confirmed first, without any credentials:** an unauthenticated `GET /api/v1/imports`
+answers **401** with `decision: BLOCK`, not the 503 seam. The seam answers
+`STATE_UNAVAILABLE` for a path it still owns, so a 401 proves the new route file is the one
+serving `/imports` on this deploy.
+
+## The import list is scoped by ownership, and it holds both ways
+
+| Account      | Role     | `GET /api/v1/imports`                     | Count |
+| ------------ | -------- | ----------------------------------------- | ----- |
+| **employee** | employee | —                                         | **0** |
+| **reviewer** | external | two documents, both `review`/`restricted` | **2** |
+| **admin**    | admin    | the same two, as the whole organisation   | **2** |
+
+The two rows are the `db_test` documents: `scripts/db/import.test.mjs:193` asserts
+`finalize_import` publishes with `uploaded_by: reviewer`, so they belong to the reviewer account by
+design of that test. That makes this a two-sided result rather than an empty one:
+
+- The **reviewer sees them because they own them** — the non-admin branch returns the actor's own
+  uploads.
+- The **employee sees none of them**, though they are documents of the same organisation. Ownership
+  is the only non-admin scope for an import list, and nothing leaks across accounts.
+- The **administrator sees them as organisation oversight**, not as owner.
+
+Unit tests prove the branch logic; only this proves the PostgREST filter it compiles to. Both
+directions of `uploaded_by` are now exercised against live rows.
+
+## The unbuilt methods on the path still answer the envelope
+
+| Method on `/api/v1/imports` | Production                  |
+| --------------------------- | --------------------------- |
+| `POST`                      | **503** `STATE_UNAVAILABLE` |
+| `PUT`                       | **503** `STATE_UNAVAILABLE` |
+| `DELETE`                    | **503** `STATE_UNAVAILABLE` |
+
+Giving `/imports` its own route file takes the path away from the `[...path]` seam, and an
+operation that is merely unbuilt must not start answering a bare 405 with no envelope. It does not.
+`POST /imports/connector` is a different path and was not touched.
+
+## The import panel renders live gateway data for the first time
+
+As **admin**, `/workbench?view=sources` shows both rows as **"Held for review · Restricted ·
+Separation was uncertain, so an administrator must review the candidate."** — the status mapped to
+a sentence, not a raw enum. As **employee** the same panel shows **"This account has no imports
+yet."**, an empty state rather than an error or a dead panel. Alongside it the screen keeps the line
+that matters when a judge asks why an approved document is not public: _processing status and
+classification are separate_.
+
+`SourcesPanel` requests `/sources` and `/imports` together, so both halves of W1 are now live on
+one screen end to end: gateway route, scoped query, contract projection, rendered state.
+
+## `db_test` rows are visible in the demo, and they look worse than they are
+
+The admin source list is now **8**, not the 7 recorded in run 3b: `db_test synthetic (BOREAL)`,
+restricted, kind `upload`. The two import rows come from the same source. `npm run test:db` writes
+them into the shared project and they persist, attributed to the reviewer account.
+
+Nothing is broken — but a judge who signs in as the external reviewer sees two **restricted**
+documents on screen, and "external reviewer sees restricted content" is the exact headline this
+product exists to prevent, whatever the explanation afterwards. Clearing them is an integrator
+decision on a shared project; flagged, not acted on.
+
+## Not run
+
+- **Analyst** was not re-checked for `/imports`; the ownership branch is identical to employee and
+  external, both of which were checked, so the role adds no new code path.
+- **A real import.** No account has uploaded anything, so every row here comes from `test:db` and
+  no `approved` or `partial` document exists yet. Status values beyond `review` are unproven on
+  production, and P05 importing the corpus is what would prove them.
+- **375 px** still needs a human with the device toolbar: Chrome clamps an automated window to
+  500 px on macOS.

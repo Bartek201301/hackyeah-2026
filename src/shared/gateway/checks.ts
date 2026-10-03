@@ -6,7 +6,8 @@ import { check } from "@/shared/contracts/validate";
 // Deterministic gateway checks (technical-spec §2/§3, semantic-protocol "Complete bounded coverage").
 
 export const utf8Bytes = (s: string) => Buffer.byteLength(s, "utf8");
-export const sha256Hex = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
+/** A string hashes as its UTF-8 bytes. */
+export const sha256Hex = (s: string | Uint8Array) => createHash("sha256").update(s).digest("hex");
 /** UTC date at the moment of the call: budget buckets reconcile to this original day. */
 export const utcDay = (at = new Date()) => at.toISOString().slice(0, 10);
 
@@ -37,6 +38,36 @@ export function matchSignatures(text: string, feed: ThreatFeed, stage: string): 
       stage,
       locator: null,
     }));
+}
+
+// Conservative secret/contact patterns (technical-spec §3): illustrative coverage, not universal DLP.
+// A token prefix must not continue a word, so "task-management" is not an `sk-` token.
+const SENSITIVE = [
+  { code: "PEM_KEY", category: "secret", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
+  {
+    code: "SECRET_TOKEN",
+    category: "secret",
+    re: /(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9_-]{8,}|sk_live_|ghp_|AKIA[0-9A-Z]{16}|sb_secret_|xox[abp]-)/,
+  },
+  // The local part starts at a boundary, so a long line without "@" is scanned once, not once per position.
+  {
+    code: "CONTACT_EMAIL",
+    category: "personal",
+    re: /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/,
+  },
+];
+
+/** Secret and contact findings with category and code only; the matched value never leaves. */
+export function matchSensitive(text: string, stage: string): Finding[] {
+  // Case is kept (AKIA is upper case); compatibility forms and zero-width characters cannot split a match.
+  const t = text.normalize("NFKC").replace(/\p{Cf}/gu, "");
+  return SENSITIVE.filter((p) => p.re.test(t)).map((p) => ({
+    code: p.code,
+    category: p.category,
+    severity: "block",
+    stage,
+    locator: null,
+  }));
 }
 
 /** The engine checks returned coverage itself instead of trusting `coverage_complete` alone. */
