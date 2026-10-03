@@ -18,7 +18,7 @@ function AssessmentBlock({ assessment }: { assessment: AssessmentView }) {
        * implies an attempt that never happened, so the block stops at its status and hint.
        */}
       {assessment.measured && (
-        <dl className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
           {assessment.scores.map((score) => (
             <div key={score.label} className="flex items-baseline justify-between gap-3">
               <dt className="text-sm text-muted">{score.label}</dt>
@@ -35,11 +35,18 @@ function AssessmentBlock({ assessment }: { assessment: AssessmentView }) {
           </div>
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-sm text-muted">{copy.assessment.revision}</dt>
-            <dd className="truncate text-sm font-semibold text-fg">{assessment.revision}</dd>
+            <dd className="min-w-0 break-all text-right text-sm font-semibold text-fg">
+              {assessment.revision}
+            </dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-sm text-muted">{copy.assessment.hash}</dt>
-            <dd className="truncate text-sm font-semibold tabular-nums text-fg">{assessment.hash}</dd>
+            <dd
+              className="min-w-0 truncate text-sm font-semibold tabular-nums text-fg"
+              title={assessment.hashFull ?? undefined}
+            >
+              {assessment.hash}
+            </dd>
           </div>
         </dl>
       )}
