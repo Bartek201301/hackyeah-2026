@@ -34,7 +34,7 @@ Documentation-only validation is also available now (introduced by T00): `node s
 | OLLAMA_HOST                          | Mac                        | Loopback only                                                     |
 | LAYA_CHECKPOINT_REVISION             | runtime manifest/bridge    | Exact verified checkpoint commit, never mutable unrecorded latest |
 | OLLAMA_MODEL_DIGEST                  | runtime manifest/bridge    | Digest verified against selected local model                      |
-| DEMO_ADMIN_PASSWORD etc.             | private setup process only | Four separately generated passwords; no default checked in        |
+| `DEMO_<ROLE>_PASSWORD` (four)        | private setup process only | ADMIN/ANALYST/EMPLOYEE/REVIEWER; ≥16 chars; test:db reuses them   |
 | TEST_BASE_URL / TEST_* credentials   | private test process       | Prepared test accounts and target; no screenshots of passwords    |
 
 Retain existing env names if the installed starter uses an equivalent: T01 explicitly maps/migrates them in `.env.example` without exposing real values. Runtime manifest contains versions/digests, not secrets. Never give the model bridge a Supabase service key. Model URLs live in deployment configuration, not editable policy JSON.
@@ -65,6 +65,8 @@ Bridge binds loopback (implementation default port 8787); only its authenticated
 Integrator commits additive migration on branch, gets review, applies it once to shared Supabase and records migration SHA/time/result in supabase/APPLIED.md. Dependent app merges follow successful application. Never alter an applied file. Preview/local/prod share data; coordinate reset explicitly with the team.
 
 Disable public signup in Supabase Auth. Create four password users from fixture emails via admin setup process and verified memberships; choose synthetic emails as labels, no email delivery requirement. Supabase-generated UUIDs map to fixture roles. Admin is not automatically assigned to restricted deals. Store login handout privately for judges. Test login/logout for each account and verify raw data denies with their actual JWTs.
+
+Public signup is disabled in the dashboard (Authentication → Sign In / Providers → "Allow new users to sign up" off), not through config push. Passwords come from `DEMO_ADMIN_PASSWORD`, `DEMO_ANALYST_PASSWORD`, `DEMO_EMPLOYEE_PASSWORD` and `DEMO_REVIEWER_PASSWORD` in the integrator's private `.env.local`, next to `SUPABASE_SECRET_KEY`; scripts never print them. `npm run demo:seed` currently seeds identities and controls (organisation, deals, the four accounts with memberships, policy v1, feed v1, control head); dataset sources follow in a later T02 phase. Existing users are never reset or deleted. `npm run test:db` runs real-JWT identity and RLS probes for all four roles and anon against the shared project; it is manual and never runs in CI. Missing env exits nonzero and names the variable.
 
 T02 introduces `npm run demo:seed`; it inserts source metadata and raw synthetic fixtures idempotently and must not approve content by bypassing the gateway. T11 runs genuine ingestion to prepare approved fixtures. Demo resets are a separate explicit coordinated action, never a side effect of dev/build/test. No real financial or personal data.
 
