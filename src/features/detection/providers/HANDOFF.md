@@ -1,5 +1,8 @@
 # T04 first provider-adapter slice — Bartosz handoff
 
+Historical first-slice evidence. The approved local G2 scope and new public factories are documented
+in [the G2 factory handoff](../G2-HANDOFF.md), which supersedes the bridge prerequisite below for G2.
+
 Owner: Maciej / Builder B. Prepared 3 October 2026 on Julian's Mac in the isolated
 `codex/maciej-detection-research` worktree. Main `3f883db` was merged as `27bf0a3`.
 This implementation changes only detection. The branch also contains the previously
