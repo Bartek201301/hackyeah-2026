@@ -232,6 +232,44 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       return rows ?? [];
     },
 
+    async listActivity({ organisationId, actorId, after, limit }) {
+      const scoped = () =>
+        db
+          .from("actor_activity")
+          .select(
+            "trace_id, actor_id, operation, state, decision, reasons, usage, policy_version, feed_version, created_at",
+          )
+          .eq("organisation_id", organisationId)
+          // Own activity only, filtered here because the admin client bypasses RLS.
+          .eq("actor_id", actorId);
+
+      let query = scoped();
+      if (after) {
+        // The cursor is resolved inside the actor's own rows, so a trace belonging to someone else
+        // is simply not found and reads as an invalid cursor.
+        const cursor = await data<{ created_at: string } | null>(
+          scoped().eq("trace_id", after).maybeSingle(),
+        );
+        if (!cursor) return null;
+        /*
+         * Keyset on the published order (created_at, id) descending; trace_id is the primary key.
+         *
+         * Both values are double-quoted inside the filter. A timestamptz renders with `+` and `:`,
+         * which are significant in PostgREST's `or` grammar, so an unquoted value would change the
+         * filter's shape rather than its operand. `after` is already a verified uuid and the
+         * timestamp comes from a row this actor may see, but the quoting is what makes that
+         * irrelevant.
+         */
+        const at = `"${cursor.created_at}"`;
+        query = query.or(`created_at.lt.${at},and(created_at.eq.${at},trace_id.lt."${after}")`);
+      }
+
+      const rows = await data<ActivityRow[] | null>(
+        query.order("created_at", { ascending: false }).order("trace_id", { ascending: false }).limit(limit),
+      );
+      return rows ?? [];
+    },
+
     async readMetricsRows({ organisationId, ownActorId, from, to, limit }) {
       let activityQuery = db
         .from("actor_activity")
