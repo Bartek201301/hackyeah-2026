@@ -5,7 +5,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ErrorCode } from "@/shared/contracts";
 import { createSupabaseAdmin } from "@/shared/supabase/admin";
 import { GatewayError, STATUS } from "./envelope";
-import type { ActivityRow, DatasetBatch, EventRow, RepositoryPort, RunRecord, SourceRow } from "./ports";
+import type {
+  ActivityRow,
+  DatasetBatch,
+  EventRow,
+  MetricsActivityRow,
+  MetricsReservationRow,
+  RepositoryPort,
+  RunRecord,
+  SourceRow,
+} from "./ports";
 import { sourceScope } from "./sources";
 
 const CODES = new Set<string>(Object.keys(STATUS));
@@ -281,6 +290,76 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         }),
       );
       return result.finalized === true;
+    },
+
+    async listActivity({ organisationId, actorId, after, limit }) {
+      const scoped = () =>
+        db
+          .from("actor_activity")
+          .select(
+            "trace_id, actor_id, operation, state, decision, reasons, usage, policy_version, feed_version, created_at",
+          )
+          .eq("organisation_id", organisationId)
+          // Own activity only, filtered here because the admin client bypasses RLS.
+          .eq("actor_id", actorId);
+
+      let query = scoped();
+      if (after) {
+        // The cursor is resolved inside the actor's own rows, so a trace belonging to someone else
+        // is simply not found and reads as an invalid cursor.
+        const cursor = await data<{ created_at: string } | null>(
+          scoped().eq("trace_id", after).maybeSingle(),
+        );
+        if (!cursor) return null;
+        /*
+         * Keyset on the published order (created_at, id) descending; trace_id is the primary key.
+         *
+         * Both values are double-quoted inside the filter. A timestamptz renders with `+` and `:`,
+         * which are significant in PostgREST's `or` grammar, so an unquoted value would change the
+         * filter's shape rather than its operand. `after` is already a verified uuid and the
+         * timestamp comes from a row this actor may see, but the quoting is what makes that
+         * irrelevant.
+         */
+        const at = `"${cursor.created_at}"`;
+        query = query.or(`created_at.lt.${at},and(created_at.eq.${at},trace_id.lt."${after}")`);
+      }
+
+      const rows = await data<ActivityRow[] | null>(
+        query.order("created_at", { ascending: false }).order("trace_id", { ascending: false }).limit(limit),
+      );
+      return rows ?? [];
+    },
+
+    async readMetricsRows({ organisationId, ownActorId, from, to, limit }) {
+      let activityQuery = db
+        .from("actor_activity")
+        .select("trace_id, decision, reasons, usage")
+        .eq("organisation_id", organisationId)
+        // scripts/db/run.test.mjs writes db_test rows with partial usage; they are not root requests.
+        .neq("operation", "db_test")
+        .gte("created_at", from)
+        .lte("created_at", to);
+      // own scope filters here, not after serialization: the admin client bypasses RLS.
+      if (ownActorId) activityQuery = activityQuery.eq("actor_id", ownActorId);
+      const activity = await data<MetricsActivityRow[] | null>(
+        activityQuery.order("created_at", { ascending: false }).limit(limit),
+      );
+
+      /*
+       * Reservations carry no actor, so the window and the scope come from their operation. The
+       * embedded columns exist to filter the join and are never read: only unit, amount and state
+       * reach the aggregate, so the nested object cannot reach a response.
+       */
+      let reservationQuery = db
+        .from("reservations")
+        .select("unit, amount, state, operations!inner(actor_id, created_at)")
+        .eq("organisation_id", organisationId)
+        .gte("operations.created_at", from)
+        .lte("operations.created_at", to);
+      if (ownActorId) reservationQuery = reservationQuery.eq("operations.actor_id", ownActorId);
+      const reservations = await data<MetricsReservationRow[] | null>(reservationQuery.limit(limit));
+
+      return { activity: activity ?? [], reservations: reservations ?? [] };
     },
   };
 }

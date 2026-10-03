@@ -76,6 +76,19 @@ export type ActivityRow = {
   created_at: string;
 };
 export type EventRow = { event_type: string; payload: Record<string, unknown>; created_at: string };
+/** actor_activity row as selected for metrics: counters and settled usage, never events. */
+export type MetricsActivityRow = {
+  trace_id: string;
+  decision: ApiResponse["decision"];
+  reasons: string[];
+  usage: Usage;
+};
+/** reservations row as selected for metrics; `state` decides settled against still outstanding. */
+export type MetricsReservationRow = {
+  unit: BudgetUnit;
+  amount: number;
+  state: "reserved" | "settled" | "unresolved" | "released";
+};
 /** sources row as selected for source_list; projected and schema-checked before release. */
 export type SourceRow = { id: string; label: string; classification: string; kind: string };
 /** A registered dataset batch as loaded for import_connector; payloads are untrusted until validated. */
@@ -180,6 +193,29 @@ export interface RepositoryPort {
     outcome: FinalOutcome;
     publication: ImportPublication;
   }): Promise<boolean>;
+  /**
+   * One page of an actor's own activity, newest first, at most `limit`. `after` is a trace id the
+   * actor may see; null means the first page. Returns null when the cursor is not one of theirs,
+   * so an unreachable cursor cannot confirm that the trace exists.
+   */
+  listActivity(input: {
+    organisationId: string;
+    actorId: string;
+    after: string | null;
+    limit: number;
+  }): Promise<ActivityRow[] | null>;
+  /**
+   * Rows behind one metrics window: activity for the counters and settled usage, reservations for
+   * what is still outstanding. Filtering is in the query because the gateway client bypasses RLS;
+   * `ownActorId` null means the whole organisation. At most `limit` rows of each.
+   */
+  readMetricsRows(input: {
+    organisationId: string;
+    ownActorId: string | null;
+    from: string;
+    to: string;
+    limit: number;
+  }): Promise<{ activity: MetricsActivityRow[]; reservations: MetricsReservationRow[] }>;
 }
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {

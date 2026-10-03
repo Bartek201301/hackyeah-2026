@@ -139,6 +139,8 @@ function harness(over: Partial<Opts> = {}) {
       return true;
     },
     listSources: unused,
+    listActivity: unused,
+    readMetricsRows: unused,
     async loadDatasetBatch(actor, sourceId, batchId, limit) {
       log.push("loadDatasetBatch");
       if (!o.batch || actor.organisation_id !== ORG || sourceId !== SOURCE || batchId !== BATCH) return null;
