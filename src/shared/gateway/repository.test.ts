@@ -62,3 +62,46 @@ describe("createSupabaseRepository window queries", () => {
     expect(calls.filter(([name, column]) => name === "eq" && column === "actor_id")).toHaveLength(1);
   });
 });
+
+describe("createSupabaseRepository excerpt access", () => {
+  const actor = {
+    actor_id: "a",
+    organisation_id: "o",
+    role: "analyst" as const,
+    deal_ids: ["d1"],
+    audience: "actor" as const,
+    scopes: [],
+  };
+
+  it("sends only the actor's identity: role and deals are derived in SQL", async () => {
+    const calls: unknown[][] = [];
+    // TEST FAKE: records each RPC and answers with no rows.
+    const repository = createSupabaseRepository({
+      rpc: async (...args: unknown[]) => (calls.push(args), { data: [], error: null }),
+    } as unknown as SupabaseClient);
+    await repository.searchPermittedExcerpts(actor, {
+      query: "q",
+      dealId: null,
+      audience: "actor",
+      limit: 5,
+    });
+    await repository.readPermittedExcerpts(actor, "public", ["e1"]);
+    expect(calls).toEqual([
+      [
+        "search_permitted_excerpts",
+        {
+          p_organisation_id: "o",
+          p_actor_id: "a",
+          p_audience: "actor",
+          p_query: "q",
+          p_limit: 5,
+          p_deal_id: null,
+        },
+      ],
+      [
+        "read_permitted_excerpts",
+        { p_organisation_id: "o", p_actor_id: "a", p_audience: "public", p_ids: ["e1"] },
+      ],
+    ]);
+  });
+});
