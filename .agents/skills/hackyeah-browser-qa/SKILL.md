@@ -31,7 +31,7 @@ zespołu zapisanym w wymaganiach i AGENTS.md. Chronione preview może wymagać d
 1. Przejdź kluczową ścieżkę użytkownika z kryteriów funkcji lub trzyminutowego demo.
    Sprawdź nawigację, poprawny widok i wynik działania. Nie uznawaj samego HTTP 200 za sukces.
 2. Sprawdź wąski ekran około 375 px i desktop około 1440 px, a pośredni rozmiar, jeśli układ tego wymaga.
-   Zwróć uwagę na przewijanie poziome, ucięte teksty, przyciski i czytelność polskich komunikatów.
+   Zwróć uwagę na przewijanie poziome, ucięte teksty, przyciski i czytelność angielskich komunikatów.
 3. Zweryfikuj stan pusty, ładowanie/wysyłanie i błąd, jeśli można je bezpiecznie odtworzyć.
    Uwzględnij podwójne wysłanie oraz poprawność widocznego wyniku po odświeżeniu, gdy zapis jest w zakresie.
 4. Sprawdź klawiaturę, widoczny fokus, etykiety pól i dostępne nazwy przycisków.
@@ -41,7 +41,7 @@ zespołu zapisanym w wymaganiach i AGENTS.md. Chronione preview może wymagać d
 
 ## Wynik
 
-Zwróć po polsku krótki raport: URL, sprawdzona wersja/commit (lub brak tej informacji), rozmiary
+Zwróć po angielsku krótki raport: URL, sprawdzona wersja/commit (lub brak tej informacji), rozmiary
 ekranu, wykonane kroki i wynik, błędy z reprodukcją oraz niewykonane kontrole.
 Brak bazowych zrzutów oznacza brak potwierdzenia regresji wizualnej, nie blokuje samego sprawdzenia UI.
 Nie raportuj Core Web Vitals bez pomiaru i nie przedstawiaj pojedynczej próby jako danych użytkowników.

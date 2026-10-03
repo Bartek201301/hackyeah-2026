@@ -1,0 +1,409 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["balanced", "strict"]
+    },
+    "imports": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2097152
+        },
+        "max_pdf_pages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "max_csv_rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "max_text_chars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24000
+        },
+        "max_processing_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 180000
+        },
+        "allowed_formats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["csv", "pdf"]
+          },
+          "maxItems": 2
+        },
+        "connector_dataset": {
+          "const": "demo_dataset_v1"
+        }
+      },
+      "required": [
+        "max_bytes",
+        "max_pdf_pages",
+        "max_csv_rows",
+        "max_text_chars",
+        "max_processing_ms",
+        "allowed_formats",
+        "connector_dataset"
+      ]
+    },
+    "semantic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "const": true
+        },
+        "checkpoint": {
+          "const": "typed-decisions"
+        },
+        "context_tokens": {
+          "const": 1024
+        },
+        "window_tokens": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 700
+        },
+        "overlap_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max_windows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 10000
+        },
+        "thresholds": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "instruction_manipulation": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "review": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "block": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": ["review", "block"]
+            },
+            "sensitive_exposure": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "review": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "block": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": ["review", "block"]
+            },
+            "resource_abuse": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "review": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "block": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": ["review", "block"]
+            }
+          },
+          "required": ["instruction_manipulation", "sensitive_exposure", "resource_abuse"]
+        }
+      },
+      "required": [
+        "required",
+        "checkpoint",
+        "context_tokens",
+        "window_tokens",
+        "overlap_tokens",
+        "max_windows",
+        "timeout_ms",
+        "thresholds"
+      ]
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "generation_model": {
+          "const": "qwen3:8b"
+        },
+        "thinking": {
+          "const": false
+        },
+        "context_tokens": {
+          "type": "integer",
+          "minimum": 2048,
+          "maximum": 8192
+        },
+        "max_input_utf8_bytes": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 6000
+        },
+        "template_token_reserve": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 2048
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 768
+        },
+        "max_model_turns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "max_tool_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "max_identical_tool_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "max_elapsed_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000
+        },
+        "provider_timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000
+        },
+        "max_search_results": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "max_excerpt_chars": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 1600
+        },
+        "allowed_tools": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["search_excerpts", "read_excerpt"]
+          },
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "generation_model",
+        "thinking",
+        "context_tokens",
+        "max_input_utf8_bytes",
+        "template_token_reserve",
+        "max_output_tokens",
+        "max_model_turns",
+        "max_tool_calls",
+        "max_identical_tool_calls",
+        "max_elapsed_ms",
+        "provider_timeout_ms",
+        "max_search_results",
+        "max_excerpt_chars",
+        "allowed_tools"
+      ]
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "period": {
+          "const": "utc_day"
+        },
+        "actor_generation_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "org_generation_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 400000
+        },
+        "actor_generation_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600000
+        },
+        "org_generation_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1800000
+        },
+        "actor_semantic_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200000
+        },
+        "org_semantic_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 800000
+        },
+        "actor_commercial_micro_usd": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "org_commercial_micro_usd": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000000
+        },
+        "requests_per_actor_minute": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "max_active_runs_per_actor": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "max_active_runs_per_org": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        }
+      },
+      "required": [
+        "period",
+        "actor_generation_tokens",
+        "org_generation_tokens",
+        "actor_generation_ms",
+        "org_generation_ms",
+        "actor_semantic_tokens",
+        "org_semantic_tokens",
+        "actor_commercial_micro_usd",
+        "org_commercial_micro_usd",
+        "requests_per_actor_minute",
+        "max_active_runs_per_actor",
+        "max_active_runs_per_org"
+      ]
+    },
+    "comparison_rate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "currency": {
+          "const": "USD"
+        },
+        "input_micro_usd_per_token": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "output_micro_usd_per_token": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "label": {
+          "const": "Illustrative commercial equivalent; not an invoice"
+        }
+      },
+      "required": ["version", "currency", "input_micro_usd_per_token", "output_micro_usd_per_token", "label"]
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "audit_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 90
+        },
+        "export_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "review_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        }
+      },
+      "required": ["raw_days", "audit_days", "export_minutes", "review_days"]
+    }
+  },
+  "required": [
+    "schema_version",
+    "version",
+    "mode",
+    "imports",
+    "semantic",
+    "execution",
+    "budgets",
+    "comparison_rate",
+    "retention"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-control-gateway.example/schemas/policy",
+  "title": "GatewayPolicy"
+}

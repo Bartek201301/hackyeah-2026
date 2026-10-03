@@ -1,3 +1,5 @@
+> HISTORICAL EVIDENCE — this research predates the accepted gateway specification. Recommendations here are not implementation instructions. Read [the active documentation](../../docs/README.md).
+
 # Existing AI control layer systems and reference architectures
 
 ## How do existing systems intercept and govern model and agent interactions?

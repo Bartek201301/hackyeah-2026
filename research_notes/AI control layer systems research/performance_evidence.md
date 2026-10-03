@@ -1,3 +1,5 @@
+> HISTORICAL EVIDENCE — this research predates the accepted gateway specification. Recommendations here are not implementation instructions. Read [the active documentation](../../docs/README.md).
+
 # Performance and effectiveness evidence for AI control layers (research checked 3 October 2026)
 
 ## Which benchmarks and published systems give useful evidence, and is there a best-performing system?

@@ -1,119 +1,97 @@
-# Wymagania wyzwania AI Control Layer
+# Product requirements — AI Control Gateway
 
-Status: **wyzwanie wybrane, zakres implementacji i przydział pracy otwarte**. Źródłem wymagań
-jest oficjalny, czterostronicowy opis zadania HackYeah / Goldman Sachs „AI Control Layer”
-przekazany zespołowi 3 października 2026. [Strona z zadaniami HackYeah](https://hackyeah.pl/tasks-prizes).
-Koncepcja rozwiązania i stan rezultatów są w [opisie pomysłu](idea.md).
-Postęp implementacji zapisujemy w PR; ten dokument utrzymuje integrator po uzgodnieniu z zespołem.
+Status: accepted design baseline 1.0; implementation pending. Four people have a **single 19-hour delivery envelope including documentation preparation**. [Implementation plan](../team/implementation-plan.md) owns sequencing. [Architecture](architecture.md) owns topology; [policy](../contracts/policy.example.json) owns defaults.
 
-## 1. Cel i granica produktu
+## 1. Product in plain language
 
-Budujemy lekką, elastyczną **warstwę kontroli** pośredniczącą między aplikacjami, agentami,
-LLM, klientami/serwerami MCP, narzędziami, API oraz danymi. Może przyjąć postać gatewaya,
-proxy, middleware, wrappera SDK lub równoważnego pośrednika. Musi chronić także komunikację
-agent–agent i żądane przez agentów działania. Przepływ i niezmienniki opisuje
-[architektura](architecture.md).
+The gateway is a checkpoint between an AI application and company information, tools and model services. It checks who is asking, which information they may use, whether content contains suspicious instructions, and how much compute the operation can consume. Code makes the final decision using a central policy. Laya supplies additional risk signals.
 
-Aplikacja bankowości inwestycyjnej, inbox, symulacja Excela/PowerPointa lub inny workflow
-mogą służyć jako **demo referencyjne**. Nie są zależnością rdzenia ani celem samym w sobie.
-Obecne nazwy robocze nie określają nazwy końcowej ani domeny produktu.
+Our small company-chat application makes these decisions visible. Users can ask about the fictional AsterCloud deal, import a file, inspect their activity and request a public PDF. An administrator can review uncertain extracts and inspect organisation activity. This is a demonstrable control layer, not a production banking platform or a replica of Goldman Sachs systems.
 
-## 2. Obowiązkowe zdolności i dowód
+### Problems and outcomes
 
-| Zdolność                                  | Minimalny dowód do przygotowania                                                                                                                                                           |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Centralna, konfigurowalna polityka        | Zmiana progu, kontroli, uprawnienia, modelu lub narzędzia zmienia wynik przewidywalnie; reload bez przebudowy tam, gdzie praktyczny.                                                       |
-| Obrona hybrydowa                          | Deterministyczne sprawdzenia tożsamości, uprawnień, limitów i sygnatur wraz z semantyczną oceną intencji/ryzyka; decyzja egzekwowana przez kod i politykę.                                 |
-| Firewall działań                          | Kontrola żądań narzędzi, MCP, HTTP, bazy, pamięci, plików, kodu, modelu, transferu danych i kosztownych/destrukcyjnych operacji, stosownie do wybranych integracji.                        |
-| Budżety i zasoby                          | Limity kosztu API, tokenów, żądań, czasu, pętli agenta i zużycia zasobów, także dla modeli lokalnych; przewidywalne blokowanie, ograniczanie lub routing.                                  |
-| Zewnętrzne dane o zagrożeniach            | Konfigurowalne sygnatury i wskaźniki zagrożeń; zmiana feedu wpływa na wynik bez wpisywania ataków w kod demo.                                                                              |
-| Raportowanie i audyt                      | Dane audytowe do widoku zarządczego i technicznego; eksport, jeśli praktyczny. Dashboard jest prezentacją danych, nie jedynym zapisem.                                                     |
-| Telemetria                                | Rzeczywiste pomiary opóźnienia całości i narzutu warstwy, etapów kontroli, P50/P95/P99, przepustowości, udziału blokad/redakcji, tokenów/kosztu i zasobów modelu lokalnego, gdy mierzalne. |
-| Automatyczny zestaw testów bezpieczeństwa | Jedna oczywista komenda uruchamia przypadki pozytywne, negatywne i zmiany konfiguracji bez płatnych API. Dokładną komendę ustalimy przy implementacji w istniejącej konwencji npm.         |
+- Useful documents can also contain secrets, hostile instructions or conflicting numbers. Preserve safe, attributable facts without turning untrusted instructions into tool commands.
+- Different users have different access. Access must survive direct API calls, guessed IDs and prompt manipulation.
+- Repeated AI/tool calls waste time and compute. Stop them before further work, show measured usage, and distinguish estimates from bills.
+- A blocked answer alone is hard to audit. Show policy version, reason, stage, usage and completion status without leaking the protected text.
 
-## 3. Kryteria oceny i oczekiwane rezultaty
+## 2. Users and role matrix
 
-| Kryterium z oficjalnego opisu               | Waga | Potrzebny dowód                                                               |
-| ------------------------------------------- | ---: | ----------------------------------------------------------------------------- |
-| Solidność rozwiązania i jakość zabezpieczeń |  30% | Działające kontrole dla prawidłowych i wrogich interakcji.                    |
-| Architektura i wydajność                    |  20% | Prosty diagram, integracja z agentem oraz rzeczywiste pomiary narzutu.        |
-| Raportowanie bezpieczeństwa                 |  20% | Interaktywny dashboard, metryki i eksportowalne logi audytowe.                |
-| Kompletność zestawu testów                  |  15% | Uruchamialne testy pozytywne i negatywne, w tym budżety i exploity.           |
-| Praktyczność wdrożenia i skalowalność       |  15% | Prosty punkt integracji, konfigurowalne polityki i uzasadniona droga rozwoju. |
+One fictional organisation. Four prepared password accounts; no public signup. Every account has its own dashboard. An administrator additionally has organisation-wide reporting and administration. Roles and assigned deals are trusted server records.
 
-Oficjalne oczekiwane rezultaty: **(1)** funkcjonalna warstwa kontroli łatwa do wpięcia między
-aplikację, agenta, MCP i model oraz prosty diagram architektury; **(2)** udokumentowany
-przykładowy plik polityki z poziomami rygoru i zasadami budżetu; **(3)** prosty interaktywny
-dashboard pokazujący kontrole, stan bezpieczeństwa, blokowane zagrożenia i koszt/zużycie;
-**(4)** gotowy do uruchomienia zestaw testów kontroli, limitów i znanych exploitów.
-Agent użyty do pokazu może być własny lub istniejący. Organizator nie zapewnia płatnych API,
-datasetów ani specjalnego sprzętu; całość musi dać się zbudować i uruchomić we własnym środowisku.
-Przy wykorzystaniu kodu open source sprawdzamy licencje.
+| Capability                               | Administrator                        | Assigned deal analyst                           | General employee | External reviewer |
+| ---------------------------------------- | ------------------------------------ | ----------------------------------------------- | ---------------- | ----------------- |
+| Public approved excerpts/chat            | Yes                                  | Yes                                             | Yes              | Yes               |
+| Ordinary internal approved excerpts/chat | Yes                                  | Yes                                             | Yes              | No                |
+| Restricted deal excerpts/chat            | Only if assigned to deal             | Assigned deals only                             | No               | No                |
+| Original/candidate security review       | Organisation review, audited purpose | No raw download                                 | No               | No                |
+| Upload                                   | Any configured demo deal             | Assigned deal; restricted classification forced | No               | No                |
+| Configure dataset connector              | Yes                                  | No                                              | No               | No                |
+| Resolve review, change policy/feed       | Yes                                  | No                                              | No               | No                |
+| Generate/download public summary         | Yes                                  | Yes                                             | Yes              | Yes               |
+| Personal activity and usage              | Own                                  | Own                                             | Own              | Own               |
+| Organisation activity/audit export       | Yes                                  | No                                              | No               | No                |
 
-Nie deklarujemy wyników benchmarku bez pomiaru ani gotowości systemu na podstawie buildu.
+Administrator review is a distinct privileged operation. It does not confer automatic unrestricted chat access. External MCP tokens further restrict access to public-approved content, even if the issuing actor has broader rights.
 
-## 4. Scenariusze testowe
+## 3. End-to-end workflows
 
-Pozytywne: poprawna interakcja, autoryzowane narzędzie, zwykłe wywołanie modelu i dozwolony
-zasób. Negatywne: PII i sekrety, prompt injection bezpośredni i pośredni, niedozwolone narzędzie
-lub model, eksfiltracja i transfer poufnych danych, nadmierna samodzielność agenta,
-wyczerpanie budżetu, zapętlona egzekucja, wzorce złośliwego kodu i niebezpiecznej
-deserializacji oraz historyczne sygnatury. Testy obejmą zmianę progów, feedów, budżetów,
-włączenie/wyłączenie kontroli i przeładowanie konfiguracji. Gdzie możliwe, wyniki są deterministyczne.
+1. **Import:** authorised actor uploads CSV/text PDF or selects an allowlisted Supabase dataset batch. Raw data enters private quarantine. Bounded parsing, deterministic checks and complete Laya assessment produce approved excerpts, a versioned review candidate or a block. The user sees the outcome and reason. No raw input is directly searchable.
+2. **Chat:** authenticated user asks a question. Gateway validates scope and budgets, retrieves permitted approved excerpts, checks each tool/model operation, and buffers the generated answer for output checks. Citations identify exact sources and versions. Restricted matches are excluded before model input.
+3. **Review:** administrator reads a candidate, edits only the proposed extract, chooses an allowed audience and supplies a reason. The edited version is scanned again. Approval publishes only that version; raw originals remain private. Unresolved findings cannot be clicked away.
+4. **Export:** request a fresh summary using only public-approved excerpts. Generate and check the text, then produce a new PDF containing the approved text and citations. Original PDFs, analyst answers and hidden original text are not attached.
+5. **Investigate and change controls:** a personal dashboard shows own sanitised traces. Administrator sees organisation aggregates and review cases, can update a validated policy/feed version, and demonstrates its effect on the next operation.
 
-Zakładamy, że sędziowie wyślą dowolne wejścia i działania, zmienią konfigurację i sprawdzą logi
-oraz wydajność. Nie wiążemy zabezpieczeń ze skryptem pokazu.
-Dobór kontroli powinien uwzględniać publiczne źródła zagrożeń, np. OWASP,
-oraz aktualizowalne sygnatury zamiast zamkniętej listy przygotowanej pod demo.
+## 4. Stable requirements and success conditions
 
-## 5. Zespół i granice pracy
+| ID  | Requirement                          | Acceptance condition                                                                                                                     |
+| --- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| R01 | Generic gateway and thin adapters    | Web and MCP use the same engine; no feature-to-feature imports or bypass paths.                                                          |
+| R02 | Trusted identity and roles           | Four prepared accounts; forged roles, missing identity and cross-org IDs denied.                                                         |
+| R03 | Data access and classification       | Role/deal filters precede retrieval; status separate from classification; direct browser reads denied.                                   |
+| R04 | Bounded imports and connector        | Only allowlisted local dataset, CSV and text PDF; limits enforced before publication; private originals.                                 |
+| R05 | Hybrid assessment                    | Deterministic controls plus live Laya on permitted content; all accepted text covered; failures cannot approve.                          |
+| R06 | Safe extraction and human review     | Exact edited version/audience/reason recorded; no original release or silent declassification.                                           |
+| R07 | Controlled chat and tools            | Registered search/read tools only; each invocation authorised/audited; checked output before display.                                    |
+| R08 | Source attribution and conflicts     | Answer cites versions, dates, periods and units; comparable conflicting figures remain explicit.                                         |
+| R09 | Loop and resource limits             | Model/tool/context/output/time/repetition ceilings stop further effects; cancellation accounted honestly.                                |
+| R10 | Atomic budgets and accounting        | Concurrent reservations cannot overspend; actual vs estimated vs unresolved usage distinguished; local and commercial-unit paths tested. |
+| R11 | Central versioned policy             | Validated admin update with optimistic version check; next decision uses active version; hard invariants cannot be disabled.             |
+| R12 | Externally managed signatures        | Authenticated bounded feed push updates next decision; stale/invalid feed cannot silently clear checks.                                  |
+| R13 | Durable audit and dashboards         | Audit before effects, completion/incomplete records, personal/admin reporting, protected text excluded.                                  |
+| R14 | Public sanitized PDF                 | Built from public-approved material; no forbidden strings in response, extracted PDF text, metadata or attachments.                      |
+| R15 | Verified MCP integration             | Claude Code search/read/public-summary tools with scoped token; no raw Supabase or model access.                                         |
+| R16 | Fail-closed operations               | Missing policy, required semantics or durable state prevents operation; service errors distinct from policy verdicts.                    |
+| R17 | Automated positive/negative evidence | Deterministic, DB/RLS, browser and live semantic suites; assertions check effects and exposure.                                          |
+| R18 | Honest performance and savings       | Measured tokens/latency and sample sizes; permitted baseline only; money explicitly illustrative.                                        |
+| R19 | Deployable judge demonstration       | Prepared accounts, live Mac services, verified production walkthrough and recovery plan.                                                 |
+| R20 | English accessible interface         | Shared UI, readable states, keyboard operation, responsive screens; implementation/presentation claims labelled accurately.              |
 
-| Rola       | Osoba / GitHub | Obecna odpowiedzialność                                                                  |
-| ---------- | -------------- | ---------------------------------------------------------------------------------------- |
-| Integrator | Do przypisania | `src/shared/**`, `src/app/**`, baza, konfiguracja, zależności, CI, scalenia i publikacja |
-| Builder A  | Do przypisania | Jeden uzgodniony `src/features/<nazwa>/**`                                               |
-| Builder B  | Do przypisania | Jeden uzgodniony `src/features/<nazwa>/**`                                               |
-| Builder C  | Do przypisania | Jeden uzgodniony `src/features/<nazwa>/**`                                               |
+## 5. Scope and non-goals
 
-Możliwy podział tematyczny: platforma/polityka, detektory i semantyka, audyt/raporty,
-red team/integracje. To **kierunek podziału**, nie przypisanie katalogów ani osób.
-Integrator tworzy wspólne kontrakty i trasy przed pracą zależną. Loginy umożliwią CODEOWNERS.
+**Required for this delivery:** all R01–R20 within this narrow reference workflow. Real authentication, policy, Laya, Ollama, persistence, budgets and tests remain required if presentation polish is cut.
 
-## 6. Kontrakty przed równoległą implementacją
+**Deferred:** OCR/image PDFs, PPTX, Parquet, spreadsheets beyond CSV, arbitrary SQL/database connectors, email sending/outbox, live ChatGPT OAuth, paid generation providers, vector search/embeddings, fine-tuning, autonomous write tools, real financial data, enterprise SSO, multi-tenant onboarding and high-availability hosting. A commercial adapter simulator tests budget units; it is not a real paid-provider integration.
 
-Status: **nieuzgodnione**. `src/shared/types.ts` zawiera obecnie tylko `Id`, `IsoDateTime`
-i `ActionResult<T>`; nie zawiera kontraktów warstwy kontroli. Uzgodnimy ich minimalny kształt
-przed zależną implementacją, bez zmiany nazw tylko dla zgodności z przykładami w architekturze.
+## 6. Quality and completion
 
-| Granica                         | Co trzeba uzgodnić                                                   | Właściciel              |
-| ------------------------------- | -------------------------------------------------------------------- | ----------------------- |
-| Interakcja i kontekst działania | Aktor, tożsamość/rola, cel, zasób, dane, trace ID                    | Integrator z odbiorcami |
-| Wynik kontroli i decyzja        | Fakty deterministyczne, ocena semantyczna, polityka, werdykt i powód | Integrator z odbiorcami |
-| Audyt i budżet                  | Zdarzenie, metryki, licznik/limit, wpływ decyzji                     | Integrator z odbiorcami |
-| Feed zagrożeń                   | Źródło, wersja, wskaźnik i sposób aktualizacji                       | Integrator z odbiorcami |
+Security acceptance checks deterministic exposure rules exactly. Live Laya evaluation reports false positives and misses separately on a frozen held-out set; it cannot establish production-grade security. No promised 100–200 ms gateway latency or savings percentage. Record cold/warm measurements before stating results. Work is complete only after acceptance gates, CI, peer review, preview and production walkthroughs.
 
-Pola trwałych encji odpowiadają kolumnom. Zmiany po uzgodnieniu pozostają kompatybilne
-lub wymagają koordynacji wszystkich odbiorców; nikt nie zmienia wspólnego kontraktu jednostronnie.
-Local, preview i production dzielą jeden projekt Supabase. Dostęp, RLS i tożsamość ustalamy
-świadomie; publishable key nie jest kontrolą dostępu.
+Threats addressed include direct/indirect instruction manipulation, unauthorized disclosure, tool misuse and unbounded consumption. The demo does not establish full malware detection, universal prompt-injection resistance or complete OWASP coverage.
 
-## 7. Demo i warunek ukończenia
+## 7. Challenge traceability
 
-Demo do 3 minut powinno pokazać legalną interakcję, próbę naruszenia, zmianę konfiguracji
-wpływającą na werdykt oraz ślad audytowy i pomiar. Domena referencyjna pozostaje otwarta.
-Dane testowe przygotowuje integrator w powtarzalnym seedzie; reset wymaga uzgodnienia z zespołem.
+Official brief: HackYeah / Goldman Sachs “AI Control Layer”, supplied to the team on 3 October 2026; [event task page](https://hackyeah.pl/tasks-prizes). The user-supplied challenge text requires centralized security/privacy/resource configuration, hybrid non-AI and AI controls, reporting, local/commercial budgets, external attack signatures and automated allowed/blocked/redacted tests.
 
-Ukończenie wymaga zielonego `npm run check` i CI, koleżeńskiej recenzji, testów kontroli,
-sprawdzonej ścieżki na preview i próby demo na production. Wymagane migracje wykonuje
-integrator i zapisuje w `supabase/APPLIED.md`. Build nie potwierdza działania bazy, polityk,
-konfiguracji na żywo ani pokazu.
-Każdy ekran produktu zachowuje czytelny stan pusty, ładowania/wysyłania i błędu.
+| Challenge area                         | Requirement IDs    | Evidence                                             |
+| -------------------------------------- | ------------------ | ---------------------------------------------------- |
+| Lightweight gateway; flexibility       | R01, R15, R19      | Architecture, HTTP/MCP contracts, live client        |
+| Hybrid defense; privacy/security (30%) | R02–R09, R16       | Real Laya, role/exposure tests, review               |
+| Architecture/performance (20%)         | R01, R10, R18      | Boundary diagram, atomic accounting, timing report   |
+| Security/management reporting (20%)    | R13, R18, R20      | Personal/admin traces, usage, audit export           |
+| Automated tests (15%)                  | R17                | Positive, negative, configuration and failure suites |
+| Practicality/scalability (15%)         | R11, R12, R15, R19 | Central policy/feed, setup, replaceable adapters     |
 
-## OPEN QUESTIONS
+## 8. Team
 
-- Nazwa końcowa i domena demo referencyjnego.
-- Kształt konfiguracji oraz sposób przeładowania w wybranej topologii.
-- Dostawca modelu semantycznego (lokalny lub zdalny), tryb synchroniczny/asynchroniczny i routing.
-- Znaczenie `ESCALATE` i odbiorca eskalacji.
-- Trwałość audytu i liczników budżetu; topologia wdrożenia i uwierzytelnianie.
-- Przydział ludzi, katalogów i kolejność pionowych wycinków po zatwierdzeniu kontraktów.
+Integrator owns shared/platform/database/deployment. Builder A owns workbench; B detection; C audit. Exact paths and task handoffs are in the architecture and implementation plan. Human GitHub usernames are operational assignments to record in the PR before claiming a task; they do not change the contract. No invented CODEOWNERS entries.

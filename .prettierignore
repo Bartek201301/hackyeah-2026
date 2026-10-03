@@ -5,3 +5,6 @@ next-env.d.ts
 src/app/fonts
 # Niezmienione materiały ECC: zachowujemy oryginalne bajty i sumy SHA-256.
 docs/ai/ecc/upstream/
+# Historical snapshots and supplied report retain their original formatting.
+docs/archive/pre-gateway-prd/
+docs/reference/laya-report-original.md

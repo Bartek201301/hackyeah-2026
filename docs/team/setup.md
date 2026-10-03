@@ -1,104 +1,98 @@
-# Konfiguracja zespołu i usług
+# Setup and recovery
 
-Repo: https://github.com/Bartek201301/hackyeah-2026. Projekt publiczny; środowisko lokalne poza Git.
-Zasady: AGENTS.md. Zadanie i przypisania: docs/product/requirements.md. Nie zakładamy, że usługi już działają.
+Application setup instructions for future tasks. The starter commands are available now; gateway/model/account commands are explicitly marked below. No secrets belong in Git, logs, screenshots, pitch or this document.
 
-## 1. Każdy z czterech komputerów
+## Available now
 
-1. Zaakceptuj zaproszenie do repo i sklonuj je. Pracuj we własnym checkoutcie.
-2. Zainstaluj Node **24.14.1** (`nvm install && nvm use`, jeśli używasz nvm; fnm obsługuje .nvmrc).
-3. Ustaw npm: `npm install -g npm@11.11.0`; sprawdź `node -v` i `npm -v`.
-4. `npm ci` i `npm run check`. To działa bez kluczy i bez połączenia z bazą.
-5. `cp .env.example .env.local`. Integrator przekazuje Project URL i **publishable key**
-   (`sb_publishable_...`). Secret/service_role i legacy JWT nie są akceptowane przez ten projekt.
-6. `npm run doctor`, następnie `npm run dev`. Otwórz http://localhost:3000/health i `/ui`.
-7. Potwierdź instalację, check, działanie strony i **HEALTH: OK**. Sam start serwera nie wystarczy.
-8. Przygotuj CodeGraph, Agent Reach i Ponytail według [instrukcji narzędzi zespołu](agent-tools.md)
-   i sprawdź własny wynik `agent-reach doctor`.
-
-| Osoba / rola (przypisanie po wyborze) | npm ci + check | dev + /ui | doctor + /health |
-| ------------------------------------- | -------------- | --------- | ---------------- |
-| Integrator                            | Oczekuje       | Oczekuje  | Oczekuje         |
-| Builder A                             | Oczekuje       | Oczekuje  | Oczekuje         |
-| Builder B                             | Oczekuje       | Oczekuje  | Oczekuje         |
-| Builder C                             | Oczekuje       | Oczekuje  | Oczekuje         |
-
-Wyniki zbiera integrator; nikt nie potwierdza za inną osobę. Asystent może być Codex lub Claude;
-oba czytają AGENTS.md i docs/product/requirements.md. Hook Claude to wygoda, format:check to wspólna kontrola.
-
-## 2. GitHub — właściciel repo i integrator
-
-- Właściciel dodaje trzy pozostałe osoby jako collaborators z prawem Write.
-- Zmiana tego setupu wchodzi przez PR. Po pierwszym zielonym uruchomieniu **team-check**
-  administrator ustawia ochronę main. Prawo Write nie wystarcza do ustawiania ochrony.
-- Konfiguracja: PR obowiązkowy, 1 aprobata kolegi, odrzucanie starych aprobat po zmianach,
-  wymagany **team-check**, aktualna gałąź względem main, rozwiązane dyskusje,
-  ochrona obejmuje adminów, force push i usuwanie main wyłączone.
-- Nie wymagamy aprobaty CODEOWNERS (właściciel nie może zatwierdzić własnego PR).
-  Po przypisaniu loginów integrator dodaje CODEOWNERS: domyślnie integrator dla repo,
-  konkretni builderzy dla ich katalogów. Wszyscy muszą mieć Write.
-- Używamy **merge commit**. Nie włączaj wymogu linear history, który wyklucza merge commits.
-- Gotowy payload administrator może zastosować po pierwszym zielonym CI:
+From repository root with Node 24 and npm 11.11.0:
 
 ```sh
-gh api --method PUT repos/Bartek201301/hackyeah-2026/branches/main/protection \
-  --input .github/main-protection.json
+npm ci
+npm run dev
+npm run check
+npm run doctor
 ```
 
-Panel: https://github.com/Bartek201301/hackyeah-2026/settings/branches.
-Przed zastosowaniem porównaj istniejącą ochronę, aby nie osłabić nowszych reguł. Po wykonaniu
-odczytaj ustawienia ponownie i sprawdź, że czerwony PR nie może zostać scalony.
-Nie obchodź braku recenzenta pushem admina. Integrator scala po jednym PR; kolejny aktualizuje main.
+Documentation-only validation is also available now (introduced by T00): `node scripts/validate-docs.mjs`. It validates the compatible JSON Schema assertions/examples, contract references and local documentation links; it does not run the application.
 
-## 3. Jeden projekt Supabase
+`dev` serves the existing starter. `check` includes format/types/lint/module rules/tooling tests/build. `doctor` checks its existing database prerequisites; it does not prove future gateway auth/RLS/model behavior. `npm run new-feature <name>` and `npm run format -- <owned-file>` are also available now. Confirm existing scripts in package.json before use. No security/gateway suite exists until the named task introduces it.
 
-Właściciel tworzy projekt w https://supabase.com/dashboard (jeśli jeszcze nie istnieje),
-zapisuje hasło poza repo i daje integratorowi dostęp do wykonywania SQL.
-Project URL oraz publishable key są w panelu Connect / ustawieniach API projektu.
-Local, wszystkie preview i production wskazują **ten sam projekt** i modyfikują te same dane.
+## Configuration contract (T01/T02/T04)
 
-Integrator sprawdza i wykonuje istniejącą migrację health_check, a potem uruchamia doctor.
-Każda kolejna migracja: uzgodnienie kontraktu → commit i przegląd PR → wykonanie zapisanej migracji
-w SQL Editor → sprawdzenie wyniku → wpis do supabase/APPLIED.md → scalenie zależnego kodu.
-Nie stosujemy automatycznych migracji z gałęzi. Zastosowane pliki są niezmienne; poprawki to nowe migracje.
-Szablon SQL ma RLS i brak dostępu domyślnego. Polityki oraz granty muszą odpowiadać uzgodnionym wymaganiom.
+| Name                                 | Location                   | Meaning                                                           |
+| ------------------------------------ | -------------------------- | ----------------------------------------------------------------- |
+| NEXT_PUBLIC_SUPABASE_URL             | web/server                 | Existing project URL                                              |
+| NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | web/server                 | Public client key; never a permission substitute                  |
+| SUPABASE_SECRET_KEY                  | server only                | Privileged backend credential; never NEXT_PUBLIC                  |
+| APP_ORIGIN                           | server                     | Exact deployed origin for cookie mutation checks                  |
+| MODEL_BRIDGE_URL                     | server only                | Fixed HTTPS tunnel endpoint; no caller override                   |
+| MODEL_BRIDGE_TOKEN                   | server + bridge            | Strong shared secret; constant-time auth; rotate privately        |
+| LAYA_API_KEY                         | bridge/Laya only           | Local Laya auth secret                                            |
+| LAYA_MODELS                          | Mac                        | Explicit typed-decisions                                          |
+| LAYA_DEVICE                          | Mac                        | mps, or measured CPU fallback recorded in evidence                |
+| LAYA_HOST / LAYA_PORT                | Mac                        | Loopback and local service port                                   |
+| OLLAMA_HOST                          | Mac                        | Loopback only                                                     |
+| LAYA_CHECKPOINT_REVISION             | runtime manifest/bridge    | Exact verified checkpoint commit, never mutable unrecorded latest |
+| OLLAMA_MODEL_DIGEST                  | runtime manifest/bridge    | Digest verified against selected local model                      |
+| DEMO_ADMIN_PASSWORD etc.             | private setup process only | Four separately generated passwords; no default checked in        |
+| TEST_BASE_URL / TEST_* credentials   | private test process       | Prepared test accounts and target; no screenshots of passwords    |
 
-Dane demo: stałe ID i UPSERT bez duplikatów. Resety wyłącznie po uzgodnieniu z całym zespołem.
-Przed próbą i prezentacją zatrzymaj zapisy testowe. Cofnięcie wdrożenia nie cofa migracji.
+Retain existing env names if the installed starter uses an equivalent: T01 explicitly maps/migrates them in `.env.example` without exposing real values. Runtime manifest contains versions/digests, not secrets. Never give the model bridge a Supabase service key. Model URLs live in deployment configuration, not editable policy JSON.
 
-## 4. Vercel i sprawdzenie publikacji
+## Model services — introduced and verified by T01/T04
 
-1. Właściciel importuje repo w https://vercel.com/new jako Next.js; potwierdza production branch **main**.
-2. Node w projekcie: **24.x** (Vercel zarządza wersjami minor/patch). Instalacja: npm ci.
-3. Ustaw obie zmienne z .env.example w Production i Preview, dla jednego projektu Supabase.
-4. Po zmianie NEXT_PUBLIC_* wykonaj nowe wdrożenie — wartości są wbudowane przy buildzie.
-5. Sprawdź dostęp każdego z czterech autorów do preview i możliwość uruchomienia deploymentu ich PR.
-   Jeśli plan Vercel lub ochrona preview ogranicza dostęp, właściciel ustawia dostęp zgodnie
-   z dostępnym planem. Nie zakładamy, że wyłączenie ochrony rozwiązuje prawa autorów do wdrożeń.
-6. Na production i preview sprawdź `/health` oraz `/ui`. Zapisz adresy i wynik w PR.
+These are upstream service commands, not repository scripts available today. Run them only during the implementation capability task; install into an isolated environment, pin and record the result.
 
-Status konfiguracji i adresy: **do potwierdzenia przez właściciela/integratora**.
-CI nie korzysta z bazy; zielone CI nie jest potwierdzeniem zdrowia wdrożenia.
+```sh
+python3 -m venv .venv-laya
+.venv-laya/bin/pip install 'laya[serve]==0.3.24'
+ollama pull qwen3:8b
+ollama serve
+```
 
-## 5. Po wyborze wyzwania AI Control Layer
+T04 supplies a locked bridge environment and `npm run models:start` / `npm run models:check` wrappers; they are **not available until T04**. Set secrets privately before launching Laya; do not paste tokens into committed examples. Loopback Laya startup example, **introduced T04**:
 
-1. Wymagania zawierają wagi i rezultaty z oficjalnego opisu wyzwania, ale nie przypisują
-   na siłę trzech funkcji builderom. Uzgodnij ludzi, pionowe wycinki i demo do 3 minut.
-2. Uzgodnij minimalne wspólne typy interakcji, polityki, decyzji, audytu i budżetu oraz dostęp
-   do danych przed zależnym kodem. Zachowaj niezmienniki z docs/product/architecture.md.
-3. Integrator na krótkiej gałęzi przygotowuje potrzebne kontrakty, migracje, trasy i nawigację;
-   `npm run new-feature <nazwa>` służy tylko uzgodnionym funkcjom.
-4. Pełny check, koleżeńska recenzja, potrzebne kompatybilne migracje, merge fundamentu.
-5. Builderzy tworzą gałęzie od aktualnego origin/main i pracują wyłącznie w przydzielonych katalogach.
-6. Sprawdź dwie niezależne feature PR: po pierwszym merge drugi pobiera origin/main,
-   scala go ze swoją gałęzią i ponawia CI. Potwierdź przepływ między funkcjami na preview.
-7. Cały zespół ćwiczy demo na production, także legalne i wrogie interakcje, zmianę polityki,
-   audyt i pomiar; odnotuj wynik, ograniczenia i okno bez zapisów.
+```sh
+LAYA_HOST=127.0.0.1 LAYA_PORT=8000 LAYA_MODELS=typed-decisions LAYA_DEVICE=mps LAYA_PRELOAD=1 .venv-laya/bin/laya-serve
+```
 
-## 6. Typowe blokady
+Verify authenticated health identifies the loaded revision, then run a real assessment with named scores and coverage; a basic health 200 alone is insufficient. T01 must verify how the pinned Laya loader consumes the exact checkpoint revision/local cached snapshot; record the resolved weight hash and prevent automatic drift. Generation smoke checks thinking disabled, tools, cap adherence and reported token counts/durations. If selected model cannot satisfy the contract, report the capability blocker before changing model selection.
 
-- Czerwony check: popraw błąd; fałszywy alarm zgłoś integratorowi, nie usuwaj kontroli.
-- Konflikt: właściciele uzgadniają wynik, nie wybieramy automatycznie całego ours/theirs.
-- Doctor FAIL: pierwszy komunikat prowadzi do konfiguracji lub migracji; kluczy nie wklejamy do PR.
-- Brak praw admina: właściciel ustawia ochronę; współpracownik nie może tego zrobić prawem Write.
-- Regresja po merge: revert PR konkretnego merge SHA, a stan bazy osobno ocenia integrator.
+Bridge binds loopback (implementation default port 8787); only its authenticated fixed routes are tunneled. Prefer an existing named HTTPS tunnel. Temporary quick tunnel is permitted for rehearsal; its URL can change on restart and needs MODEL_BRIDGE_URL update and redeploy. No raw Ollama/Laya public ports; no unauthenticated bridge. T04 launch guide must include locked Python dependencies, local SQLite ledger location, readiness, shutdown and recovery. Keep Mac on power and awake; operator checks connection throughout judging.
+
+## Supabase and accounts — T02
+
+Integrator commits additive migration on branch, gets review, applies it once to shared Supabase and records migration SHA/time/result in supabase/APPLIED.md. Dependent app merges follow successful application. Never alter an applied file. Preview/local/prod share data; coordinate reset explicitly with the team.
+
+Disable public signup in Supabase Auth. Create four password users from fixture emails via admin setup process and verified memberships; choose synthetic emails as labels, no email delivery requirement. Supabase-generated UUIDs map to fixture roles. Admin is not automatically assigned to restricted deals. Store login handout privately for judges. Test login/logout for each account and verify raw data denies with their actual JWTs.
+
+T02 introduces `npm run demo:seed`; it inserts source metadata and raw synthetic fixtures idempotently and must not approve content by bypassing the gateway. T11 runs genuine ingestion to prepare approved fixtures. Demo resets are a separate explicit coordinated action, never a side effect of dev/build/test. No real financial or personal data.
+
+## Hosting and first vertical slice
+
+1. T01/T02 configure server secrets on preview and production; no browser bundling.
+2. T04 Mac and bridge ready; confirm HTTPS authenticated request from deployed Next server, not just local curl.
+3. T03 writes a test intent/reservation/completion to durable storage.
+4. T06 performs one real allowed answer and one blocked attempt; inspect audit and text.
+5. T11 verifies live/DB/browser gates. T12 records deployment commit, current policy/feed/model versions and account handout.
+
+## Claude Code — introduced T10
+
+Use official SDK/Claude instructions and verify installed CLI syntax during T10. Prepared connection uses HTTP `/api/mcp` and a short-lived token with public search/read/summary/download scopes. Store token in user-local secret configuration, never repository MCP configuration or shell history. Record a redacted setup command and actual successful tool calls in the runbook evidence. Feed publisher uses a separate token with only feed:write.
+
+ChatGPT is a later integration path requiring supported app/MCP setup and suitable authentication. Do not use ChatGPT subscription credentials as an API key or claim subscription messages fund embedded generation. Internal generation uses local Ollama; no paid API account required for the required demo.
+
+## External feed push — introduced T07
+
+A runnable [external push example](../contracts/examples/push-feed.mjs) is available now: `node docs/contracts/examples/push-feed.mjs docs/contracts/examples/feed.request.json`. It requires the endpoint introduced by T07 and private environment values; do not execute it against an unprepared service. T07 adds the operational wrapper `scripts/push-threat-feed.mjs`: reads FEED_TOKEN and GATEWAY_URL from private environment, reads a specified validated JSON update file, POSTs to `/api/v1/feeds` with Idempotency-Key and bearer auth, prints version/trace only, exits nonzero on conflict/error. It must not print the token. Its example input is [feed.request.json](../contracts/examples/feed.request.json). The source program runs outside the gateway process, demonstrating externally managed declarative signatures. No arbitrary URL fetching by the gateway.
+
+## Recovery
+
+- **Mac/tunnel down:** fail closed. Restore service/tunnel, update fixed URL if changed, check revision and a genuine assessment, reconcile incomplete calls, retry only with original idempotency key. Do not enable a fake Laya mode.
+- **Model timeout:** preserve reservation until bridge status proves usage or non-start; stop further run actions. UI explains incomplete operation.
+- **Database/audit down:** protected calls stop. Restore access, inspect incomplete operations; do not bypass persistence.
+- **Bad policy/feed update:** reject before activation; old valid head unchanged. An expired feed still needs an authenticated new valid version.
+- **Code regression:** new branch from origin/main, reviewed revert of exact merge commit; no blind HEAD revert. Database repair is additive and separately reviewed.
+- **Unexpected cost/exposure:** stop new protected runs, retain evidence without secrets, correct cause and rerun acceptance before reopening demo.
+
+All future commands are listed in [acceptance](../testing/acceptance.md). `verify:release` must fail when required services are absent.
