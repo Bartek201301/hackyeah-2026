@@ -1,0 +1,33 @@
+{
+  "repository": "https://github.com/affaan-m/ECC",
+  "release": "v2.2.3",
+  "commit": "c05b2d6614f62f6db0047669aa4eefb223d478f9",
+  "license": "MIT",
+  "files": [
+    {
+      "source": "skills/browser-qa/SKILL.md",
+      "local": "docs/ai/ecc/upstream/browser-qa/SKILL.md",
+      "sha256": "6eb78a2460adcde116e6b44fcdff7ae37aeec6208241a24417cb2db4b3b254cd"
+    },
+    {
+      "source": "skills/postgres-patterns/SKILL.md",
+      "local": "docs/ai/ecc/upstream/postgres-patterns/SKILL.md",
+      "sha256": "9c8c391ae9e9aa87faa7ca091e1d395c97766df14080d0bfbea8a97721776163"
+    },
+    {
+      "source": "skills/security-review/SKILL.md",
+      "local": "docs/ai/ecc/upstream/security-review/SKILL.md",
+      "sha256": "b9eb6416eebc8dda046674f0a2dbb3be88aff526d182b60a0f55998d3d6d0d8d"
+    },
+    {
+      "source": "skills/security-review/cloud-infrastructure-security.md",
+      "local": "docs/ai/ecc/upstream/security-review/cloud-infrastructure-security.md",
+      "sha256": "7d9a83852475a9396e04c59c73df84ac24ee0f41322016de7c11c62138c2a8ca"
+    },
+    {
+      "source": "LICENSE",
+      "local": "docs/ai/ecc/LICENSE",
+      "sha256": "326146379f01bb137c0a5d3c54770c1aa31076705c8b88a7f6b26a460f6221b2"
+    }
+  ]
+}

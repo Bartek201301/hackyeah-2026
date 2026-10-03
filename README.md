@@ -11,6 +11,9 @@ Next.js App Router + Supabase + Vercel. Trzech builderów, jeden integrator.
 - Zadanie, podział funkcji i kontrakty: [SPEC.md](SPEC.md).
 - Konfiguracja usług i potwierdzenia zespołu: [SETUP-ME.md](SETUP-ME.md).
 - Uzasadnienie: [DECYZJE.md](DECYZJE.md).
+- Wspólne skille AI: [instrukcja ECC](docs/ai/ecc/README.md) — przegląd bazy,
+  bezpieczeństwa i demo w przeglądarce. Codex i Claude Code dostają je razem z repo;
+  instalacja globalnego pluginu nie jest potrzebna.
 
 Przed małym commitem: `npm run check:fast`. Przed PR i po znaczącej zmianie: `npm run check`.
 Kontrole działają bez bazy i kluczy. `npm run doctor` sprawdza konfigurację i połączenie osobno.

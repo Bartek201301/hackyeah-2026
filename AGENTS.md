@@ -66,6 +66,17 @@ Nie deklaruj „działa” bez uruchomionych kontroli. Build nie potwierdza dzia
 CODEOWNERS dodamy po przypisaniu loginów. Służy do kierowania recenzji; jedna akceptacja kolegi
 jest obowiązkowa, ale akceptacja konkretnego właściciela nie blokuje jego własnego PR.
 
+## Wspólne skille AI
+
+Przy przeglądzie SQL/RLS używaj `hackyeah-db-review`, przy zmianach dostępu, walidacji
+i integracji `hackyeah-security-review`, a przy sprawdzaniu UI/demo `hackyeah-browser-qa`.
+Źródło instrukcji: `.agents/skills/<nazwa>/SKILL.md`; Claude Code ma wejścia w `.claude/skills/`.
+Pozostałe narzędzia mogą czytać te same pliki wprost. Używaj tylko skilla pasującego do zadania.
+Skille rozwijają te zasady i SPEC; przykłady ECC nie zmieniają kontraktów, własności ani wymaganych kontroli.
+Przed użyciem kodu Next.js sprawdź dokumentację zainstalowanej wersji. Przegląd nie upoważnia
+do wykonania migracji, resetu danych ani instalacji dodatkowych narzędzi.
+Instrukcja dla zespołu, wersja i aktualizacja: [docs/ai/ecc/README.md](docs/ai/ecc/README.md).
+
 ## Jedna wspólna baza i demo
 
 Local, preview i production używają tego samego projektu Supabase — gałąź nie izoluje danych.
