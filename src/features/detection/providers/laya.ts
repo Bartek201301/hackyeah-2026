@@ -40,6 +40,7 @@ export function serializeLaya(input: LayaInput, limits: GatewayPolicy["semantic"
     keys(object(input), ["call_id", "text", "operation", "audience"]);
     uuid(input.call_id);
     text(input.text);
+    requireValue(input.text.length <= 131072);
     text(input.operation);
     requireValue(
       input.operation.length > 0 &&
@@ -107,6 +108,7 @@ export function parseLaya(raw: unknown, revision: string, wallMs: number) {
     );
     const stateTokens = requiredCount(usage.state_tokens);
     const dropped = requiredCount(usage.state_tokens_dropped);
+    requireValue(stateTokens <= 1024 && (inputTokens === null || inputTokens >= 3 * (stateTokens - dropped)));
     requireValue(
       dropped <= stateTokens &&
         typeof usage.truncated === "boolean" &&

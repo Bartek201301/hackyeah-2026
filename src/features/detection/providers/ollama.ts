@@ -80,6 +80,7 @@ export function serializeOllama(input: GenerationInput) {
     const messages = input.messages.map((message) => {
       keys(object(message), ["role", "content"], ["tool_calls", "tool_call_id"]);
       text(message.content);
+      requireValue(message.content.length <= input.limits.max_input_utf8_bytes);
       requireValue(["system", "user", "assistant", "tool"].includes(message.role));
       if (message.role === "tool") {
         requireValue(message.tool_calls === undefined);
@@ -187,6 +188,7 @@ export function parseOllama(raw: unknown, input: GenerationInput, trustedDigest:
     requireValue(message.role === "assistant" && (message.thinking === undefined || message.thinking === ""));
     text(message.content);
     requireValue(Buffer.byteLength(message.content) <= input.limits.max_output_tokens * 16, "body_limit");
+    requireValue(message.tool_calls === undefined || Array.isArray(message.tool_calls));
     const calls = message.tool_calls ?? [];
     requireValue(Array.isArray(calls) && calls.length <= input.limits.max_tool_calls);
     requireValue(calls.length === 0 || message.content.trim() === "");

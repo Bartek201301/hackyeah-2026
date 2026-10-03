@@ -196,3 +196,8 @@ describe("Ollama private wire mapping", () => {
     ).toThrow();
   });
 });
+
+it("rejects null tool-call list rather than treating it as an empty proposal", () => {
+  const raw = { ...ollamaFixture(), message: { role: "assistant", content: "text", tool_calls: null } };
+  expect(() => parseOllama(raw, generationInput(), QWEN_DIGEST)).toThrow("invalid_response");
+});

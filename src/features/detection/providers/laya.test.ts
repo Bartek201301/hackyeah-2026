@@ -162,3 +162,11 @@ describe("Laya private wire mapping", () => {
     expect(() => validateLayaHealth({ ...health, device_is_preference: true })).toThrow();
   });
 });
+
+it("rejects inconsistent state and aggregate token evidence", () => {
+  const raw = layaFixture();
+  raw.usage.state_tokens = 1025;
+  expect(() => parseLaya(raw, LAYA_REVISION, 1)).toThrow("invalid_response");
+  raw.usage.state_tokens = 100;
+  expect(() => parseLaya(raw, LAYA_REVISION, 1)).toThrow("invalid_response");
+});
