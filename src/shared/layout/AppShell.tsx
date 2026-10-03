@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Blocks, House, Sparkles, type LucideIcon } from "lucide-react";
+import { Blocks, House, LogOut, Sparkles, type LucideIcon } from "lucide-react";
+import { signOut } from "@/shared/auth/actions";
+import type { ActorContext } from "@/shared/contracts";
+import { Button } from "@/shared/ui";
 import { NavLink } from "./NavLink";
 
 export type NavItem = { href: string; label: string; icon?: LucideIcon };
@@ -8,6 +11,8 @@ export type NavItem = { href: string; label: string; icon?: LucideIcon };
 type AppShellProps = {
   appName: string;
   nav: NavItem[];
+  /** Display only; never decides access. */
+  role?: ActorContext["role"];
   children: ReactNode;
 };
 
@@ -38,11 +43,25 @@ function NavGroup({ title, items }: { title: string; items: NavItem[] }) {
   );
 }
 
+function Session({ role }: { role: ActorContext["role"] }) {
+  return (
+    <form action={signOut} className="flex items-center gap-3">
+      <span className="text-sm text-muted">
+        Signed in as <span className="font-medium text-fg">{role}</span>
+      </span>
+      <Button type="submit" variant="ghost" size="sm">
+        <LogOut className="size-4" aria-hidden />
+        Sign out
+      </Button>
+    </form>
+  );
+}
+
 /**
  * Szkielet każdej strony. Desktop: białe menu boczne (karta) + treść na lawendowym tle.
  * Telefon: górny pasek z logo i przewijaną nawigacją.
  */
-export function AppShell({ appName, nav, children }: AppShellProps) {
+export function AppShell({ appName, nav, role, children }: AppShellProps) {
   const all = [home, ...nav];
   return (
     <div className="min-h-dvh lg:flex lg:gap-6 lg:p-6">
@@ -51,6 +70,11 @@ export function AppShell({ appName, nav, children }: AppShellProps) {
           <Logo appName={appName} />
           <NavGroup title="Menu" items={all} />
           <NavGroup title="Narzędzia" items={tools} />
+          {role && (
+            <div className="mt-auto">
+              <Session role={role} />
+            </div>
+          )}
         </div>
       </aside>
 
@@ -58,6 +82,11 @@ export function AppShell({ appName, nav, children }: AppShellProps) {
         <div className="flex h-16 items-center gap-4 px-4">
           <Logo appName={appName} />
         </div>
+        {role && (
+          <div className="px-4 pb-2">
+            <Session role={role} />
+          </div>
+        )}
         <nav className="flex gap-1 overflow-x-auto px-4 pb-3">
           {all.map(({ href, label }) => (
             <NavLink key={href} href={href} compact>
