@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { assessmentView, decisionBadge, findingRows, stageRows, usageView } from "./trace";
+import {
+  assessmentView,
+  decisionBadge,
+  findingRows,
+  groupStages,
+  isToolSubcall,
+  stageRows,
+  usageView,
+} from "./trace";
 import { assessment, auditEvent, usage } from "./test-support";
 
 describe("decision badge", () => {
@@ -183,5 +191,47 @@ describe("stages", () => {
   it("returns nothing when the projection carries no events", () => {
     expect(stageRows(undefined)).toEqual([]);
     expect(stageRows([])).toEqual([]);
+  });
+});
+
+describe("root requests versus tool subcalls", () => {
+  const at = (second: number, stage: string) =>
+    auditEvent({ created_at: `2026-10-03T09:41:${String(second).padStart(2, "0")}.000Z`, stage });
+
+  it("recognises the registered tools as subcalls and everything else as a root stage", () => {
+    expect(isToolSubcall("tool.search_excerpts")).toBe(true);
+    expect(isToolSubcall("read_excerpt")).toBe(true);
+    expect(isToolSubcall("generation")).toBe(false);
+    expect(isToolSubcall("input_assessment")).toBe(false);
+  });
+
+  it("marks each stage so a subcall can never be counted as a request", () => {
+    const rows = stageRows([at(7, "input_assessment"), at(8, "tool.search_excerpts")]);
+    expect(rows.map((row) => row.isSubcall)).toEqual([false, true]);
+  });
+
+  it("folds consecutive subcalls into one group and keeps the stored order", () => {
+    const rows = stageRows([
+      at(7, "input_assessment"),
+      at(8, "tool.search_excerpts"),
+      at(9, "tool.read_excerpt"),
+      at(10, "generation"),
+    ]);
+    const groups = groupStages(rows);
+    expect(groups.map((group) => group.kind)).toEqual(["stage", "subcalls", "stage"]);
+    const [, subcalls] = groups;
+    if (subcalls.kind !== "subcalls") throw new Error("expected a subcall group");
+    expect(subcalls.rows.map((row) => row.stage)).toEqual(["tool.search_excerpts", "tool.read_excerpt"]);
+    expect(groups.filter((group) => group.kind === "stage")).toHaveLength(2);
+  });
+
+  it("starts a new group when a root stage separates two runs of subcalls", () => {
+    const rows = stageRows([at(7, "tool.search_excerpts"), at(8, "generation"), at(9, "tool.read_excerpt")]);
+    expect(groupStages(rows).map((group) => group.kind)).toEqual(["subcalls", "stage", "subcalls"]);
+  });
+
+  it("groups nothing when there are no subcalls", () => {
+    const rows = stageRows([at(7, "input_assessment"), at(8, "generation")]);
+    expect(groupStages(rows).every((group) => group.kind === "stage")).toBe(true);
   });
 });

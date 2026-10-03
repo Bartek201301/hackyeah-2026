@@ -6,7 +6,7 @@
  *  - stage durations are shown per stage and never summed across overlapping stages
  *  - a Finding carries no value, and this model does not add one
  */
-import type { Assessment, AuditProjection, Decision, Finding, Usage } from "@/shared/contracts";
+import type { Assessment, AuditProjection, Decision, Finding, ToolCall, Usage } from "@/shared/contracts";
 import type { Tone } from "@/shared/ui";
 import { copy } from "./copy";
 import {
@@ -55,9 +55,26 @@ export type AssessmentView = {
   ranges: string;
 };
 
+/**
+ * The tools the gateway registers (`RegisteredTool` in the shared contract). A stage naming one of
+ * them is a subcall of the root request rather than a step of it.
+ *
+ * This is a naming heuristic, not a contract field: `events[]` carries no parent or subcall marker,
+ * while `docs/contracts/data-model.md:58` requires root traces to be counted separately from subcall
+ * decisions. Recorded as an open question for the integrator; until it is answered the screen labels
+ * what it can recognise and never sums stages into a request count.
+ */
+const TOOL_NAMES: readonly ToolCall["name"][] = ["search_excerpts", "read_excerpt"];
+
+export function isToolSubcall(stage: string): boolean {
+  return TOOL_NAMES.some((name) => stage.includes(name));
+}
+
 export type StageRow = {
   key: string;
   stage: string;
+  /** True for a recognised tool subcall; such a stage is never counted as a request. */
+  isSubcall: boolean;
   eventType: string;
   when: string;
   elapsed: string | null;
@@ -180,6 +197,29 @@ export function assessmentView(semantic: Assessment): AssessmentView {
   };
 }
 
+/**
+ * Consecutive tool subcalls collapse into one group so a long trace stays readable, while the root
+ * stages stay at the top level. The grouping is presentation only: it never merges measurements, and
+ * the stored order is preserved exactly.
+ */
+export type StageGroup =
+  { kind: "stage"; row: StageRow } | { kind: "subcalls"; rows: StageRow[]; key: string };
+
+export function groupStages(rows: readonly StageRow[]): StageGroup[] {
+  const groups: StageGroup[] = [];
+  for (const row of rows) {
+    const last = groups.at(-1);
+    if (!row.isSubcall) {
+      groups.push({ kind: "stage", row });
+    } else if (last?.kind === "subcalls") {
+      last.rows.push(row);
+    } else {
+      groups.push({ kind: "subcalls", rows: [row], key: row.key });
+    }
+  }
+  return groups;
+}
+
 /** Stages in stored order, each with its own measurements. Nothing is aggregated here. */
 export function stageRows(events: readonly AuditEvent[] | undefined): StageRow[] {
   if (!events) return [];
@@ -192,6 +232,7 @@ export function stageRows(events: readonly AuditEvent[] | undefined): StageRow[]
     return {
       key: `${event.created_at}-${event.stage}-${event.event_type}-${index}`,
       stage: event.stage,
+      isSubcall: isToolSubcall(event.stage),
       eventType: event.event_type,
       when: formatTimestampUtc(event.created_at),
       elapsed: previous ? formatElapsed(previous.created_at, event.created_at) : null,
