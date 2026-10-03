@@ -1,0 +1,45 @@
+{
+  "trace_id": "00000000-0000-4000-8000-0000000003b8",
+  "decision": null,
+  "reasons": [],
+  "policy_version": 1,
+  "feed_version": 1,
+  "semantic": {
+    "status": "not_required",
+    "scores": {
+      "instruction_manipulation": null,
+      "sensitive_exposure": null,
+      "resource_abuse": null
+    },
+    "checkpoint_revision": null,
+    "windows_planned": 0,
+    "windows_completed": 0,
+    "coverage_complete": false,
+    "text_sha256": null,
+    "coverage_ranges": []
+  },
+  "usage": {
+    "generation_input_tokens": 0,
+    "generation_output_tokens": 0,
+    "generation_ms": 0,
+    "semantic_input_tokens": 0,
+    "semantic_ms": 0,
+    "reserved_generation_tokens": 0,
+    "unresolved_reservation": false,
+    "comparison_micro_usd": 0,
+    "comparison_rate_version": "illustrative-v1"
+  },
+  "timings": {
+    "total_ms": 19,
+    "deterministic_ms": 3,
+    "semantic_ms": 0,
+    "provider_ms": 0,
+    "persistence_ms": 14
+  },
+  "data": null,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "This export exceeds 1000 rows. Narrow the scope or the day and request it again.",
+    "retryable": false
+  }
+}
