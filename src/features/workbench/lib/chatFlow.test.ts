@@ -149,6 +149,36 @@ describe("error codes and statuses still win", () => {
   });
 });
 
+describe("only a run still in flight is handed back", () => {
+  // The screen polls, offers Cancel and shows "Running checks" off this run, so a response that
+  // ended the lifecycle must return none of it.
+  it("keeps the run while work is in flight", () => {
+    for (const state of ["pending", "running", "cancel_requested"] as const) {
+      expect(classifyChatResponse(200, pending(state)).run?.state).toBe(state);
+    }
+    expect(classifyChatResponse(202, pending("pending")).run).not.toBeNull();
+  });
+
+  it("drops the run on every terminal response", () => {
+    for (const state of ["completed", "review", "blocked", "failed", "cancelled", "incomplete"] as const) {
+      expect(classifyChatResponse(200, pending(state)).run).toBeNull();
+    }
+    // A live-looking run body does not keep the lifecycle open past a terminal status or error code.
+    expect(classifyChatResponse(403, pending("running")).run).toBeNull();
+    expect(classifyChatResponse(503, DEV_UNAVAILABLE_SEAM).run).toBeNull();
+    expect(
+      classifyChatResponse(
+        200,
+        devEnvelope({
+          data: devRun("running", "assessing"),
+          error: { code: "CANCELLED", message: "Cancelled by actor.", retryable: false },
+        }),
+      ).run,
+    ).toBeNull();
+    expect(classifyChatResponse(200, completed()).run).toBeNull();
+  });
+});
+
 describe("trace and reasons survive classification", () => {
   it("carries the trace id and reason labels through a progress response", () => {
     const body = devEnvelope({ data: devRun("running", "x"), reasons: ["scope checked"] });

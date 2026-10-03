@@ -173,16 +173,24 @@ export function classifyResponse(status: number, body: ApiResponse | null): Gate
       };
 
     // Deterministic denial. Deliberately generic: never hint at what exists.
-    case 403:
+    case 403: {
+      // A content refusal also lands here: `decide()` in shared/gateway/checks.ts sends BLOCK as
+      // 403 ACCESS_DENIED with `stage:code` reasons (input_signature:SIG-001, semantic:*). Account
+      // wording there reads as a role problem, so it is kept only for a denial with no such reason.
+      // The reasons themselves are rendered by OutcomeNotice, which says which check refused.
+      const byPolicy = common.reasons.some((r) => r.includes(":"));
       return {
         ...common,
         kind: "denied",
-        title: "Not permitted",
-        detail: "This account is not permitted to perform this operation.",
+        title: byPolicy ? "Blocked" : "Not permitted",
+        detail: byPolicy
+          ? "This request was refused by the control policy."
+          : "This account is not permitted to perform this operation.",
         tone: "danger",
         showsResult: false,
         retryable: false,
       };
+    }
 
     // Same wording as a denial on purpose: the contract forbids revealing existence.
     case 404:

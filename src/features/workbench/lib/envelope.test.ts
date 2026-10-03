@@ -92,6 +92,24 @@ describe("classifyResponse — status mapping", () => {
     expect(classifyResponse(503, devError("AUDIT_UNAVAILABLE", "x", true)).detail).toMatch(/audit/i);
   });
 
+  it("reads a 403 with a content reason as a policy refusal, not an account problem", () => {
+    const out = classifyResponse(403, devDecision("BLOCK", ["input_signature:SIG-001"]));
+    expect(out.kind).toBe("denied");
+    expect(out.title).toBe("Blocked");
+    expect(out.detail).toMatch(/refused by the control policy/i);
+    expect(out.detail).not.toMatch(/account/i);
+    // The reason itself is what tells the actor which check refused; OutcomeNotice renders it.
+    expect(out.reasons).toEqual(["input_signature:SIG-001"]);
+  });
+
+  it("keeps the account wording for a denial with no content reason", () => {
+    for (const reasons of [[], ["ACCESS_DENIED"], ["ACCESS_DENIED", "deal scope"]]) {
+      const out = classifyResponse(403, devDecision("BLOCK", reasons));
+      expect(out.title).toBe("Not permitted");
+      expect(out.detail).toMatch(/this account is not permitted/i);
+    }
+  });
+
   it("carries server reason labels through without interpreting them", () => {
     const out = classifyResponse(403, devDecision("BLOCK", ["ACCESS_DENIED", "deal scope"]));
     expect(out.reasons).toEqual(["ACCESS_DENIED", "deal scope"]);

@@ -64,9 +64,11 @@ export function ChatPanel() {
 
   /** Apply one response: narrow the operation-specific shape, then classify. */
   const apply = useCallback((status: number, body: ApiResponse | null) => {
-    const { outcome: next, run: polled } = classify(status, body);
+    const { outcome: next, run: inFlight } = classify(status, body);
     setOutcome(next);
-    if (polled) setRun(polled);
+    // Unconditional: a response that ended the lifecycle returns no run, which clears the progress
+    // badge and the Cancel button instead of leaving "Running checks" next to a finished outcome.
+    setRun(inFlight);
 
     if (!next.showsResult) {
       setResult(null);

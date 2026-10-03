@@ -94,6 +94,8 @@ const WITHHELD: Partial<Record<Run["state"], OutcomeKind>> = {
   incomplete: "incomplete",
 };
 
+/** `run` is the export run still in flight, or null once this response ended the lifecycle;
+ * see ChatClassification for why polling, Cancel and the progress badge all hang off it. */
 export type ExportClassification = { outcome: GatewayOutcome; run: Run | null };
 
 /**
@@ -109,7 +111,7 @@ export function classifyExportResponse(status: number, body: ApiResponse | null)
   const run = readExportRun(body?.data ?? null);
 
   const terminal = classifyTerminalErrorCode(body);
-  if (terminal) return { outcome: terminal, run };
+  if (terminal) return { outcome: terminal, run: null };
 
   if (run && (status === 200 || status === 202)) {
     const described = describeRun(run);
@@ -143,10 +145,10 @@ export function classifyExportResponse(status: number, body: ApiResponse | null)
           detail: described.detail,
           tone: described.tone,
         },
-        run,
+        run: null,
       };
     }
   }
 
-  return { outcome: classifyResponse(status, body), run };
+  return { outcome: classifyResponse(status, body), run: null };
 }
