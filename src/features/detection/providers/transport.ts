@@ -1,16 +1,64 @@
 import "server-only";
 import { ProviderFailure, requireValue } from "./validation";
 
-const endpoints = {
+const loopbackEndpoints = {
   layaHealth: "http://127.0.0.1:8000/health",
   layaAssess: "http://127.0.0.1:8000/v1/systemone",
   ollamaTags: "http://127.0.0.1:11434/api/tags",
   ollamaChat: "http://127.0.0.1:11434/api/chat",
 } as const;
-export type LocalEndpoint = keyof typeof endpoints;
+const bridgePaths = {
+  layaHealth: "/laya/health",
+  layaAssess: "/laya/v1/systemone",
+  ollamaTags: "/ollama/api/tags",
+  ollamaChat: "/ollama/api/chat",
+} as const;
+export type LocalEndpoint = keyof typeof loopbackEndpoints;
 export type LocalTransport = ReturnType<typeof createLoopbackTransport>;
 /** Injection is private, for fake-provider tests. No caller-selectable URLs or redirects. */
 export function createLoopbackTransport(fetcher: typeof fetch = fetch) {
+  return createTransport(loopbackEndpoints, undefined, fetcher);
+}
+
+/** The server environment selects one fixed HTTPS origin; no request chooses a URL. */
+export function createBridgeTransport(
+  baseUrl: string,
+  token: string,
+  fetcher: typeof fetch = fetch,
+): LocalTransport | null {
+  let origin: string;
+  try {
+    const url = new URL(baseUrl);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash ||
+      ![url.origin, `${url.origin}/`].includes(baseUrl) ||
+      !/^[a-f0-9]{64}$/.test(token)
+    )
+      return null;
+    origin = url.origin;
+  } catch {
+    return null;
+  }
+  return createTransport(
+    Object.fromEntries(Object.entries(bridgePaths).map(([key, path]) => [key, `${origin}${path}`])) as Record<
+      LocalEndpoint,
+      string
+    >,
+    token,
+    fetcher,
+  );
+}
+
+function createTransport(
+  endpoints: Record<LocalEndpoint, string>,
+  bridgeToken: string | undefined,
+  fetcher: typeof fetch,
+) {
   return async (
     endpoint: LocalEndpoint,
     request: { body?: unknown; bearer?: string; deadline: number; signal: AbortSignal },
@@ -20,7 +68,9 @@ export function createLoopbackTransport(fetcher: typeof fetch = fetch) {
     const effect = endpoint === "layaAssess" || endpoint === "ollamaChat";
     requireValue(
       isLaya
-        ? typeof request.bearer === "string" && /^[\x21-\x7e]{1,4096}$/.test(request.bearer)
+        ? typeof request.bearer === "string" &&
+            /^[\x21-\x7e]{1,4096}$/.test(request.bearer) &&
+            (bridgeToken === undefined || request.bearer === bridgeToken)
         : request.bearer === undefined,
       "invalid_input",
     );
@@ -67,7 +117,7 @@ export function createLoopbackTransport(fetcher: typeof fetch = fetch) {
           headers: {
             accept: "application/json",
             ...(effect ? { "content-type": "application/json" } : {}),
-            ...(isLaya ? { authorization: `Bearer ${request.bearer}` } : {}),
+            ...(bridgeToken || isLaya ? { authorization: `Bearer ${bridgeToken ?? request.bearer}` } : {}),
           },
           body,
         }),

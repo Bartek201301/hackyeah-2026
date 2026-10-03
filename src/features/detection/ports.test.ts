@@ -160,6 +160,37 @@ describe("G2 detection factory", () => {
       "Bearer synthetic-test-secret",
     );
   });
+  it("uses the bridge for both ports without a Vercel Laya key", async () => {
+    const token = "a".repeat(64);
+    vi.stubEnv("LAYA_API_KEY", undefined);
+    vi.stubEnv("MODEL_BRIDGE_URL", "https://bridge.example.invalid");
+    vi.stubEnv("MODEL_BRIDGE_TOKEN", token);
+    const detection = detectionPort();
+    const generation = generationPort();
+    const fetcher = provider(health(), layaResponse(), health(), tags(), qwenResponse(), tags());
+    await expect(detection.assess(input(), policy(), signal())).resolves.toMatchObject({
+      semantic_input_tokens: 199,
+    });
+    await expect(generation.generate(generationInput(), signal())).resolves.toMatchObject({
+      output_tokens: 5,
+    });
+    expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual([
+      "https://bridge.example.invalid/laya/health",
+      "https://bridge.example.invalid/laya/v1/systemone",
+      "https://bridge.example.invalid/laya/health",
+      "https://bridge.example.invalid/ollama/api/tags",
+      "https://bridge.example.invalid/ollama/api/chat",
+      "https://bridge.example.invalid/ollama/api/tags",
+    ]);
+    for (const [, init] of fetcher.mock.calls)
+      expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${token}`);
+  });
+  it("returns null rather than using loopback when a complete bridge URL is invalid", () => {
+    vi.stubEnv("MODEL_BRIDGE_URL", "http://bridge.example.invalid");
+    vi.stubEnv("MODEL_BRIDGE_TOKEN", "a".repeat(64));
+    expect(publicApi.createDetectionPort()).toBeNull();
+    expect(publicApi.createGenerationPort()).toBeNull();
+  });
   it.each(["csv", "pdf"] as const)(
     "parsing %s is explicitly unavailable without provider dispatch",
     async (format) => {
