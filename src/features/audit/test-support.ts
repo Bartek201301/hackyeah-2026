@@ -4,7 +4,7 @@
  * The richer labelled response examples used for the browser pass live outside src, in the
  * research folder; nothing here is evidence of a real run.
  */
-import type { Assessment, AuditProjection, Usage } from "@/shared/contracts";
+import type { Assessment, AuditProjection, Metrics, Usage } from "@/shared/contracts";
 
 type AuditEvent = NonNullable<AuditProjection["events"]>[number];
 
@@ -67,6 +67,37 @@ export function projection(overrides: Partial<AuditProjection> = {}): AuditProje
     policy_version: 7,
     feed_version: 4,
     usage: usage(),
+    ...overrides,
+  };
+}
+
+/**
+ * A personal window for one UTC day: three root requests, one of each control outcome, and the
+ * context figures from the T08 worksheet. Reduction is (48000 - 6240) / 48000 = 87.0 per cent,
+ * and the avoided input spend is 41760 / 1000 x 3 = 125.28 micro-USD at the illustrative rate.
+ */
+export function metrics(overrides: Partial<Metrics> = {}): Metrics {
+  return {
+    scope: "own",
+    from: "2026-10-03T00:00:00.000Z",
+    to: "2026-10-03T23:59:59.999Z",
+    root_requests: 3,
+    blocked_attempts: 1,
+    stopped_loops: 1,
+    review_cases: 1,
+    confirmed_test_failures: null,
+    usage: usage({
+      generation_input_tokens: 3342,
+      generation_output_tokens: 551,
+      generation_ms: 7120,
+      semantic_input_tokens: 3072,
+      semantic_ms: 1298,
+    }),
+    permitted_source_tokens_estimate: 48000,
+    selected_source_tokens_estimate: 6240,
+    context_reduction_percent: 87,
+    estimated_avoided_input_micro_usd: 125.28,
+    context_trace_id: "3f6c1d2e-9b47-4c81-a0f5-7d2e5b914c33",
     ...overrides,
   };
 }
