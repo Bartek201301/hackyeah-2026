@@ -10,6 +10,19 @@ Rdzeniem jest pośrednik zarządzający interakcjami aplikacji, agentów, LLM, M
 API i zasobów. Demo bankowe lub inne jest klientem tego pośrednika. Rdzeń nie importuje
 logiki domeny demo i nie uzależnia polityk od znanych promptów czy scenariuszy sędziów.
 
+Prosty diagram **planowanego** rozwiązania:
+
+```mermaid
+flowchart LR
+  A["Aplikacja / agent / klient MCP"] --> C["Warstwa kontroli"]
+  P["Centralna polityka i feedy"] --> C
+  S["Detektory deterministyczne i dostawca semantyczny"] --> C
+  C -->|"ALLOW / WARN / REDACT / ROUTE"| T["Model / narzędzie / API / zasób"]
+  C -->|"BLOCK / ESCALATE"| R["Odrzucenie lub eskalacja"]
+  C --> U["Audyt i telemetria"]
+  U --> D["Dashboard i eksport"]
+```
+
 ## ARCHITECTURAL INVARIANTS
 
 1. Każda zarządzana interakcja przechodzi przez warstwę kontroli; nie ma ścieżki demo omijającej egzekwowanie.
@@ -22,7 +35,7 @@ logiki domeny demo i nie uzależnia polityk od znanych promptów czy scenariuszy
 8. Automatyczne testy bezpieczeństwa są częścią produktu.
 9. Logika rdzenia jest niezależna od aplikacji pokazowej.
 10. Dostawca modelu semantycznego jest wymienialny.
-11. Warstwa może działać i przejść testy bezpieczeństwa bez płatnych API, z lokalnym lub testowym dostawcą semantycznym.
+11. Warstwa może działać bez płatnych API z lokalnym dostawcą semantycznym; deterministyczne testy mogą używać mocka.
 12. Wygoda demo nie osłabia kontroli ani nie tworzy wyjątków w kodzie.
 
 ## Przepływ i werdykty
@@ -32,7 +45,8 @@ logiki domeny demo i nie uzależnia polityk od znanych promptów czy scenariuszy
 Na wejściu normalizujemy interakcję i kontekst: **kto** działa, **co** chce zrobić,
 **na jakim zasobie**, **z jakimi danymi**, według **jakiej polityki**, z **jakim ryzykiem**
 i **pozostałym budżetem**. Działania obejmują m.in. MCP/tool calls, HTTP, bazę, pliki,
-wykonanie kodu, wywołania modeli, transfer zewnętrzny i operacje destrukcyjne.
+wykonanie kodu, wywołania modeli, dostęp do pamięci/kontekstu, transfer zewnętrzny
+i operacje destrukcyjne. Wynik podlega filtrowaniu przed zwróceniem do odbiorcy.
 
 Słownik werdyktów: `ALLOW`, `WARN`, `REDACT`, `BLOCK`, `ESCALATE`, `ROUTE`.
 Ograniczanie tempa i zakończenie zapętlonego działania są sposobami wykonania polityki
@@ -78,6 +92,7 @@ wersję polityki, fakty deterministyczne, wynik semantyczny z pewnością, werdy
 opóźnienie, wpływ na budżet, metadane wejścia/normalizacji i szczegóły redakcji.
 Ograniczamy przechowywanie surowych sekretów i danych wrażliwych w audycie.
 
+Interaktywny dashboard prezentuje aktywne kontrole i ogólny stan bezpieczeństwa.
 Widok zarządczy agreguje bezpieczeństwo, interakcje, blokady/redakcje, incydenty,
 koszty, trendy i użycie przez aplikacje/agentów. Widok techniczny umożliwia analizę
 konkretnego trace'a i eksport, gdy praktyczny. Telemetria obejmuje narzut całości,

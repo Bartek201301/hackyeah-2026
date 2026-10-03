@@ -12,6 +12,7 @@ Trzech builderów, jeden integrator; podział funkcji pozostaje do uzgodnienia.
 
 - Zasady dla wszystkich narzędzi: [AGENTS.md](AGENTS.md).
 - Zadanie, podział funkcji i kontrakty: [SPEC.md](SPEC.md).
+- Opis pomysłu i mapa wymagań: [docs/IDEA.md](docs/IDEA.md).
 - Przepływ, niezmienniki i otwarte granice: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Konfiguracja usług i potwierdzenia zespołu: [SETUP-ME.md](SETUP-ME.md).
 - Uzasadnienie: [DECYZJE.md](DECYZJE.md).

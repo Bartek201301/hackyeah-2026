@@ -80,7 +80,7 @@ CI nie korzysta z bazy; zielone CI nie jest potwierdzeniem zdrowia wdrożenia.
 
 ## 5. Po wyborze wyzwania AI Control Layer
 
-1. Potwierdź oficjalny URL i wagi jury; SPEC już zawiera zdolności wyzwania, ale nie przypisuje
+1. SPEC zawiera wagi i rezultaty z oficjalnego opisu wyzwania, ale nie przypisuje
    na siłę trzech funkcji builderom. Uzgodnij ludzi, pionowe wycinki i demo do 3 minut.
 2. Uzgodnij minimalne wspólne typy interakcji, polityki, decyzji, audytu i budżetu oraz dostęp
    do danych przed zależnym kodem. Zachowaj niezmienniki z docs/ARCHITECTURE.md.
