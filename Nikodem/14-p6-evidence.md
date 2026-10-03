@@ -16,8 +16,29 @@ specific lack, not replaced by reading the code.
 | 3   | The raw `GET /api/v1/audit/{id}` envelope for a second trace                                  | Nikodem, pasted                | 2026-10-03 |
 | 4   | Three live refusals: 503 seam, 401 unauthenticated, 400 invalid input                         | me, via curl without a session | 2026-10-03 |
 
-No viewport was measured, no keyboard path was walked, no console or network panel was read, and no
-screenshot exists.
+| 5 | Three screenshots as `admin`: trace detail with the console open, the same at 1280x800 device emulation, and the dashboard at `/audit` | Nikodem, in the browser | 2026-10-03 |
+| 6 | The raw envelope of the prompt-injection BLOCK from Julian's QA run 2 | Nikodem, pasted | 2026-10-03 |
+
+### What the screenshots show
+
+Read from the images, not from the code:
+
+- **The three defect fixes are live.** The summary reads `No decision recorded` with
+  "The operation did not complete, so no decision was stored and no result was released." — not
+  `Pending`. The header reads `root request · recorded 2026-10-03 19:53:09 UTC`. The reserved column
+  reads `No reservation is outstanding.` beside `0 tokens`.
+- **Focus is visible.** The `Own activity` control carries a clear ring in the dashboard screenshot.
+- **The dashboard refuses honestly.** `/audit` shows `Reporting state is unavailable.` with
+  `Try again`, and no zeroed counters, which is the correct answer while `/metrics` is a seam.
+- **The page is English throughout**, including the shell: nav, `Signed in as admin`, `Sign out`.
+- **The console carries no JavaScript error.** On the trace screen DevTools reports `No issues`. On
+  the dashboard it lists nine entries, all of them `503 (Service Unavailable)` for
+  `/api/v1/metrics` and `/api/v1/audit` — the browser's own log of failed requests, from
+  `Dashboard.tsx:54` and `:61`. Paired and bounded, four loads under React's development double
+  invocation; not a retry loop. They will disappear when the endpoints exist, and if they do not,
+  that is a finding.
+
+Still unmeasured: 375 px, the keyboard path end to end, and any role other than `admin`.
 
 ## 2. What the observations found
 
@@ -49,6 +70,13 @@ All four are fixed. Items 1–3 are in `aed4d09`, item 4 in `feee57e`.
   `docs/testing/acceptance.md:63` for one real trace.
 - **The gateway is inconsistent about `decision` on refusals** — `BLOCK` on 401, `null` on 400. Raised
   as item 20; this feature is unaffected because it reads `error` first.
+- **A real refusal stores the code, not the attempt.** The prompt-injection BLOCK carries
+  `reasons: ["input_signature:SIG-001"]` and one finding — code `SIG-001`, category
+  `prompt_injection`, severity `block`, `locator: null`. Every string in that record is a token:
+  an identifier, a code, an enum or a timestamp. There is no sentence in it, so there is no injected
+  instruction for a reader — or for a model reading the page — to be steered by.
+  `live-blocked.test.tsx` asserts that, and asserts in the DOM that the decision, the reason code
+  and the finding are all shown.
 
 ## 4. What is still unobserved
 
