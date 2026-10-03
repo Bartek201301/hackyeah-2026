@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { cn } from "@/shared/cn";
-import { VIEW_LABELS, WORKBENCH_VIEWS, viewHref, type WorkbenchView } from "../lib/views";
+import { VIEW_LABELS, WORKBENCH_VIEWS, isAdminOnlyView, viewHref, type WorkbenchView } from "../lib/views";
 
 /*
  * In-page navigation. There is no tabs primitive in shared/ui and feature CSS is forbidden, so this
  * is a plain list of links styled with token classes: real navigation, keyboard-reachable, with
  * aria-current marking the active view. Requested as a shared primitive (B3).
  */
-export function WorkbenchNav({ active }: { active: WorkbenchView }) {
+export function WorkbenchNav({ active, showAdminViews }: { active: WorkbenchView; showAdminViews: boolean }) {
+  /* Always keep the active view reachable, so a direct link never renders a nav without it. */
+  const views = WORKBENCH_VIEWS.filter((view) => showAdminViews || !isAdminOnlyView(view) || view === active);
+
   return (
     <nav aria-label="Workbench views" className="mb-6">
       <ul className="flex flex-wrap gap-2">
-        {WORKBENCH_VIEWS.map((view) => {
+        {views.map((view) => {
           const current = view === active;
           return (
             <li key={view}>

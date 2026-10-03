@@ -90,6 +90,29 @@ Verified by extraction from the contract. All POST/PUT require header `Idempoten
 Note the asymmetry: `policy_update` requires `expected_version` ≥ 1 while `feed_import` allows ≥ 0
 (no feed installed yet).
 
+## Compare-and-swap on policy and feed
+
+technical-spec §5: "Persist immutable snapshots and CAS head update. **Version supplied must equal
+expected+1.**" Read together with the request shapes, that means two different numbers:
+
+- `expected_version` — the head the client believes is current, i.e. the version it loaded.
+- the submitted document's own `version` — that head **plus one**.
+
+Sending the incremented value as `expected_version` would compare against a version that does not
+exist yet and should always conflict. `toPolicySubmission` and `feedSubmissionVersions` encode this.
+
+`feed_import` allows `expected_version: 0`, which is the no-feed-installed case; the first feed
+document is then `version: 1`. `policy_update` requires `expected_version >= 1`, so a policy always
+has a head. **Unconfirmed against a live endpoint — see B12.**
+
+## Time values in forms
+
+A `datetime-local` control yields `2026-10-03T15:00` with no zone, and `Date.parse` reads that as the
+viewer's local time — so identical keystrokes mean different instants in different zones. The feed
+form accepts it (that is what the control means) and prints the resolved UTC instant beside the
+field, which is also what DESIGN's "UTC timestamps labelled" requires. Any test asserting on these
+comparisons must use an explicit `Z`, or it passes or fails depending on the runner's timezone.
+
 ## Rules the schema itself pins
 
 `docs/contracts/policy.schema.json` fixes two values with `const`, so the generated TypeScript type
