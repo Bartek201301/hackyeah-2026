@@ -37,4 +37,6 @@ registerHooks({
     return next(url, context);
   },
 });
-await createRequire(import.meta.url)("./smoke-cases.ts").runSyntheticSmoke();
+const require = createRequire(import.meta.url);
+if (process.argv[2] === "--factories") await require("./factory-smoke-cases.ts").runFactorySmoke();
+else await require("./smoke-cases.ts").runSyntheticSmoke();
