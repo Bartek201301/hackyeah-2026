@@ -23,8 +23,6 @@ export const copy = {
     noRevision: "Revision not reported",
     traceId: "Trace",
     actorId: "Actor",
-    operation: "Operation",
-    started: "Recorded",
     state: "State",
     reasons: "Reason codes",
     policyVersion: "Policy version",
@@ -55,10 +53,6 @@ export const copy = {
   stages: {
     title: "Stages",
     description: "Each recorded step of this operation, in the order the gateway stored it.",
-    stage: "Stage",
-    event: "Event",
-    when: "Time (UTC)",
-    versions: "Versions",
     findings: "Findings",
     noFindings: "No findings recorded for this stage.",
     stageUsage: "Stage resource use",
@@ -112,9 +106,7 @@ export const copy = {
   },
   metrics: {
     controlsTitle: "Security decisions",
-    controlsDescription: "What the gateway decided in this window. Each counter answers one question.",
     resourcesTitle: "Resource use",
-    resourcesDescription: "What those operations actually consumed.",
     estimatesTitle: "Context and illustrative cost",
     measuredUse: "Measured use",
     illustrativeCost: "Illustrative commercial equivalent",
@@ -139,12 +131,23 @@ export const copy = {
     emptyDescription: "Choose another day to see earlier activity.",
     estimatedBadge: "Estimated",
   },
+  range: {
+    label: "UTC day",
+    current: "Current UTC day",
+    today: "Back to the current UTC day",
+    listNote: "The activity list is not filtered by day; it is the most recent records this scope can see.",
+    windowMismatch: "The gateway reported a window wider than one UTC day, so it is shown as reported.",
+  },
   activity: {
     title: "Recent activity",
     description: "The most recent audited operations in this scope, newest first.",
-    emptyTitle: "No audit records for this UTC day.",
-    emptyDescription: "Choose another day to see earlier activity.",
+    // Not "for this UTC day": GET /audit takes no range parameter, so this list is not day-scoped.
+    emptyTitle: "No audit records are visible in this scope.",
+    emptyDescription: "Records appear here once an audited operation has been stored.",
     pageCap: "Showing the 100 most recent records.",
+    loadOlder: "Load older records",
+    loadingOlder: "Loading older records…",
+    olderFailed: "Older records could not be loaded.",
     openTrace: "Open trace",
     tokens: "Settled generation tokens",
   },
@@ -168,9 +171,6 @@ export const copy = {
   },
   action: {
     retry: "Try again",
-  },
-  a11y: {
-    copyTraceId: "Full trace identifier",
   },
 } as const;
 

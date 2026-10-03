@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LoadingState } from "@/shared/ui";
-import { createGatewayClient } from "@/shared/contracts/client";
+import { createGatewayClient, readEnvelope } from "@/shared/contracts/client";
 import type { TraceReadState } from "../envelope";
 import { classifyTraceRead } from "../envelope";
 import { copy } from "../copy";
@@ -38,11 +38,12 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 
     void createGatewayClient()
       .GET("/audit/{id}", { params: { path: { id: traceId } }, signal: controller.signal })
-      .then(({ data, error, response }) => {
+      .then((result) => {
         if (controller.signal.aborted) return;
-        // Both branches carry the envelope: openapi-fetch returns a governed refusal in `error`,
-        // and that refusal is exactly what this screen has to render.
-        setResult({ request, state: classifyTraceRead(response.status, data ?? error) });
+        // readEnvelope takes the body from whichever branch carries it: openapi-fetch puts a
+        // governed refusal in `error`, and that refusal is exactly what this screen renders.
+        const { status, body } = readEnvelope(result);
+        setResult({ request, state: classifyTraceRead(status, body) });
       })
       .catch(() => {
         if (controller.signal.aborted) return;

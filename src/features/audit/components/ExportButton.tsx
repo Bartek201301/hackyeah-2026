@@ -3,9 +3,11 @@
 import { useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { Button, Notice } from "@/shared/ui";
+import { readEnvelope } from "@/shared/contracts/client";
 import type { ExportState } from "../export";
 import { classifyExportResponse, exportPath } from "../export";
 import { copy } from "../copy";
+import type { UtcDay } from "../range";
 import type { ReportingScope } from "../scope";
 
 /**
@@ -21,7 +23,7 @@ import type { ReportingScope } from "../scope";
  * Cell neutralisation of leading `=`, `+`, `-`, `@`, tab and CR stays the gateway's job. Nothing here
  * rewrites a byte: a client that quietly fixed a cell would hide a server that stopped doing it.
  */
-export function ExportButton({ scope }: { scope: ReportingScope }) {
+export function ExportButton({ scope, day }: { scope: ReportingScope; day: UtcDay }) {
   const [state, setState] = useState<ExportState>({ kind: "idle" });
   const inFlight = useRef(false);
 
@@ -31,13 +33,17 @@ export function ExportButton({ scope }: { scope: ReportingScope }) {
     setState({ kind: "preparing" });
 
     try {
-      const response = await fetch(`/api/v1${exportPath(scope)}`, {
+      const response = await fetch(`/api/v1${exportPath(scope, day)}`, {
         credentials: "same-origin",
         headers: { Accept: "text/csv" },
       });
       const contentType = response.headers.get("content-type");
       const isCsv = (contentType ?? "").toLowerCase().includes("text/csv");
-      const body = isCsv ? null : await response.json().catch(() => null);
+      // The export is a plain fetch, because a typed client cannot hand back a blob or a header.
+      // The refusal body is still read through the shared reader, so "is this an envelope" has one
+      // definition across the feature.
+      const refusal = isCsv ? null : await response.json().catch(() => null);
+      const { body } = readEnvelope({ error: refusal, response });
 
       const next = classifyExportResponse(
         response.status,
@@ -48,7 +54,7 @@ export function ExportButton({ scope }: { scope: ReportingScope }) {
           contentDisposition: response.headers.get("content-disposition"),
         },
         scope,
-        new Date(),
+        day,
       );
 
       if (next.kind === "done") {

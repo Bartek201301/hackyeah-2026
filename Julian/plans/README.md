@@ -15,6 +15,9 @@ change rather than implementing a compromise.
 | [00-contract-reference.md](00-contract-reference.md)          | One page to code against: envelope, enums, status→state, operations, canaries |
 | [01-task-sequence.md](01-task-sequence.md)                    | Ordered tasks W0–W6 with prerequisites, acceptance and PR evidence            |
 | [02-open-questions.md](02-open-questions.md)                  | Consolidated blocking questions per owner, ready to send                      |
+| [03-browser-qa.md](03-browser-qa.md)                          | Signed-in browser checklist for every workbench view                          |
+| [04-judge-script.md](04-judge-script.md)                      | Workbench operator script for the three-minute walkthrough                    |
+| [05-session-handoff.md](05-session-handoff.md)                | State, bugs found, blockers and workflow gotchas as of 17:33 UTC              |
 | [minimal-controlled-chat/](minimal-controlled-chat/README.md) | T06 chat brief — interaction boundary, polling, submission recovery           |
 | [imports/](imports/README.md)                                 | T05 sources/upload brief — file selection, limits, outcome labels             |
 | [review/](review/README.md)                                   | T07 review brief — candidate display, exact version, evidence                 |

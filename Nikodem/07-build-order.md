@@ -10,6 +10,29 @@ rebase or force push), `npm run format -- <owned files>`, `npm run check:fast` b
 `npm run check` before the PR, commits as `type(scope): description` with no `Co-Authored-By`, draft PR
 while unfinished, one PR at a time merged by the integrator.
 
+## Delivery — what actually happened
+
+The phase text below is the record of intent and is left as it was written. This table is what shipped,
+because a plan that disagrees with the repository is worse than no plan.
+
+| Phase | Planned branch                   | What actually shipped                                                                                                                                                                     | State                                               |
+| ----- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| P1    | `codex/audit-trace-view`         | as planned — PR #11                                                                                                                                                                       | merged                                              |
+| P2    | `codex/audit-personal-dashboard` | as planned — PR #13                                                                                                                                                                       | merged                                              |
+| P3    | `codex/audit-admin-dashboard`    | as planned — PR #17                                                                                                                                                                       | merged                                              |
+| P4    | `codex/audit-usage-estimates`    | **never a branch.** The estimates panel, `N/A` rules, source-trace link and illustrative cost shipped inside P2; its two worksheet edge cases were only asserted later, in the range work | folded into P2                                      |
+| P5    | `codex/audit-csv-export`         | shipped as `codex/audit-focus-and-export` — PR #21, together with the focus fix and the AT10/AT15/AT16 coverage table                                                                     | merged                                              |
+| (new) | —                                | `codex/audit-range-and-paging` — the UTC day control, cursor paging, and the two edge-case tests P4 owed                                                                                  | open PR                                             |
+| P6    | `codex/audit-qa-evidence`        | not started                                                                                                                                                                               | blocked on T03, a session per role and a DOM runner |
+
+Two phases were therefore wrong in shape, not in content: P4 was never a slice of its own, and P5 arrived
+with work the plan had not anticipated. The day control and the paging were lines inside P2, P4 and P5
+that each phase shipped around; [13-range-and-paging.md](13-range-and-paging.md) records how that
+happened and why it was easy to miss.
+
+Per-phase evidence lives in [08](08-p1-handoff.md), [09](09-p2-handoff.md), [11](11-p3-handoff.md),
+[12](12-p5-handoff.md) and [13](13-range-and-paging.md).
+
 ## P1 — Minimal safe trace detail (gate G2)
 
 Branch `codex/audit-trace-view`. Target: the chat answer's trace link lands on a real view

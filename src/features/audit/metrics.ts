@@ -18,6 +18,7 @@ import type { ReadFailure } from "./envelope";
 import { classifyFailure } from "./envelope";
 import { copy } from "./copy";
 import { formatCount, formatMicroUsd, formatPercent, formatTimestampUtc } from "./format";
+import { isSingleUtcDay } from "./range";
 import type { UsageView } from "./trace";
 import { usageView } from "./trace";
 
@@ -78,6 +79,8 @@ export type MetricsView = {
   scope: string;
   rangeFrom: string;
   rangeTo: string;
+  /** False when the reported window is wider than one UTC day, which the contract confines it to. */
+  windowSingleDay: boolean;
   controls: CounterCard[];
   usage: UsageView;
   money: { value: string; rateVersion: string; disclaimer: string };
@@ -146,6 +149,9 @@ export function metricsView(metrics: Metrics): MetricsView {
     scope: metrics.scope === "organisation" ? copy.metrics.scopeOrganisation : copy.metrics.scopeOwn,
     rangeFrom: formatTimestampUtc(metrics.from),
     rangeTo: formatTimestampUtc(metrics.to),
+    // The window is echoed from the response, so it is also checked against the contract rather
+    // than vouched for: a wider window is displayed as reported, with a note.
+    windowSingleDay: isSingleUtcDay(metrics.from, metrics.to),
     controls: controlCards(metrics),
     usage: usageView(metrics.usage),
     money: {

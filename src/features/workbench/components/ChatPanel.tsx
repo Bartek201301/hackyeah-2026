@@ -19,6 +19,7 @@ import type { ApiResponse, Run } from "@/shared/contracts";
 import { Badge, Button, Card, CardHeader, Field, Textarea } from "@/shared/ui";
 import type { GatewayOutcome } from "../lib/envelope";
 import { classifyChatResponse } from "../lib/chatFlow";
+import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
 import { readChatResult, readChatRun, type ChatResult } from "../lib/chatData";
 import { checkCitations, type CitationView } from "../lib/citations";
 import { POLL_INTERVAL_MS, canCancel, progressLabel, shouldKeepPolling } from "../lib/runState";
@@ -43,8 +44,12 @@ export function ChatPanel() {
   const [citations, setCitations] = useState<CitationView[]>([]);
   const [rejectedCitations, setRejectedCitations] = useState(false);
 
-  /** One key per user action, reused when retrying that same action (never regenerated on retry). */
-  const idempotencyKey = useRef<string | null>(null);
+  /**
+   * Key bound to the question it was minted for. A retry of the same question reuses it; a
+   * different question mints a new one, because the same key with a different request hash is a
+   * guaranteed 409.
+   */
+  const actionKey = useRef<ActionKey | null>(null);
   /** Guards the contract's "execute exactly once" rule against a double render or double click. */
   const executed = useRef(false);
 
@@ -96,13 +101,17 @@ export function ChatPanel() {
     reset();
     setBusy(true);
 
-    idempotencyKey.current ??= newIdempotencyKey();
+    actionKey.current = keyForAction(
+      actionKey.current,
+      canonicalInput({ message: trimmed }),
+      newIdempotencyKey,
+    );
     const start = readEnvelope(
       await client.POST("/chat", {
         // No deal_id for G2 (B6): deal labels are not available yet, and a browser-chosen deal could
         // never grant access anyway. Retrieval scope comes from the actor's trusted memberships.
         body: { message: trimmed },
-        params: { header: { "Idempotency-Key": idempotencyKey.current } },
+        params: { header: { "Idempotency-Key": actionKey.current.key } },
       }),
     );
     const created = apply(start.status, start.body);
@@ -115,7 +124,8 @@ export function ChatPanel() {
         await client.POST("/runs/{id}/execute", {
           params: {
             path: { id: startedRun.id },
-            header: { "Idempotency-Key": idempotencyKey.current },
+            // Execute is its own operation, keyed by the run it executes.
+            header: { "Idempotency-Key": actionKey.current.key },
           },
         }),
       );

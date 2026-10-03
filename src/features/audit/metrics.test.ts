@@ -121,7 +121,63 @@ describe("estimates and money", () => {
   });
 });
 
+describe("the edge cases from the worksheet", () => {
+  it("shows N/A for the reduction and the avoided spend when the permitted corpus is zero", () => {
+    // A zero denominator cannot produce a percentage, so the server sends null and the screen says N/A.
+    const view = metricsView(
+      metrics({
+        permitted_source_tokens_estimate: 0,
+        selected_source_tokens_estimate: 0,
+        context_reduction_percent: null,
+        estimated_avoided_input_micro_usd: null,
+      }),
+    );
+    expect(view.estimates.map((row) => row.value)).toEqual(["0", "0", "N/A", "N/A"]);
+    expect(view.estimates[2].value).not.toBe("0.0%");
+  });
+
+  it("reads an empty day with no usage as unmeasured, while a true zero counter stays zero", () => {
+    const quiet = metrics({
+      root_requests: 0,
+      blocked_attempts: 0,
+      stopped_loops: 0,
+      review_cases: 0,
+      confirmed_test_failures: 0,
+      usage: usage({
+        generation_input_tokens: null,
+        generation_output_tokens: null,
+        generation_ms: null,
+        semantic_input_tokens: null,
+        semantic_ms: 0,
+        reserved_generation_tokens: 0,
+        comparison_micro_usd: null,
+      }),
+    });
+    const view = metricsView(quiet);
+
+    expect(view.empty).toBe(true);
+    // Counters are real measurements of nothing happening; usage was never measured at all.
+    expect(view.controls.map((card) => card.value)).toEqual(["0", "0", "0", "0", "0"]);
+    expect(view.usage.unknown.map((row) => row.value)).toEqual([
+      "Not measured",
+      "Not measured",
+      "Not measured",
+      "Not measured",
+    ]);
+    expect(view.usage.actual).toEqual([{ label: "Assessment duration (Laya)", value: "0 ms" }]);
+    expect(view.money.value).toBe("Not measured");
+  });
+});
+
 describe("scope and window", () => {
+  it("checks the reported window against the one-day rule instead of vouching for it", () => {
+    expect(metricsView(metrics()).windowSingleDay).toBe(true);
+    const wide = metricsView(metrics({ from: "2026-10-01T00:00:00.000Z", to: "2026-10-03T23:59:59.999Z" }));
+    expect(wide.windowSingleDay).toBe(false);
+    // The figures are still shown, as reported, with the discrepancy stated.
+    expect(wide.rangeFrom).toBe("2026-10-01 00:00:00 UTC");
+  });
+
   it("echoes the scope and the window from the response, not from local state", () => {
     const own = metricsView(metrics());
     expect(own.scope).toBe("Own activity");
