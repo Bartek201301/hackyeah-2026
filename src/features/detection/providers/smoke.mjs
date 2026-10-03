@@ -39,4 +39,5 @@ registerHooks({
 });
 const require = createRequire(import.meta.url);
 if (process.argv[2] === "--factories") await require("./factory-smoke-cases.ts").runFactorySmoke();
+else if (process.argv[2] === "--eval") await require("../eval/run.ts").runSemanticEval(process.argv.slice(3));
 else await require("./smoke-cases.ts").runSyntheticSmoke();
