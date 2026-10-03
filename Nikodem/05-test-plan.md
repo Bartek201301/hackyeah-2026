@@ -175,21 +175,21 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 
 ### 7.1 AT10 — audit
 
-| ID      | Where it is asserted                                                            | Status                                                 |
-| ------- | ------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| AT10-1  | —                                                                               | not run; needs T03 routes and two real sessions        |
-| AT10-2  | `scope.test.ts` — refusal state, and figures beside a refusal ignored           | unit; the real-403 half needs T03                      |
-| AT10-3  | `safety.test.ts` §"the list is never an aggregate"                              | unit                                                   |
-| AT10-4  | `safety.test.ts` — four leak assertions against the view models                 | unit at model level; DOM scan not run                  |
-| AT10-5  | `safety.test.ts` — reason codes survive, `Finding` has no `value` key           | unit at model level                                    |
-| AT10-6  | `export.test.ts` covers the refusal and row-cap handling                        | the byte assertion is not run; needs the route         |
-| AT10-7  | `envelope.test.ts` incomplete + unknown usage; `trace.test.ts` unknown group    | unit                                                   |
-| AT10-8  | `envelope.test.ts` event cap; `activity.test.ts` page cap and cursor            | unit; the paging control exists, its click needs a DOM |
-| AT10-9  | `envelope.test.ts` and `metrics.test.ts` unavailable states                     | unit                                                   |
-| AT10-10 | `activity.test.ts` unauthenticated mapping                                      | unit; "clears earlier numbers" by construction         |
-| AT10-11 | `metrics.test.ts` invalid-input mapping; `range.test.ts` day parsing and bounds | unit; the screen cannot construct a wider range        |
-| AT10-12 | `export.test.ts` — the export trace id is reported                              | unit; "body never rendered" by construction            |
-| AT10-13 | `activity.test.ts` rate-limited mapping                                         | unit; the absent retry control needs a DOM             |
+| ID      | Where it is asserted                                                                                                                         | Status                                                 |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| AT10-1  | —                                                                                                                                            | not run; needs T03 routes and two real sessions        |
+| AT10-2  | `scope.test.ts` — refusal state, and figures beside a refusal ignored                                                                        | unit; the real-403 half needs T03                      |
+| AT10-3  | `safety.test.ts` §"the list is never an aggregate"                                                                                           | unit                                                   |
+| AT10-4  | `dom-safety.test.tsx` renders the components from a hostile payload and scans the tree; `safety.test.ts` guards the models                   | **asserted in the DOM**                                |
+| AT10-5  | `dom-safety.test.tsx` — the decision, both reason codes and the no-breach sentence are present, the finding renders four fields and no fifth | **asserted in the DOM**                                |
+| AT10-6  | `export.test.ts` covers the refusal and row-cap handling                                                                                     | the byte assertion is not run; needs the route         |
+| AT10-7  | `envelope.test.ts` incomplete + unknown usage; `trace.test.ts` unknown group                                                                 | unit                                                   |
+| AT10-8  | `envelope.test.ts` event cap; `activity.test.ts` page cap and cursor                                                                         | unit; the paging control exists, its click needs a DOM |
+| AT10-9  | `envelope.test.ts` and `metrics.test.ts` unavailable states                                                                                  | unit                                                   |
+| AT10-10 | `activity.test.ts` unauthenticated mapping                                                                                                   | unit; "clears earlier numbers" by construction         |
+| AT10-11 | `metrics.test.ts` invalid-input mapping; `range.test.ts` day parsing and bounds                                                              | unit; the screen cannot construct a wider range        |
+| AT10-12 | `export.test.ts` — the export trace id is reported                                                                                           | unit; "body never rendered" by construction            |
+| AT10-13 | `activity.test.ts` rate-limited mapping                                                                                                      | unit; the absent retry control needs a DOM             |
 
 ### 7.2 AT15 — reporting honesty
 
@@ -210,17 +210,22 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 
 ### 7.3 AT16 — browser and release
 
-| ID     | Status                                                                                                                                                                                                           |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AT16-1 | not run; needs a session per role. Login exists since T02 phase 3, so this is now a browser task                                                                                                                 |
-| AT16-2 | by construction on both sides — every label here is passed explicitly, and the shared Polish defaults were removed by PR #38, so the loading boundary on `/audit` is English too. The DOM scan itself is not run |
-| AT16-3 | code half done — every interactive element now carries a focus ring; the walk itself is not run                                                                                                                  |
-| AT16-4 | not run                                                                                                                                                                                                          |
-| AT16-5 | by construction — every `Badge` in this feature carries text, never colour alone                                                                                                                                 |
-| AT16-6 | by construction — an in-flight guard plus a disabled button; the network log itself is not run                                                                                                                   |
-| AT16-7 | by construction; the app-level Polish default this row tracked is resolved                                                                                                                                       |
+| ID     | Status                                                                                                                                                                       |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AT16-1 | not run; needs a session per role. Login exists since T02 phase 3, so this is now a browser task                                                                             |
+| AT16-2 | asserted in the DOM for the trace screen — the rendered tree contains no Polish characters; the shared defaults were translated by PR #38. The full per-role scan is not run |
+| AT16-3 | code half done — every interactive element now carries a focus ring; the walk itself is not run                                                                              |
+| AT16-4 | not run                                                                                                                                                                      |
+| AT16-5 | asserted in the DOM — every rendered badge carries non-empty text                                                                                                            |
+| AT16-6 | by construction — an in-flight guard plus a disabled button; the network log itself is not run                                                                               |
+| AT16-7 | by construction; the app-level Polish default this row tracked is resolved                                                                                                   |
 
 ### 7.4 What this table says plainly
+
+**Updated after the DOM runner (PR #43) and the first live record.** AT10-4 and AT10-5 are no longer
+"model level": `dom-safety.test.tsx` renders the components and scans the tree. AT15-8 is asserted
+against a real stored record in `live-trace.test.ts`. What remains needs a browser a human drives, or
+the two endpoints that are still the 503 seam.
 
 Every assertion that can be made without a browser or without live data is made. What remains is one
 runner and one set of routes, not a backlog of unwritten tests: **AT10-1, AT10-6, AT10-12, AT16-1,
