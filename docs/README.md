@@ -26,6 +26,8 @@ The policy example owns default values. Schema maxima are hard safety ceilings; 
 
 If two active documents conflict, stop the dependent change, record the discrepancy in the PR, and have the integrator correct the authoritative file plus affected references. Do not implement a permissive compromise. New scope requires a PRD decision; breaking contracts require all affected owners to coordinate. Security invariants in AGENTS apply everywhere.
 
+For the named four-person assignment, start with [developer handoffs and copy-paste prompts](team/developer-handoffs.md).
+
 ## Reading paths
 
 - **Founder/judges:** PRD summary → scenarios → pitch → runbook.

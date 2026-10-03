@@ -1,6 +1,6 @@
 # Implementation plan — four people, one delivery clock
 
-Status: ready for task assignment; application tasks pending. Documentation preparation is **T00 inside the original 19 hours**, not extra time. Start from [AGENTS](../../AGENTS.md) and [documentation authority](../README.md).
+Status: named assignments recorded; application tasks pending. See [developer handoffs and prompts](developer-handoffs.md) for Bartosz (Integrator), Julian (A), Maciej (B) and Nikodem (C). Documentation preparation is **T00 inside the original 19 hours**, not extra time. Start from [AGENTS](../../AGENTS.md) and [documentation authority](../README.md).
 
 ## Clock and critical path
 
@@ -22,7 +22,7 @@ The integrator is the bottleneck: freeze shared types and database RPCs first, r
 
 ## Ownership and handoff rules
 
-Integrator owns shared contracts, persistence/auth/engine/budget, routes, dependencies, deployment, MCP and integration tests. A owns only `src/features/workbench/**`; B only `src/features/detection/**`; C only `src/features/audit/**`. Each feature exposes `index.ts`. Integrator creates these entry points and merges shared foundation before dependent branches start. Assign actual humans in PR metadata; role labels below are final directory ownership, not GitHub usernames.
+Integrator owns shared contracts, persistence/auth/engine/budget, routes, dependencies, deployment, MCP and integration tests. A owns only `src/features/workbench/**`; B only `src/features/detection/**`; C only `src/features/audit/**`. Each feature exposes `index.ts`. Integrator creates these entry points and merges shared foundation before dependent branches start. People are assigned in the PRD team table; record actual GitHub handles in PR metadata. Role labels below specify directory ownership. G1 in developer-handoffs.md is the early T01 contract/entry-point merge; remaining live capability checks continue after that handoff.
 
 Each person works in an isolated checkout/worktree and short branch from current origin/main. One owner edits a scope at a time. Update branch with merge, not shared rebase. Builders request shared changes as a typed interface/diff proposal in the PR, never copy shared code into features. No direct main pushes. Peer approval and team-check are required, including integrator PRs. Commit format `type(scope): description`, no Co-Authored-By.
 
@@ -52,7 +52,7 @@ Steps: (1) deterministic identity/policy/scope enforcement; (2) central limit ch
 
 Purpose: actual hybrid assessment with honest coverage. Requirements: R04,R05,R16,R17. Prerequisite: T01 interfaces; start Mac capability work during T01. Owned: detection feature including runtime Python/SQLite bridge, parsers, fixtures/tests. Inputs: semantic protocol, policy subset and frozen cases. Outputs: DetectionPort and GenerationPort factory exports, live authenticated bridge, evidence report.
 
-Steps: (1) lock Laya environment and pin checkpoint revision; (2) start loopback Laya/Ollama and authenticated fixed-route bridge; (3) implement call ledger/cancellation/usage; (4) bounded CSV/PDF parsers with provenance; (5) deterministic scan and tokenizer windows, full coverage proof; (6) stable named risk questions, validated outputs; (7) review labels, tune development only, run held-out; (8) give integrator env/launch contract. Tests: AT03/AT04/AT14; malformed/truncated/tail/window cap, actual provider token/timing fields. Evidence: live revision, dataset hash, FP/miss counts; no invented confidence calibration. Handoff: integrator injects ports; B never imports app/shared server composition or edits dependencies.
+Steps: (1) verify the Laya environment and checkpoint revision; supply dependency/lock changes to Bartosz, who owns their commits; (2) start loopback Laya/Ollama and authenticated fixed-route bridge; (3) implement call ledger/cancellation/usage; (4) bounded CSV/PDF parsers with provenance; (5) deterministic scan and tokenizer windows, full coverage proof; (6) stable named risk questions, validated outputs; (7) review labels, tune development only, run held-out; (8) give integrator env/launch contract. Tests: AT03/AT04/AT14; malformed/truncated/tail/window cap, actual provider token/timing fields. Evidence: live revision, dataset hash, FP/miss counts; no invented confidence calibration. Handoff: integrator injects ports; B never imports app/shared server composition or edits dependencies.
 
 ## T05 — sources and ingestion (A UI; B parsing; Integrator routes/persistence)
 

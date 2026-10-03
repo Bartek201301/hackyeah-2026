@@ -94,4 +94,11 @@ Official brief: HackYeah / Goldman Sachs “AI Control Layer”, supplied to the
 
 ## 8. Team
 
-Integrator owns shared/platform/database/deployment. Builder A owns workbench; B detection; C audit. Exact paths and task handoffs are in the architecture and implementation plan. Human GitHub usernames are operational assignments to record in the PR before claiming a task; they do not change the contract. No invented CODEOWNERS entries.
+| Person  | Assigned role         | Implementation ownership                                                          |
+| ------- | --------------------- | --------------------------------------------------------------------------------- |
+| Bartosz | Integrator            | Shared/platform/database/routes/dependencies/deployment/MCP and integration tests |
+| Julian  | Builder A — workbench | `src/features/workbench/**`                                                       |
+| Maciej  | Builder B — detection | `src/features/detection/**`                                                       |
+| Nikodem | Builder C — audit     | `src/features/audit/**`                                                           |
+
+The [developer handoffs](../team/developer-handoffs.md) provide each person's copy-paste prompt, immediate preparation and explicit start gates. Exact task scopes remain in the [implementation plan](../team/implementation-plan.md). GitHub usernames are operational assignments to record in the PR; do not infer account handles from these names or invent CODEOWNERS entries.
