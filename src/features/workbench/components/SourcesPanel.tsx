@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
-import { createGatewayClient, newIdempotencyKey } from "@/shared/contracts/client";
+import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
 import type { ApiResponse, ImportSummary, SourceSummary } from "@/shared/contracts";
 import { Badge, Button, Card, CardHeader, Field, Input, Select } from "@/shared/ui";
 import { classifyResponse, classifyTerminalErrorCode, type GatewayOutcome } from "../lib/envelope";
@@ -32,9 +32,6 @@ import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency
 import { OutcomeNotice } from "./OutcomeNotice";
 
 const client = createGatewayClient();
-
-const envelopeOf = (data: unknown, error: unknown): ApiResponse | null =>
-  ((data ?? error) as ApiResponse | undefined) ?? null;
 
 const classify = (status: number, body: ApiResponse | null): GatewayOutcome =>
   classifyTerminalErrorCode(body) ?? classifyResponse(status, body);
@@ -68,14 +65,14 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
    * than synchronously, which is what react-hooks/set-state-in-effect asks for. */
   const fetchLists = useCallback(async () => {
     const [s, i] = await Promise.all([client.GET("/sources", {}), client.GET("/imports", {})]);
-    const sBody = envelopeOf(s.data, s.error);
-    const iBody = envelopeOf(i.data, i.error);
-    const sOut = classify(s.response.status, sBody);
-    const iOut = classify(i.response.status, iBody);
+    const sourcesRead = readEnvelope(s);
+    const importsRead = readEnvelope(i);
+    const sOut = classify(sourcesRead.status, sourcesRead.body);
+    const iOut = classify(importsRead.status, importsRead.body);
     return {
-      sources: sOut.kind === "result" ? itemsOf<SourceSummary>(sBody) : null,
+      sources: sOut.kind === "result" ? itemsOf<SourceSummary>(sourcesRead.body) : null,
       sourcesOutcome: sOut.kind === "result" ? null : sOut,
-      imports: iOut.kind === "result" ? itemsOf<ImportSummary>(iBody) : null,
+      imports: iOut.kind === "result" ? itemsOf<ImportSummary>(importsRead.body) : null,
       importsOutcome: iOut.kind === "result" ? null : iOut,
     };
   }, []);
@@ -132,12 +129,14 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
       newIdempotencyKey,
     );
 
-    const { data, error, response } = await client.POST("/imports/upload", {
-      // openapi-fetch passes FormData through and lets the browser set the multipart boundary.
-      body: buildUploadBody(draft, file) as never,
-      params: { header: { "Idempotency-Key": uploadKey.current.key } },
-    });
-    setUploadOutcome(classify(response.status, envelopeOf(data, error)));
+    const { status, body } = readEnvelope(
+      await client.POST("/imports/upload", {
+        // openapi-fetch passes FormData through and lets the browser set the multipart boundary.
+        body: buildUploadBody(draft, file) as never,
+        params: { header: { "Idempotency-Key": uploadKey.current.key } },
+      }),
+    );
+    setUploadOutcome(classify(status, body));
     setBusy(false);
     void fetchLists().then(applyLists);
   };

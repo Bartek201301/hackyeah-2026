@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, SquareX } from "lucide-react";
-import { createGatewayClient, newIdempotencyKey } from "@/shared/contracts/client";
+import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
 import type { ApiResponse, Run } from "@/shared/contracts";
 import { Badge, Button, Card, CardHeader, Field, Textarea } from "@/shared/ui";
 import type { GatewayOutcome } from "../lib/envelope";
@@ -29,10 +29,6 @@ import { OutcomeNotice } from "./OutcomeNotice";
 const MAX_MESSAGE = 4000;
 
 const client = createGatewayClient();
-
-/** openapi-fetch puts a non-2xx envelope on `error`; both carry the same shape. */
-const envelopeOf = (data: unknown, error: unknown): ApiResponse | null =>
-  ((data ?? error) as ApiResponse | undefined) ?? null;
 
 /* Lifecycle-aware: a pending run carries decision null by contract and must read as progress,
  * not as a fail-closed service error. See lib/chatFlow.ts. */
@@ -110,37 +106,42 @@ export function ChatPanel() {
       canonicalInput({ message: trimmed }),
       newIdempotencyKey,
     );
-    const { data, error, response } = await client.POST("/chat", {
-      // No deal_id for G2 (B6): deal labels are not available yet, and a browser-chosen deal could
-      // never grant access anyway. Retrieval scope comes from the actor's trusted memberships.
-      body: { message: trimmed },
-      params: { header: { "Idempotency-Key": actionKey.current.key } },
-    });
-    const createdBody = envelopeOf(data, error);
-    const created = apply(response.status, createdBody);
-    const startedRun = readChatRun(createdBody?.data ?? null);
+    const start = readEnvelope(
+      await client.POST("/chat", {
+        // No deal_id for G2 (B6): deal labels are not available yet, and a browser-chosen deal could
+        // never grant access anyway. Retrieval scope comes from the actor's trusted memberships.
+        body: { message: trimmed },
+        params: { header: { "Idempotency-Key": actionKey.current.key } },
+      }),
+    );
+    const created = apply(start.status, start.body);
+    const startedRun = readChatRun(start.body?.data ?? null);
 
     // Execute only a run the gateway actually created, and only once.
     if (created.kind === "progress" && startedRun && !executed.current) {
       executed.current = true;
-      const exec = await client.POST("/runs/{id}/execute", {
-        params: {
-          path: { id: startedRun.id },
-          // Execute is its own operation, keyed by the run it executes.
-          header: { "Idempotency-Key": actionKey.current.key },
-        },
-      });
-      apply(exec.response.status, envelopeOf(exec.data, exec.error));
+      const exec = readEnvelope(
+        await client.POST("/runs/{id}/execute", {
+          params: {
+            path: { id: startedRun.id },
+            // Execute is its own operation, keyed by the run it executes.
+            header: { "Idempotency-Key": actionKey.current.key },
+          },
+        }),
+      );
+      apply(exec.status, exec.body);
     }
     setBusy(false);
   };
 
   const cancel = async () => {
     if (!run) return;
-    const { data, error, response } = await client.POST("/runs/{id}/cancel", {
-      params: { path: { id: run.id }, header: { "Idempotency-Key": newIdempotencyKey() } },
-    });
-    apply(response.status, envelopeOf(data, error));
+    const { status, body } = readEnvelope(
+      await client.POST("/runs/{id}/cancel", {
+        params: { path: { id: run.id }, header: { "Idempotency-Key": newIdempotencyKey() } },
+      }),
+    );
+    apply(status, body);
   };
 
   /** Retry the same action: the idempotency key is deliberately kept. */
@@ -159,15 +160,16 @@ export function ChatPanel() {
         timer = setTimeout(tick, POLL_INTERVAL_MS);
         return;
       }
-      const { data, error, response } = await client.GET("/runs/{id}", {
-        params: { path: { id } },
-      });
+      const polled = readEnvelope(
+        await client.GET("/runs/{id}", {
+          params: { path: { id } },
+        }),
+      );
       if (cancelled) return;
-      const body = envelopeOf(data, error);
-      const next = apply(response.status, body);
+      const next = apply(polled.status, polled.body);
       // A service error during polling is terminal for this screen: stop and say so.
       if (next.kind === "unavailable") return;
-      if (shouldKeepPolling(readChatRun(body?.data ?? null))) {
+      if (shouldKeepPolling(readChatRun(polled.body?.data ?? null))) {
         timer = setTimeout(tick, POLL_INTERVAL_MS);
       }
     };

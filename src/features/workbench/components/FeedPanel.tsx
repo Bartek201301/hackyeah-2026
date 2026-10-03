@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Send, Trash2 } from "lucide-react";
-import { createGatewayClient, newIdempotencyKey } from "@/shared/contracts/client";
+import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
 import type { ApiResponse, ThreatFeed } from "@/shared/contracts";
 import { Badge, Button, Card, CardHeader, Field, Input, Notice, Select } from "@/shared/ui";
 import { classifyResponse, classifyTerminalErrorCode, type GatewayOutcome } from "../lib/envelope";
@@ -37,9 +37,6 @@ import { OutcomeNotice } from "./OutcomeNotice";
 
 const client = createGatewayClient();
 
-const envelopeOf = (data: unknown, error: unknown): ApiResponse | null =>
-  ((data ?? error) as ApiResponse | undefined) ?? null;
-
 const classify = (status: number, body: ApiResponse | null): GatewayOutcome =>
   classifyTerminalErrorCode(body) ?? classifyResponse(status, body);
 
@@ -55,9 +52,8 @@ export function FeedPanel() {
   const [busy, setBusy] = useState(false);
 
   const fetchFeed = useCallback(async () => {
-    const { data, error, response } = await client.GET("/feeds", {});
-    const body = envelopeOf(data, error);
-    const outcome = classify(response.status, body);
+    const { status, body } = readEnvelope(await client.GET("/feeds", {}));
+    const outcome = classify(status, body);
     if (outcome.kind !== "result") return { feed: null, outcome };
     const raw: unknown = body?.data ?? null;
     const feed =
@@ -105,11 +101,13 @@ export function FeedPanel() {
     setErrors({});
     setRowErrors({});
     setBusy(true);
-    const { data, error, response } = await client.POST("/feeds", {
-      body: { expected_version, feed: validation.feed },
-      params: { header: { "Idempotency-Key": newIdempotencyKey() } },
-    });
-    const outcome = classify(response.status, envelopeOf(data, error));
+    const { status, body } = readEnvelope(
+      await client.POST("/feeds", {
+        body: { expected_version, feed: validation.feed },
+        params: { header: { "Idempotency-Key": newIdempotencyKey() } },
+      }),
+    );
+    const outcome = classify(status, body);
     setPushOutcome(outcome);
     setBusy(false);
     // A conflict means the head moved: reload rather than resubmit the same expected version.
