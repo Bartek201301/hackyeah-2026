@@ -45,7 +45,7 @@ function NavGroup({ title, items }: { title: string; items: NavItem[] }) {
 
 function Session({ role }: { role: ActorContext["role"] }) {
   return (
-    <form action={signOut} className="flex items-center gap-3">
+    <form action={signOut} className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span className="text-sm text-muted">
         Signed in as <span className="font-medium text-fg">{role}</span>
       </span>
