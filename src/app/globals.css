@@ -9,28 +9,37 @@
 @theme {
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 
-  --color-brand: oklch(0.55 0.2 264);
-  --color-brand-hover: oklch(0.48 0.2 264);
-  --color-brand-soft: oklch(0.95 0.03 264);
+  /* Marka: nasycony indygo. Jedna mocna barwa na ekran — reszta to biel i szarości. */
+  --color-brand: oklch(0.56 0.21 272);
+  --color-brand-hover: oklch(0.5 0.21 272);
+  --color-brand-strong: oklch(0.47 0.22 276);
+  --color-brand-soft: oklch(0.94 0.035 272);
   --color-on-brand: oklch(1 0 0);
 
-  --color-bg: oklch(0.985 0.002 264);
+  /* Tło lekko lawendowo-szare, karty białe — karta "unosi się" nad tłem. */
+  --color-bg: oklch(0.955 0.01 264);
   --color-surface: oklch(1 0 0);
-  --color-fg: oklch(0.21 0.02 264);
-  --color-muted: oklch(0.52 0.02 264);
-  --color-border: oklch(0.91 0.01 264);
+  --color-surface-muted: oklch(0.975 0.006 264);
+  --color-fg: oklch(0.2 0.02 264);
+  --color-muted: oklch(0.55 0.02 264);
+  --color-border: oklch(0.92 0.01 264);
 
-  --color-danger: oklch(0.58 0.21 25);
-  --color-danger-soft: oklch(0.96 0.03 25);
-  --color-success: oklch(0.6 0.15 155);
-  --color-success-soft: oklch(0.96 0.04 155);
+  /* Ciemny akcent: dymki wykresów, karta promocyjna. Używać oszczędnie. */
+  --color-ink: oklch(0.2 0.015 264);
+  --color-on-ink: oklch(0.97 0.005 264);
+
+  --color-danger: oklch(0.6 0.21 25);
+  --color-danger-soft: oklch(0.95 0.035 25);
+  --color-success: oklch(0.55 0.15 150);
+  --color-success-soft: oklch(0.94 0.05 150);
   --color-warning: oklch(0.72 0.15 75);
-  --color-warning-soft: oklch(0.97 0.05 85);
+  --color-warning-soft: oklch(0.96 0.06 85);
 
-  --radius-control: 0.5rem;
-  --radius-card: 0.875rem;
+  --radius-control: 0.875rem;
+  --radius-card: 1.5rem;
 
-  --shadow-card: 0 1px 2px oklch(0.21 0.02 264 / 0.05), 0 4px 16px oklch(0.21 0.02 264 / 0.04);
+  --shadow-card: 0 1px 2px oklch(0.2 0.02 264 / 0.03), 0 8px 24px oklch(0.2 0.02 264 / 0.05);
+  --shadow-brand: 0 8px 24px oklch(0.56 0.21 272 / 0.35);
 }
 
 body {

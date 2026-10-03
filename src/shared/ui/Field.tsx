@@ -2,8 +2,8 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTML
 import { cn } from "@/shared/cn";
 
 const control =
-  "w-full rounded-control border border-border bg-surface px-3 text-sm text-fg placeholder:text-muted " +
-  "focus:border-brand focus:outline-2 focus:outline-brand-soft disabled:opacity-60";
+  "w-full rounded-control border border-border bg-surface-muted px-3.5 text-sm text-fg placeholder:text-muted " +
+  "focus:border-brand focus:bg-surface focus:outline-4 focus:outline-brand-soft disabled:opacity-60";
 
 type FieldProps = {
   label: string;
@@ -30,7 +30,7 @@ export function Field({ label, hint, error, children }: FieldProps) {
 }
 
 export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(control, "h-10", className)} {...rest} />;
+  return <input className={cn(control, "h-11", className)} {...rest} />;
 }
 
 export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -38,5 +38,5 @@ export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLText
 }
 
 export function Select({ className, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(control, "h-10", className)} {...rest} />;
+  return <select className={cn(control, "h-11", className)} {...rest} />;
 }

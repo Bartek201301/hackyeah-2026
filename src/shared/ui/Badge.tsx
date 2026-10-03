@@ -4,19 +4,19 @@ import { cn } from "@/shared/cn";
 export type Tone = "neutral" | "brand" | "success" | "warning" | "danger";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-bg text-muted border-border",
-  brand: "bg-brand-soft text-brand border-brand/20",
-  success: "bg-success-soft text-success border-success/20",
-  warning: "bg-warning-soft text-fg border-warning/30",
-  danger: "bg-danger-soft text-danger border-danger/20",
+  neutral: "bg-surface-muted text-muted",
+  brand: "bg-brand-soft text-brand",
+  success: "bg-success-soft text-success",
+  warning: "bg-warning-soft text-fg",
+  danger: "bg-danger text-on-brand",
 };
 
-/** Mała etykieta statusu, np. <Badge tone="success">Gotowe</Badge> */
+/** Pigułka statusu lub zmiany, np. <Badge tone="success">+12,4%</Badge> */
 export function Badge({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums",
         tones[tone],
       )}
     >
