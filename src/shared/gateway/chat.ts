@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { ActorContext, Assessment, ChatRequest, ErrorCode, Finding } from "@/shared/contracts";
 import { clock, createCalls, loadControls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
-import { decide, matchSignatures, sha256Hex, utf8Bytes } from "./checks";
+import { decide, matchSensitive, matchSignatures, sha256Hex, utf8Bytes } from "./checks";
 import {
   envelope,
   errorOutcome,
@@ -89,7 +89,11 @@ export async function executeChat(
   let stage = "input_signature";
   const calls = createCalls({ deps, policy, op, usage, t, overall, findings });
   const signatures = async (text: string, at: "input_signature" | "output_signature") => {
-    const found = await t.time("deterministic_ms", () => matchSignatures(text, feed, at));
+    const found = await t.time("deterministic_ms", () => [
+      ...matchSignatures(text, feed, at),
+      // Secret/contact patterns guard what leaves the gateway, not what the user typed.
+      ...(at === "output_signature" ? matchSensitive(text, at) : []),
+    ]);
     findings.push(...found);
     return t.time("deterministic_ms", () => decide(found, null, policy));
   };
