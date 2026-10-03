@@ -89,6 +89,14 @@ export type MetricsReservationRow = {
   amount: number;
   state: "reserved" | "settled" | "unresolved" | "released";
 };
+/** One reporting window; `ownActorId` null means the whole organisation. */
+export type WindowQuery = {
+  organisationId: string;
+  ownActorId: string | null;
+  from: string;
+  to: string;
+  limit: number;
+};
 /** sources row as selected for source_list; projected and schema-checked before release. */
 export type SourceRow = { id: string; label: string; classification: string; kind: string };
 /** A registered dataset batch as loaded for import_connector; payloads are untrusted until validated. */
@@ -209,13 +217,11 @@ export interface RepositoryPort {
    * what is still outstanding. Filtering is in the query because the gateway client bypasses RLS;
    * `ownActorId` null means the whole organisation. At most `limit` rows of each.
    */
-  readMetricsRows(input: {
-    organisationId: string;
-    ownActorId: string | null;
-    from: string;
-    to: string;
-    limit: number;
-  }): Promise<{ activity: MetricsActivityRow[]; reservations: MetricsReservationRow[] }>;
+  readMetricsRows(
+    input: WindowQuery,
+  ): Promise<{ activity: MetricsActivityRow[]; reservations: MetricsReservationRow[] }>;
+  /** Activity rows of one window for the audit CSV, newest first, at most `limit`. */
+  exportActivity(input: WindowQuery): Promise<ActivityRow[]>;
 }
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {

@@ -179,6 +179,10 @@ function harness(over: Partial<Opts> = {}) {
       log.push("readMetricsRows");
       return { activity: [], reservations: [] };
     },
+    async exportActivity() {
+      log.push("exportActivity");
+      return [];
+    },
   };
 
   const detection: DetectionPort = {

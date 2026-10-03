@@ -14,6 +14,7 @@ import type {
   RepositoryPort,
   RunRecord,
   SourceRow,
+  WindowQuery,
 } from "./ports";
 import { sourceScope } from "./sources";
 
@@ -40,8 +41,37 @@ async function data<T>(query: PromiseLike<{ data: T; error: { message: string } 
 const RUN_COLUMNS =
   "id, kind, state, stage, policy_version, feed_version, input_private, result_private, lease_expires_at";
 
+/** Every column of an ActivityRow. */
+const ACTIVITY_COLUMNS =
+  "trace_id, actor_id, operation, state, decision, reasons, usage, policy_version, feed_version, created_at";
+
 /** Gateway state over the run/operation RPCs. Server-only; every row is scoped to the trusted actor. */
 export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmin()): RepositoryPort {
+  /** actor_activity inside one window, newest first; shared by metrics and the audit export. */
+  async function windowActivity<Row>(
+    columns: string,
+    { organisationId, ownActorId, from, to, limit }: WindowQuery,
+  ): Promise<Row[]> {
+    let query = db
+      .from("actor_activity")
+      .select(columns)
+      .eq("organisation_id", organisationId)
+      // scripts/db/run.test.mjs writes db_test rows with partial usage; they are not root requests.
+      .neq("operation", "db_test")
+      .gte("created_at", from)
+      .lte("created_at", to);
+    // own scope filters here, not after serialization: the admin client bypasses RLS.
+    if (ownActorId) query = query.eq("actor_id", ownActorId);
+    const rows = await data<Row[] | null>(
+      query
+        .order("created_at", { ascending: false })
+        .order("trace_id", { ascending: false })
+        .limit(limit)
+        .overrideTypes<Row[], { merge: false }>(),
+    );
+    return rows ?? [];
+  }
+
   return {
     async loadActivePolicyAndFeed(organisationId) {
       const head = await data(
@@ -179,9 +209,7 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
     async readTrace(actor, traceId) {
       let activity = db
         .from("actor_activity")
-        .select(
-          "trace_id, actor_id, operation, state, decision, reasons, usage, policy_version, feed_version, created_at",
-        )
+        .select(ACTIVITY_COLUMNS)
         .eq("trace_id", traceId)
         .eq("organisation_id", actor.organisation_id);
       if (actor.role !== "admin") activity = activity.eq("actor_id", actor.actor_id);
@@ -296,9 +324,7 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       const scoped = () =>
         db
           .from("actor_activity")
-          .select(
-            "trace_id, actor_id, operation, state, decision, reasons, usage, policy_version, feed_version, created_at",
-          )
+          .select(ACTIVITY_COLUMNS)
           .eq("organisation_id", organisationId)
           // Own activity only, filtered here because the admin client bypasses RLS.
           .eq("actor_id", actorId);
@@ -331,19 +357,13 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
     },
 
     async readMetricsRows({ organisationId, ownActorId, from, to, limit }) {
-      let activityQuery = db
-        .from("actor_activity")
-        .select("trace_id, decision, reasons, usage")
-        .eq("organisation_id", organisationId)
-        // scripts/db/run.test.mjs writes db_test rows with partial usage; they are not root requests.
-        .neq("operation", "db_test")
-        .gte("created_at", from)
-        .lte("created_at", to);
-      // own scope filters here, not after serialization: the admin client bypasses RLS.
-      if (ownActorId) activityQuery = activityQuery.eq("actor_id", ownActorId);
-      const activity = await data<MetricsActivityRow[] | null>(
-        activityQuery.order("created_at", { ascending: false }).limit(limit),
-      );
+      const activity = await windowActivity<MetricsActivityRow>("trace_id, decision, reasons, usage", {
+        organisationId,
+        ownActorId,
+        from,
+        to,
+        limit,
+      });
 
       /*
        * Reservations carry no actor, so the window and the scope come from their operation. The
@@ -359,7 +379,11 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       if (ownActorId) reservationQuery = reservationQuery.eq("operations.actor_id", ownActorId);
       const reservations = await data<MetricsReservationRow[] | null>(reservationQuery.limit(limit));
 
-      return { activity: activity ?? [], reservations: reservations ?? [] };
+      return { activity, reservations: reservations ?? [] };
+    },
+
+    exportActivity(input) {
+      return windowActivity<ActivityRow>(ACTIVITY_COLUMNS, input);
     },
   };
 }
