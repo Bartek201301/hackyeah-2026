@@ -22,6 +22,10 @@ const HIDDEN = [
   "budget_buckets",
   "reservations",
   "audit_events",
+  "review_requests",
+  "review_versions",
+  "exports",
+  "access_tokens",
 ];
 const ORG = fixtures.organisation.id;
 const dealIds = Object.fromEntries(fixtures.deals.map((deal) => [deal.alias, deal.id]));
@@ -65,8 +69,16 @@ for (const account of fixtures.accounts)
     assert.ok(activity.every((row) => row.actor_id === uid));
   });
 
-test("seeded control rows exist, so hidden means hidden rather than absent", async () => {
-  for (const table of ["organisations", "deals", "policy_versions", "feed_versions", "control_heads"])
+test("seeded rows exist, so hidden means hidden rather than absent", async () => {
+  for (const table of [
+    "organisations",
+    "deals",
+    "policy_versions",
+    "feed_versions",
+    "control_heads",
+    "sources",
+    "dataset_rows",
+  ])
     assert.ok(must(table, await db.from(table).select("*").limit(1)).length >= 1, `${table} has rows`);
 });
 
