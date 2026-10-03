@@ -5,7 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ErrorCode } from "@/shared/contracts";
 import { createSupabaseAdmin } from "@/shared/supabase/admin";
 import { GatewayError, STATUS } from "./envelope";
-import type { ActivityRow, EventRow, RepositoryPort, RunRecord } from "./ports";
+import type { ActivityRow, EventRow, RepositoryPort, RunRecord, SourceRow } from "./ports";
+import { sourceScope } from "./sources";
 
 const CODES = new Set<string>(Object.keys(STATUS));
 
@@ -200,6 +201,27 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         }),
       );
       return result.finalized === true;
+    },
+
+    // Organisation and visibility both filter in the query: this client bypasses RLS, so a row the
+    // actor may not see must never be fetched, not merely dropped afterwards.
+    async listSources(actor, limit) {
+      const { classifications, dealIds } = sourceScope(actor);
+      let query = db
+        .from("sources")
+        .select("id, label, classification, kind")
+        .eq("organisation_id", actor.organisation_id);
+      query =
+        dealIds.length > 0
+          ? query.or(
+              `classification.in.(${classifications.join(",")}),` +
+                `and(classification.eq.restricted,deal_id.in.(${dealIds.join(",")}))`,
+            )
+          : query.in("classification", classifications);
+      const rows = await data<SourceRow[] | null>(
+        query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit),
+      );
+      return rows ?? [];
     },
   };
 }
