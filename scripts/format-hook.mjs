@@ -1,5 +1,5 @@
 // Hook Claude Code (PostToolUse): po każdej edycji pliku formatuje go Prettierem.
-// Dzięki temu wszystkie sesje piszą w identycznym stylu i nie ma konfliktów "białych znaków".
+// Opcjonalna wygoda; wspólną kontrolą dla wszystkich narzędzi jest format:check w CI.
 // Nigdy nie zgłasza błędu — jeśli formatowanie się nie uda, po prostu nic nie robi.
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";

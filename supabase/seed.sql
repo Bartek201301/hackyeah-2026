@@ -1,2 +1,4 @@
--- Dane startowe do demo. Wypełnia integrator po utworzeniu tabel (2. godzina).
--- Wykonanie: Supabase -> SQL Editor -> wklej -> Run.
+-- Dane demo: integrator uzupełnia po uzgodnieniu encji i kontraktów.
+-- Użyj stałych identyfikatorów i UPSERT, aby ponowienie nie tworzyło duplikatów.
+-- Jedna baza dla całego zespołu: wykonanie/reset tylko w uzgodnionym oknie.
+-- Bez TRUNCATE, kasowania cudzych danych i automatycznego uruchamiania w CI/preview.

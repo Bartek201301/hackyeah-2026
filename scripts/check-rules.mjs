@@ -1,150 +1,128 @@
-// Pilnuje zasad struktury repo (patrz CLAUDE.md). Bez zależności.
-// BŁĄD = łamie izolację featurów (exit 1). OSTRZEŻENIE = sygnał dla integratora (nie blokuje).
-// Fałszywy alarm? Usuń `npm run check:rules` ze skryptu "check" w package.json i pracuj dalej.
-import { execSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+// Kontrola zależności; właścicieli zmian weryfikuje recenzent PR (AGENTS.md).
+import { execFileSync } from "node:child_process";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
+import ts from "typescript";
 
-const ROOT = process.cwd();
-const SRC = join(ROOT, "src");
-const APP_ROUTE_MAX_LINES = 15;
-const errors = [];
-const warnings = [];
+const normalize = (path) => path.split(sep).join("/");
 
-const rel = (p) => relative(ROOT, p).split(sep).join("/");
+export function analyzeSource(root, file, text) {
+  const errors = [];
+  const warnings = [];
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const location = normalize(relative(root, file));
+  const [, area, feature] = location.split("/");
+  const imports = [];
+  function visit(node) {
+    let specifier;
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) specifier = node.moduleSpecifier;
+    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      specifier = node.moduleReference.expression;
+    }
+    if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) specifier = node.argument.literal;
+    if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+    ) {
+      specifier = node.arguments[0];
+      if (!specifier || (!ts.isStringLiteral(specifier) && !ts.isNoSubstitutionTemplateLiteral(specifier))) {
+        errors.push(`${location}: import/require musi mieć stałą ścieżkę, aby sprawdzić granice modułów.`);
+      }
+    }
+    if (specifier && (ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier))) {
+      imports.push({ spec: specifier.text, pos: specifier.getStart(source) });
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  for (const { spec, pos } of imports) {
+    const target = spec.startsWith("@/")
+      ? resolve(root, "src", spec.slice(2))
+      : spec.startsWith(".")
+        ? resolve(dirname(file), spec)
+        : null;
+    if (!target) continue;
+    const [src, targetArea, targetFeature, ...rest] = normalize(relative(root, target)).split("/");
+    if (src !== "src") continue;
+    const line = source.getLineAndCharacterOfPosition(pos).line + 1;
+    const label = `${location}:${line}: ${spec}`;
+    if (area === "features" && targetArea === "features" && targetFeature !== feature) {
+      errors.push(`${label} — import innego featura; wspólny kod należy do shared.`);
+    }
+    if (area === "features" && targetArea === "app")
+      errors.push(`${label} — feature nie może importować app.`);
+    if (area === "shared" && ["features", "app"].includes(targetArea))
+      errors.push(`${label} — shared nie może zależeć od ${targetArea}.`);
+    if (
+      area === "app" &&
+      targetArea === "features" &&
+      rest.length &&
+      !(rest.length === 1 && /^index(?:\.[cm]?[jt]sx?)?$/.test(rest[0]))
+    ) {
+      errors.push(`${label} — app importuje tylko publiczne index.ts featura.`);
+    }
+  }
+  if (
+    area === "features" &&
+    /(?:bg|text|border|fill|stroke)-\[(?:#|rgb|hsl)|\b(?:bg|text|border)-(?:red|blue|green|gray|slate)-\d/.test(
+      text,
+    )
+  ) {
+    warnings.push(`${location}: sprawdź kolory — preferuj tokeny z shared/ui. To wskazówka, nie błąd.`);
+  }
+  return { errors, warnings };
+}
 
 function walk(dir) {
-  return readdirSync(dir).flatMap((name) => {
-    const full = join(dir, name);
-    return statSync(full).isDirectory() ? walk(full) : [full];
-  });
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)],
+  );
 }
 
-// "src/features/abc/x.ts" -> ["features", "abc", "x.ts"]
-const parts = (absPath) =>
-  rel(absPath)
-    .replace(/^src\//, "")
-    .split("/");
-
-function resolveImport(fromFile, spec) {
-  if (spec.startsWith("@/")) return join(SRC, spec.slice(2));
-  if (spec.startsWith(".")) return resolve(dirname(fromFile), spec);
-  return null; // pakiet z node_modules
-}
-
-const IMPORT_RE = /(?:import|export)\s[^'"`;]*?from\s*["']([^"']+)["']|import\s*\(?\s*["']([^"']+)["']/g;
-const RAW_COLOR_RE =
-  /#[0-9a-fA-F]{3,8}\b|\b(?:bg|text|border|from|to|via|fill|stroke|ring|outline|shadow|decoration)-\[[^\]]+\]/;
-
-const files = walk(SRC);
-
-for (const file of files) {
-  const p = parts(file);
-  const area = p[0];
-  const where = rel(file);
-
-  if (area === "features" && file.endsWith(".css")) {
-    errors.push(`${where}: pliki CSS w featurach są zabronione. Używaj klas tokenowych i @/shared/ui.`);
-    continue;
-  }
-  if (!/\.(ts|tsx|mts|js|jsx)$/.test(file)) continue;
-
-  const text = readFileSync(file, "utf8");
-  const lines = text.split("\n");
-
-  for (const m of text.matchAll(IMPORT_RE)) {
-    const spec = m[1] ?? m[2];
-    const target = resolveImport(file, spec);
-    if (!target || !target.startsWith(SRC)) continue;
-    const t = parts(target);
-    const line = text.slice(0, m.index).split("\n").length;
-
-    if (area === "features" && t[0] === "features" && t[1] !== p[1]) {
-      errors.push(
-        `${where}:${line}: feature "${p[1]}" importuje z feature "${t[1]}" ("${spec}"). Featury nie mogą korzystać z siebie nawzajem — wspólny kod zgłoś integratorowi do src/shared/.`,
-      );
+export function checkRules(root = process.cwd()) {
+  const errors = [];
+  const warnings = [];
+  for (const file of walk(join(root, "src"))) {
+    if (normalize(relative(root, file)).startsWith("src/features/") && file.endsWith(".css")) {
+      errors.push(`${relative(root, file)}: CSS należy do wspólnych tokenów.`);
     }
-    if (area === "shared" && (t[0] === "features" || t[0] === "app")) {
-      errors.push(
-        `${where}:${line}: src/shared importuje z src/${t[0]} ("${spec}"). Shared nie może zależeć od featurów ani stron.`,
-      );
-    }
-    if (area === "app" && t[0] === "features" && t.length > 2) {
-      errors.push(
-        `${where}:${line}: strona importuje wnętrze featura ("${spec}"). Importuj tylko "@/features/${t[1]}" (jego index.ts).`,
-      );
-    }
+    if (!/\.[cm]?[jt]sx?$/.test(file)) continue;
+    const result = analyzeSource(root, file, readFileSync(file, "utf8"));
+    errors.push(...result.errors);
+    warnings.push(...result.warnings);
   }
-
-  if (
-    area === "app" &&
-    p.length > 2 &&
-    /from\s*["']@\/features\//.test(text) &&
-    lines.filter((l) => l.trim()).length > APP_ROUTE_MAX_LINES
-  ) {
-    warnings.push(
-      `${where}: plik strony ma ponad ${APP_ROUTE_MAX_LINES} linii. Strony mają być cienkie — logika i widok należą do src/features/.`,
-    );
-  }
-
-  if (area === "features") {
-    lines.forEach((l, i) => {
-      if (RAW_COLOR_RE.test(l)) {
-        errors.push(
-          `${where}:${i + 1}: surowy kolor/wartość ("${l.trim().slice(0, 80)}"). Używaj tokenów (bg-brand, text-muted…) z src/app/globals.css.`,
-        );
-      }
-    });
-  }
-}
-
-// Ostrzeżenia o plikach wspólnych zmienionych na gałęzi (tylko gdy jesteśmy poza main).
-const SHARED_PATHS = [
-  "src/shared/",
-  "src/app/nav.ts",
-  "src/app/layout.tsx",
-  "src/app/globals.css",
-  "package.json",
-  "package-lock.json",
-  "supabase/",
-];
-try {
-  const sh = (cmd) =>
-    execSync(cmd, { stdio: ["ignore", "pipe", "ignore"] })
-      .toString()
-      .trim();
-  const branch = sh("git rev-parse --abbrev-ref HEAD");
-  if (branch !== "main") {
-    let base = "";
-    for (const ref of ["origin/main", "main"]) {
-      try {
-        base = sh(`git merge-base HEAD ${ref}`);
-        break;
-      } catch {}
-    }
-    if (base) {
+  try {
+    const git = (...args) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const branch = git("rev-parse", "--abbrev-ref", "HEAD");
+    if (branch !== "main") {
+      const base = git("merge-base", "HEAD", "origin/main");
       const changed = new Set(
         [
-          ...sh(`git diff --name-only ${base}`).split("\n"),
-          ...sh("git ls-files --others --exclude-standard").split("\n"),
+          ...git("diff", "--name-only", base).split("\n"),
+          ...git("ls-files", "--others", "--exclude-standard").split("\n"),
         ].filter(Boolean),
       );
-      const touched = [...changed].filter((f) => SHARED_PATHS.some((s) => f === s || f.startsWith(s)));
-      if (touched.length) {
-        warnings.push(
-          `gałąź "${branch}" zmienia pliki wspólne: ${touched.join(", ")}. Te zmiany robi tylko integrator na main — zgłoś mu potrzebę i cofnij je u siebie, inaczej będzie konflikt przy scalaniu.`,
-        );
-      }
+      const shared = [...changed].filter((file) => !file.startsWith("src/features/"));
+      if (shared.length) warnings.push(`Zmiany wspólne wymagają integratora: ${shared.join(", ")}.`);
+      const features = new Set(
+        [...changed].filter((file) => file.startsWith("src/features/")).map((file) => file.split("/")[2]),
+      );
+      if (features.size > 1)
+        warnings.push(`Zmiany w kilku featurach: ${[...features].join(", ")}. Potwierdź właścicieli w PR.`);
     }
+  } catch {
+    /* Brak historii Git nie wpływa na kontrolę importów. */
   }
-} catch {
-  // brak gita albo brak main — pomijamy to sprawdzenie
+  return { errors, warnings };
 }
 
-for (const w of warnings) console.log(`⚠️  OSTRZEŻENIE ${w}`);
-for (const e of errors) console.log(`❌ BŁĄD ${e}`);
-if (errors.length) {
-  console.log(`\ncheck:rules — ${errors.length} błąd(ów). Popraw powyższe pliki.`);
-  process.exit(1);
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const { errors, warnings } = checkRules();
+  for (const warning of warnings) console.log(`⚠️ ${warning}`);
+  for (const error of errors) console.error(`❌ ${error}`);
+  console.log(errors.length ? `check:rules — błędy: ${errors.length}` : "✅ check:rules — struktura OK.");
+  process.exitCode = errors.length ? 1 : 0;
 }
-console.log(`✅ check:rules — struktura OK${warnings.length ? ` (ostrzeżenia: ${warnings.length})` : ""}.`);

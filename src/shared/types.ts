@@ -8,10 +8,10 @@
  *  Ten plik ustala kształt danych RAZ, zanim ktokolwiek zacznie pracę.
  *
  *  Zasady:
- *  1. Wypełnia go integrator w 2. godzinie hackathonu, razem ze schematem bazy
+ *  1. Wypełnia go integrator przed zależną implementacją, razem ze schematem bazy
  *     (supabase/migrations). Nazwy pól = nazwy kolumn w bazie (snake_case).
  *  2. Po zamrożeniu: TYLKO DOPISYWANIE (nowe typy, nowe pola opcjonalne).
- *     Nigdy zmiana nazwy, zmiana typu ani usunięcie. Tylko integrator, tylko na main.
+ *     Nigdy zmiana nazwy, zmiana typu ani usunięcie. Tylko integrator, przez PR.
  *  3. Typy prywatne jednego featura trzymaj w src/features/<nazwa>/types.ts, nie tutaj.
  * ============================================================================
  */
@@ -30,7 +30,7 @@ export type IsoDateTime = string;
  */
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: string };
 
-/* ---------- 2. Encje domenowe (wypełnić jutro, 2. godzina) ---------- */
+/* ---------- 2. Encje domenowe (uzgodnić przed implementacją) ---------- */
 /*
  * Wzór jednej encji (odpowiada tabeli w bazie):
  *
@@ -43,7 +43,7 @@ export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error:
  *   export type ReportStatus = "new" | "in_progress" | "done";
  */
 
-/* ---------- 3. Dane wejściowe formularzy / akcji (wypełnić jutro) ---------- */
+/* ---------- 3. Dane wejściowe formularzy / akcji (uzgodnić przed implementacją) ---------- */
 /*
  * Wzór:  export type NewReport = Pick<Report, "title">;
  */

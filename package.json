@@ -9,10 +9,13 @@
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",
     "check:rules": "node scripts/check-rules.mjs",
-    "check": "npm run typecheck && npm run lint && npm run check:rules && npm run build",
+    "check": "npm run check:fast && npm run build",
     "doctor": "node scripts/doctor.mjs",
-    "format": "prettier --write .",
-    "new-feature": "node scripts/new-feature.mjs"
+    "format": "prettier --write",
+    "new-feature": "node scripts/new-feature.mjs",
+    "format:check": "prettier --check .",
+    "test:tooling": "node --test scripts/tests/*.test.mjs",
+    "check:fast": "npm run format:check && npm run typecheck && npm run lint && npm run check:rules && npm run test:tooling"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
@@ -34,6 +37,8 @@
     "typescript": "5.9.3"
   },
   "engines": {
-    "node": ">=20.9"
-  }
+    "node": "24.x",
+    "npm": "11.11.0"
+  },
+  "packageManager": "npm@11.11.0"
 }
