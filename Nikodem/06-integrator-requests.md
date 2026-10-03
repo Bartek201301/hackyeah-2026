@@ -109,9 +109,9 @@ prop, which conflicts with the English number formatting required by `DESIGN.md`
 prop would fix it; otherwise I avoid the chart for judge-visible numbers.
 (b) A table or definition-list primitive and a disclosure primitive would suit the trace list and stage
 detail. No such block exists in `src/shared/ui`. Fallback: the list-row and divider-list patterns.
-Also: `LoadingState` and `ErrorState` still default to Polish copy
-(`src/shared/ui/LoadingState.tsx:5`, `src/shared/ui/ErrorState.tsx:14-15`); I pass English explicitly, but
-T01's translation should remove the defaults.
+~~Also: `LoadingState` and `ErrorState` still default to Polish copy.~~ **Done** — PR #38 translated
+them, so the route-level loading boundary that wraps `/audit` is English too. This was the one failing
+item in the AT16-2 row of [05 §7](05-test-plan.md).
 
 **13. Actor identity in organisation scope.** `AuditProjection` exposes `actor_id` only, so organisation
 rows show UUIDs. Is a safe display label available, or do UUIDs stand?
@@ -153,6 +153,23 @@ Default: a stage whose name contains `search_excerpts` or `read_excerpt` — the
 `RegisteredTool` — is labelled a tool subcall and folded into a disclosure. The header count stays
 `root request` and stages are never summed into a request count, so a wrong heuristic mislabels a group
 but cannot corrupt a figure. A one-field answer would replace the guess with a fact.
+
+**19. What `AuditProjection.created_at` means.** In the first real record I read
+(`ad393f2f-0e12-4170-b9e8-369530736bf4`) the projection's `created_at` was `19:53:09.344599`, which is
+exactly the timestamp of the **last** stored event, while the first event was `19:53:08.046175`. The
+same pattern appeared in a second trace. Is it the time the record was last written, the time the
+operation finished, or something else? It is not the moment the request started, which is how an
+unlabelled timestamp beside "root request" reads.
+Blocks: nothing; the header now says `recorded <time>` rather than implying a start time.
+Default: treat it as the record's own timestamp and never present it as the start of the operation.
+
+**20. `decision` on a refusal is inconsistent.** Three real responses from `GET /audit/{id}`:
+401 `UNAUTHENTICATED` carried `decision: "BLOCK"`, 400 `INVALID_INPUT` carried `decision: null`, and a
+successful read of a failed operation carried `decision: "ALLOW"` at the envelope root. The first two
+are refusals of the same endpoint with opposite decisions. This feature reads `error` first and never
+the root decision, so nothing is broken here — but if the inconsistency is unintended, it will mislead
+any consumer that trusts the root.
+Blocks: nothing.
 
 ## What I do not need
 

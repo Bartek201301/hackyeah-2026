@@ -66,7 +66,7 @@ export function activityRows(
   options: { showActor: boolean } = { showActor: false },
 ): ActivityRow[] {
   return items.map((projection) => {
-    const badge = decisionBadge(projection.decision);
+    const badge = decisionBadge(projection.decision, projection.state);
     return {
       traceId: projection.trace_id,
       traceIdShort: shortId(projection.trace_id),

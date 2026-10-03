@@ -31,6 +31,8 @@ export type UsageView = {
   reserved: ValueRow[];
   unknown: ValueRow[];
   unresolvedReservation: boolean;
+  /** True when something really is reserved; `0 tokens` must not carry a "retained" caption. */
+  hasReservation: boolean;
 };
 
 export type FindingRow = {
@@ -46,6 +48,8 @@ export type AssessmentView = {
   statusLabel: string;
   statusTone: Tone;
   statusHint: string | null;
+  /** False for `not_required`: no scores, windows or hash exist, so none are shown. */
+  measured: boolean;
   scores: ValueRow[];
   windows: string;
   coverageComplete: boolean;
@@ -87,7 +91,26 @@ export type StageRow = {
   usage: UsageView;
 };
 
-export function decisionBadge(decision: Decision | null): {
+/**
+ * The stored states that mean an operation is still running. `state` is a free string in the
+ * contract, so this is a recognised set rather than an enumeration: anything unrecognised is treated
+ * as finished, which is the safer reading when the decision is missing.
+ */
+const IN_FLIGHT_STATES = ["queued", "running", "started", "pending", "in_progress", "executing"];
+
+export function isInFlightState(state: string | undefined): boolean {
+  return state !== undefined && IN_FLIGHT_STATES.includes(state.toLowerCase());
+}
+
+/**
+ * `state` is optional for callers that have no projection, and decisive when present: a missing
+ * decision on a finished operation is not "pending". Telling a reader to wait for a decision that
+ * will never arrive is the same class of error as rendering an unknown value as zero.
+ */
+export function decisionBadge(
+  decision: Decision | null,
+  state?: string,
+): {
   label: string;
   tone: Tone;
   hint: string | null;
@@ -102,8 +125,15 @@ export function decisionBadge(decision: Decision | null): {
     case "BLOCK":
       return { label: copy.decision.block, tone: "danger", hint: copy.disclaimer.blocked };
     default:
-      // A missing decision is pending. Reading it as allowed would invert the safe default.
-      return { label: copy.decision.pending, tone: "neutral", hint: copy.decision.pendingHint };
+      // A missing decision is never read as allowed; that would invert the safe default.
+      if (isInFlightState(state)) {
+        return { label: copy.decision.pending, tone: "neutral", hint: copy.decision.pendingHint };
+      }
+      // Without a state nothing is known about completion, so the label says only what is true and
+      // the hint claims nothing. With a finished state the stronger sentence is warranted.
+      return state === undefined
+        ? { label: copy.decision.none, tone: "neutral", hint: copy.decision.pendingHint }
+        : { label: copy.decision.none, tone: "warning", hint: copy.decision.noneHint };
   }
 }
 
@@ -149,6 +179,7 @@ export function usageView(usage: Usage): UsageView {
     reserved: [{ label: copy.usage.reservedTokens, value: formatTokens(usage.reserved_generation_tokens) }],
     unknown,
     unresolvedReservation: usage.unresolved_reservation,
+    hasReservation: usage.reserved_generation_tokens > 0 || usage.unresolved_reservation,
   };
 }
 
@@ -179,6 +210,7 @@ export function assessmentView(semantic: Assessment): AssessmentView {
     statusLabel: current.label,
     statusTone: current.tone,
     statusHint: current.hint,
+    measured: semantic.status !== "not_required",
     scores: [
       { label: copy.assessment.instruction, value: formatScore(semantic.scores.instruction_manipulation) },
       { label: copy.assessment.exposure, value: formatScore(semantic.scores.sensitive_exposure) },
@@ -186,11 +218,16 @@ export function assessmentView(semantic: Assessment): AssessmentView {
     ],
     windows: formatRatio(semantic.windows_completed, semantic.windows_planned),
     coverageComplete: semantic.coverage_complete,
-    coverageWarning: semantic.coverage_complete
-      ? null
-      : copy.state.coverageIncomplete
-          .replace("{completed}", group(semantic.windows_completed))
-          .replace("{planned}", group(semantic.windows_planned)),
+    // A coverage warning only means something when windows were planned. The gateway sends
+    // coverage_complete: false with windows_planned: 0 for an assessment it never ran, and shouting
+    // "coverage incomplete: 0 of 0" at that is a false alarm, not extra honesty. The status badge
+    // already says an unavailable or not-required assessment is not a pass.
+    coverageWarning:
+      semantic.coverage_complete || semantic.windows_planned === 0
+        ? null
+        : copy.state.coverageIncomplete
+            .replace("{completed}", group(semantic.windows_completed))
+            .replace("{planned}", group(semantic.windows_planned)),
     revision: formatRevision(semantic.checkpoint_revision),
     hash: formatHash(semantic.text_sha256),
     ranges: `${formatCount(semantic.coverage_ranges.length)} · ${formatTokens(assessedTokens)}`,
