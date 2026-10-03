@@ -33,7 +33,20 @@ export type UsageView = {
   unresolvedReservation: boolean;
   /** True when something really is reserved; `0 tokens` must not carry a "retained" caption. */
   hasReservation: boolean;
+  /** The caption under the reserved group, already resolved for what this number means here. */
+  reservedHint: string;
 };
+
+/**
+ * What `reserved_generation_tokens` counts in this view.
+ *
+ * `operation` — what one run reserved, which its record keeps after the reservation settles.
+ * `window` — what is still outstanding across a window, summed from the reservations table.
+ *
+ * The distinction is not cosmetic: for the same UTC day a settled run shows 2,200 reserved while the
+ * dashboard shows 0 outstanding, and both are correct. Only the caption can say which is meant.
+ */
+export type ReservedMeaning = "operation" | "window";
 
 export type FindingRow = {
   code: string;
@@ -160,7 +173,7 @@ export function findingRows(findings: readonly Finding[]): FindingRow[] {
  * Splits usage into the three groups required by the reporting rules. Measured values appear
  * only in `actual`, a reservation only in `reserved`, and every null only in `unknown`.
  */
-export function usageView(usage: Usage): UsageView {
+export function usageView(usage: Usage, means: ReservedMeaning = "operation"): UsageView {
   const actual: ValueRow[] = [];
   const unknown: ValueRow[] = [];
 
@@ -176,12 +189,24 @@ export function usageView(usage: Usage): UsageView {
   // semantic_ms is the one duration the contract never leaves null.
   actual.push({ label: copy.usage.semanticDuration, value: formatDuration(usage.semantic_ms) });
 
+  const hasReservation = usage.reserved_generation_tokens > 0 || usage.unresolved_reservation;
   return {
     actual,
     reserved: [{ label: copy.usage.reservedTokens, value: formatTokens(usage.reserved_generation_tokens) }],
     unknown,
     unresolvedReservation: usage.unresolved_reservation,
-    hasReservation: usage.reserved_generation_tokens > 0 || usage.unresolved_reservation,
+    hasReservation,
+    // A retention is claimed only when one is unresolved. Anything else states what the number is,
+    // without asserting that it is still being held.
+    reservedHint: usage.unresolved_reservation
+      ? copy.usage.reservedUnresolved
+      : !hasReservation
+        ? means === "window"
+          ? copy.usage.noReservation
+          : copy.usage.noReservationOperation
+        : means === "window"
+          ? copy.usage.reservedWindow
+          : copy.usage.reservedOperation,
   };
 }
 
