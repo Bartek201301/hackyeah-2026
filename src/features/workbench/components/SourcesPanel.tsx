@@ -13,22 +13,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
-import type { ApiResponse, ImportSummary, SourceSummary } from "@/shared/contracts";
+import type { ApiResponse, ImportSummary, Run, SourceSummary } from "@/shared/contracts";
 import { Badge, Button, Card, CardHeader, Field, Input, Select } from "@/shared/ui";
 import { classifyResponse, classifyTerminalErrorCode, type GatewayOutcome } from "../lib/envelope";
 import {
   CLASSIFICATIONS,
   CSV_HEADER,
   EMPTY_UPLOAD_DRAFT,
-  BASIS_VALUES,
   buildUploadBody,
-  formatOf,
   validateUpload,
   type UploadDraft,
   type UploadField,
 } from "../lib/importForm";
+import { classifyImportResponse, readImportRun } from "../lib/importRun";
 import { describeClassification, describeImportStatus, describeSourceKind } from "../lib/importStatus";
 import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
+import { POLL_INTERVAL_MS, progressLabel, shouldKeepPolling } from "../lib/runState";
 import { OutcomeNotice } from "./OutcomeNotice";
 
 const client = createGatewayClient();
@@ -48,6 +48,8 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
   const [errors, setErrors] = useState<Partial<Record<UploadField, string>>>({});
   const [busy, setBusy] = useState(false);
   const [uploadOutcome, setUploadOutcome] = useState<GatewayOutcome | null>(null);
+  /** The import run while it is in flight; null once the gateway settled it. */
+  const [run, setRun] = useState<Run | null>(null);
 
   const [sources, setSources] = useState<SourceSummary[] | null>(null);
   const [sourcesOutcome, setSourcesOutcome] = useState<GatewayOutcome | null>(null);
@@ -58,8 +60,8 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
   const [file, setFile] = useState<File | null>(null);
   /** Key bound to the exact upload; changing any field mints a new one. */
   const uploadKey = useRef<ActionKey | null>(null);
-
-  const format = formatOf(draft.fileName);
+  /** Guards the contract's "execute exactly once" rule against a double render or double click. */
+  const executed = useRef(false);
 
   /* Fetching is kept free of setState so the effect below applies results in a callback rather
    * than synchronously, which is what react-hooks/set-state-in-effect asks for. */
@@ -105,6 +107,22 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
     }));
   };
 
+  /**
+   * One import-lifecycle response -> the upload notice and the in-flight run. A response that ended
+   * the lifecycle carries no run, which stops the poll and the progress badge together, and is the
+   * moment to re-read the lists: the import has just become a row in them.
+   */
+  const apply = useCallback(
+    (status: number, body: ApiResponse | null) => {
+      const { outcome, run: inFlight } = classifyImportResponse(status, body);
+      setUploadOutcome(outcome);
+      setRun(inFlight);
+      if (!inFlight) void fetchLists().then(applyLists);
+      return outcome;
+    },
+    [fetchLists, applyLists],
+  );
+
   const submit = async () => {
     const validation = validateUpload(draft);
     if (!validation.ok) {
@@ -112,6 +130,9 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
       return;
     }
     setErrors({});
+    setUploadOutcome(null);
+    setRun(null);
+    executed.current = false;
     setBusy(true);
     uploadKey.current = keyForAction(
       uploadKey.current,
@@ -120,43 +141,84 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
         fileSize: draft.fileSize,
         classification: draft.classification,
         dealId: draft.dealId.trim() || null,
-        sourceDate: draft.sourceDate || null,
-        period: draft.period.trim() || null,
-        unit: draft.unit.trim() || null,
-        factKey: draft.factKey.trim() || null,
-        basis: draft.basis || null,
       }),
       newIdempotencyKey,
     );
 
-    const { status, body } = readEnvelope(
+    const start = readEnvelope(
       await client.POST("/imports/upload", {
         // openapi-fetch passes FormData through and lets the browser set the multipart boundary.
         body: buildUploadBody(draft, file) as never,
         params: { header: { "Idempotency-Key": uploadKey.current.key } },
       }),
     );
-    setUploadOutcome(classify(status, body));
+    const created = apply(start.status, start.body);
+    const startedRun = readImportRun(start.body?.data ?? null);
+
+    // 202 creates the run and quarantines the file; execute is what parses and checks it. Exactly
+    // once, with the same key, so a replay returns the stored outcome instead of importing twice.
+    if (created.kind === "progress" && startedRun && !executed.current) {
+      executed.current = true;
+      const exec = readEnvelope(
+        await client.POST("/runs/{id}/execute", {
+          params: {
+            path: { id: startedRun.id },
+            header: { "Idempotency-Key": uploadKey.current.key },
+          },
+        }),
+      );
+      apply(exec.status, exec.body);
+    }
     setBusy(false);
-    void fetchLists().then(applyLists);
   };
+
+  // Poll at the protocol interval, only while the tab is visible, and stop on a terminal state.
+  useEffect(() => {
+    if (!shouldKeepPolling(run)) return;
+    const id = run!.id;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = async () => {
+      if (cancelled) return;
+      if (document.visibilityState !== "visible") {
+        timer = setTimeout(tick, POLL_INTERVAL_MS);
+        return;
+      }
+      const polled = readEnvelope(await client.GET("/runs/{id}", { params: { path: { id } } }));
+      if (cancelled) return;
+      const next = apply(polled.status, polled.body);
+      if (next.kind === "unavailable") return;
+      if (shouldKeepPolling(readImportRun(polled.body?.data ?? null))) {
+        timer = setTimeout(tick, POLL_INTERVAL_MS);
+      }
+    };
+
+    timer = setTimeout(tick, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [run, apply]);
+
+  const progress = run ? progressLabel(run) : null;
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader
           title="Upload a file"
-          description="One CSV or one text PDF per upload. The gateway stores the original privately and decides what, if anything, may be published."
+          description="One CSV per upload. The gateway stores the original privately and decides what, if anything, may be published."
         />
         <div className="flex flex-col gap-4">
           <Field
             label="File"
-            hint={`Accepted: CSV or text PDF. A CSV needs the header ${CSV_HEADER.join(", ")}.`}
+            hint={`Accepted: CSV. The header must be ${CSV_HEADER.join(", ")}, and every line of every row is checked.`}
             error={errors.fileName ?? errors.fileSize}
           >
             <Input
               type="file"
-              accept=".csv,.pdf"
+              accept=".csv"
               onChange={(e) => onFile(e.target.files?.[0] ?? null)}
               disabled={busy}
             />
@@ -204,43 +266,6 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
             </Select>
           </Field>
 
-          {/* Required by business validation for a text PDF; a CSV carries these per row. */}
-          {format === "pdf" && (
-            <>
-              <Field label="Source date" error={errors.sourceDate}>
-                <Input
-                  type="date"
-                  value={draft.sourceDate}
-                  onChange={(e) => set("sourceDate", e.target.value)}
-                  disabled={busy}
-                />
-              </Field>
-              <Field label="Period" hint="For example FY2025." error={errors.period}>
-                <Input value={draft.period} onChange={(e) => set("period", e.target.value)} disabled={busy} />
-              </Field>
-              <Field label="Unit" hint="For example USD million." error={errors.unit}>
-                <Input value={draft.unit} onChange={(e) => set("unit", e.target.value)} disabled={busy} />
-              </Field>
-              <Field label="Fact key" hint="For example revenue." error={errors.factKey}>
-                <Input
-                  value={draft.factKey}
-                  onChange={(e) => set("factKey", e.target.value)}
-                  disabled={busy}
-                />
-              </Field>
-              <Field label="Basis" error={errors.basis}>
-                <Select value={draft.basis} onChange={(e) => set("basis", e.target.value)} disabled={busy}>
-                  <option value="">Choose a basis</option>
-                  {BASIS_VALUES.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </>
-          )}
-
           <div>
             <Button onClick={() => void submit()} loading={busy} disabled={busy}>
               <Upload className="size-4" aria-hidden />
@@ -249,6 +274,16 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
           </div>
         </div>
       </Card>
+
+      {progress && (
+        <Card>
+          <CardHeader title="Import progress" actions={<Badge tone="brand">{progress}</Badge>} />
+          {/* Server-reported stage only: the browser never narrates what the checks are doing. */}
+          <p role="status" className="text-sm text-muted">
+            {progress}
+          </p>
+        </Card>
+      )}
 
       {uploadOutcome && <OutcomeNotice outcome={uploadOutcome} />}
 
