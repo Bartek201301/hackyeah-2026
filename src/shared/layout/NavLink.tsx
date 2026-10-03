@@ -25,7 +25,7 @@ export function NavLink({ href, children, icon }: NavLinkProps) {
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex h-10 items-center gap-3 rounded-control px-3 text-sm transition-colors",
+        "flex h-10 items-center gap-3 rounded-control px-3 text-sm transition-[color,background-color,transform] duration-150 active:scale-[0.98]",
         "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg",
         active ? "bg-brand-soft font-medium text-fg" : "text-fg/80 hover:bg-surface-muted hover:text-fg",
       )}

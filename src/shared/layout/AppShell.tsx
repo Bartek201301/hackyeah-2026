@@ -100,7 +100,7 @@ function Sidebar({ appName, nav, adminNav = [], role }: Omit<AppShellProps, "chi
       <Link
         href="/workbench"
         className={cn(
-          "flex h-10 items-center gap-2 rounded-control border border-border bg-surface px-3 text-sm font-medium shadow-card transition-colors hover:bg-surface-muted",
+          "flex h-10 items-center gap-2 rounded-control border border-border bg-surface px-3 text-sm font-medium shadow-card transition-[background-color,transform] duration-150 hover:bg-surface-muted active:scale-[0.98]",
           focusRing,
         )}
       >
