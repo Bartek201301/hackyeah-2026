@@ -32,7 +32,7 @@ function Pair({ label, value, title }: { label: string; value: string; title?: s
  * read as a sum of the stage events below it.
  */
 export function TraceSummary({ trace, incomplete, cancelled, eventsCapped, serverMessage }: Props) {
-  const badge = decisionBadge(trace.decision);
+  const badge = decisionBadge(trace.decision, trace.state);
   const usage = usageView(trace.usage);
 
   return (
@@ -57,7 +57,10 @@ export function TraceSummary({ trace, incomplete, cancelled, eventsCapped, serve
       <Card>
         <CardHeader
           title={trace.operation}
-          description={`${copy.label.rootRequest} · ${formatTimestampUtc(trace.created_at)}`}
+          // Named rather than bare: in a real record this is the projection's own timestamp and
+          // matched the LAST stored event, not the start of the operation. An unlabelled time
+          // beside "root request" reads as when the request happened, which it is not.
+          description={`${copy.label.rootRequest} · ${copy.label.recordedAt} ${formatTimestampUtc(trace.created_at)}`}
           actions={<Badge tone={badge.tone}>{badge.label}</Badge>}
         />
         {badge.hint && <p className="mb-5 text-sm text-muted">{badge.hint}</p>}

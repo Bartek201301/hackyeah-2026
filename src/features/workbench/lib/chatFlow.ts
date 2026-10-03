@@ -54,7 +54,11 @@ const fromRun = (body: ApiResponse | null, run: Run, kind: OutcomeKind): Gateway
 
 export type ChatClassification = {
   outcome: GatewayOutcome;
-  /** The chat run this response described, when it carried one. */
+  /**
+   * The chat run still in flight, or null once this response ended the lifecycle. The screen uses
+   * it to poll, to offer Cancel and to show "Running checks", and all three must stop together —
+   * a terminal response that carries no run of its own would otherwise leave them live.
+   */
   run: Run | null;
 };
 
@@ -69,7 +73,7 @@ export function classifyChatResponse(status: number, body: ApiResponse | null): 
 
   // 1. A terminal error code outranks everything, including a run that still looks alive.
   const terminal = classifyTerminalErrorCode(body);
-  if (terminal) return { outcome: terminal, run };
+  if (terminal) return { outcome: terminal, run: null };
 
   if (run && (status === 200 || status === 202)) {
     // 2. Still working. Report the server's own stage; release nothing.
@@ -88,9 +92,9 @@ export function classifyChatResponse(status: number, body: ApiResponse | null): 
 
     // 3. Ended without releasing anything.
     const withheldKind = WITHHELD[run.state];
-    if (withheldKind) return { outcome: fromRun(body, run, withheldKind), run };
+    if (withheldKind) return { outcome: fromRun(body, run, withheldKind), run: null };
   }
 
   // 4. Everything else, including a completed `{answer, citations}` payload, is gated by decision.
-  return { outcome: classifyResponse(status, body), run };
+  return { outcome: classifyResponse(status, body), run: null };
 }

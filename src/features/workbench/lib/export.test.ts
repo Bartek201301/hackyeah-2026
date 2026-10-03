@@ -48,6 +48,9 @@ describe("isGatewayDownloadPath", () => {
     // A public Storage URL is exactly what protocols.md forbids here.
     expect(isGatewayDownloadPath("https://storage.example.com/bucket/file.pdf")).toBe(false);
     expect(isGatewayDownloadPath("//evil.example.com/file.pdf")).toBe(false);
+    // A browser resolves a backslash like a slash, so this leaves the origin exactly as "//" does.
+    expect(isGatewayDownloadPath("/\\evil.example.com/file.pdf")).toBe(false);
+    expect(isGatewayDownloadPath("/\\")).toBe(false);
     expect(isGatewayDownloadPath("javascript:alert(1)")).toBe(false);
     expect(isGatewayDownloadPath("exports/abc/download")).toBe(false);
     expect(isGatewayDownloadPath(null)).toBe(false);
@@ -171,6 +174,18 @@ describe("classifyExportResponse", () => {
       }),
     );
     expect(outcome.kind).toBe("cancelled");
+  });
+
+  it("hands back only a run still in flight", () => {
+    // Polling, Cancel and the progress badge all hang off this run, so a terminal response
+    // must return none of it.
+    expect(
+      classifyExportResponse(200, envelope({ data: run("running") as unknown as Data })).run,
+    ).not.toBeNull();
+    for (const state of ["completed", "blocked", "failed", "cancelled", "incomplete"] as const) {
+      expect(classifyExportResponse(200, envelope({ data: run(state) as unknown as Data })).run).toBeNull();
+    }
+    expect(classifyExportResponse(403, envelope({ data: run("running") as unknown as Data })).run).toBeNull();
   });
 
   it("fails closed on a service error", () => {

@@ -77,10 +77,16 @@ export function formatMicroUsd(microUsd: number | null): string {
   return `USD ${(microUsd / 1_000_000).toFixed(6)}`;
 }
 
-/** Two decimals in 0.00–1.00. A null score is unmeasured, which is not a low score. */
+/**
+ * Three decimals in 0.000–1.000, truncated rather than rounded. Thresholds sit on two-decimal
+ * values (0.30), and rounding would print 0.2972 as "0.30" on an ALLOW, which reads as exactly the
+ * threshold. Truncation never lifts a score to a boundary it did not reach. The epsilon absorbs
+ * float error such as 0.3 * 1000 = 300.00000000000006 in the other direction. A null score is
+ * unmeasured, which is not a low score.
+ */
 export function formatScore(value: number | null): string {
   if (value === null) return copy.label.notMeasured;
-  return value.toFixed(2);
+  return (Math.floor(value * 1000 + 1e-9) / 1000).toFixed(3);
 }
 
 export function formatRatio(completed: number, planned: number): string {
