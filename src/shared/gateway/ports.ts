@@ -99,13 +99,15 @@ export type WindowQuery = {
 };
 /** sources row as selected for source_list; projected and schema-checked before release. */
 export type SourceRow = { id: string; label: string; classification: string; kind: string };
+/** The source an import publishes under; classification and deal are re-read in SQL at publication. */
+export type ImportSource = {
+  id: string;
+  classification: "public" | "internal" | "restricted";
+  audience_evidence: "verified" | "unverified";
+};
 /** A registered dataset batch as loaded for import_connector; payloads are untrusted until validated. */
 export type DatasetBatch = {
-  source: {
-    id: string;
-    classification: "public" | "internal" | "restricted";
-    audience_evidence: "verified" | "unverified";
-  };
+  source: ImportSource;
   rows: { row_number: number; payload: unknown }[];
 };
 /** finalize_import payload. Classification, deal and text hashes are derived in SQL, never sent. */
@@ -192,7 +194,22 @@ export interface RepositoryPort {
   /** The source has an approved or partial document (re-import is refused). */
   hasPublishedDocument(organisationId: string, sourceId: string): Promise<boolean>;
   /** Private quarantine bucket, server-generated key, never overwrites. */
-  storeQuarantine(key: string, bytes: Uint8Array): Promise<void>;
+  storeQuarantine(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
+  /** The quarantined original; throws when it is missing. Server-side only, never a browser URL. */
+  readQuarantine(key: string): Promise<Uint8Array>;
+  /** A new upload source (audience evidence unverified, created by the actor); null when `dealId` is
+   *  not a deal of the actor's organisation. */
+  createUploadSource(input: {
+    actor: ActorContext;
+    label: string;
+    classification: ImportSource["classification"];
+    dealId: string | null;
+  }): Promise<string | null>;
+  /** An upload source of the actor's organisation, or null. */
+  loadUploadSource(
+    actor: ActorContext,
+    sourceId: string,
+  ): Promise<(ImportSource & { deal_id: string | null }) | null>;
   /** finalize_run plus the publication in one transaction; false/CONFLICT = nothing was inserted. */
   finalizeImport(input: {
     runId: string;

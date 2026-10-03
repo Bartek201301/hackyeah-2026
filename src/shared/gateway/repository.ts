@@ -299,9 +299,57 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       return (rows?.length ?? 0) > 0;
     },
 
-    async storeQuarantine(key, bytes) {
-      await data(
-        db.storage.from("quarantine").upload(key, bytes, { contentType: "application/json", upsert: false }),
+    async storeQuarantine(key, bytes, contentType) {
+      await data(db.storage.from("quarantine").upload(key, bytes, { contentType, upsert: false }));
+    },
+
+    async readQuarantine(key) {
+      const blob = await data(db.storage.from("quarantine").download(key));
+      if (!blob) throw new GatewayError("STATE_UNAVAILABLE");
+      return new Uint8Array(await blob.arrayBuffer());
+    },
+
+    // The deal must belong to the actor's organisation; the insert would otherwise fail on its foreign key.
+    async createUploadSource({ actor, label, classification, dealId }) {
+      if (dealId) {
+        const deal = await data<{ id: string } | null>(
+          db
+            .from("deals")
+            .select("id")
+            .eq("id", dealId)
+            .eq("organisation_id", actor.organisation_id)
+            .maybeSingle(),
+        );
+        if (!deal) return null;
+      }
+      const row = await data<{ id: string } | null>(
+        db
+          .from("sources")
+          .insert({
+            organisation_id: actor.organisation_id,
+            label,
+            kind: "upload",
+            classification,
+            deal_id: dealId,
+            created_by: actor.actor_id,
+            audience_evidence: "unverified",
+          })
+          .select("id")
+          .single(),
+      );
+      if (!row) throw new GatewayError("STATE_UNAVAILABLE");
+      return row.id;
+    },
+
+    async loadUploadSource(actor, sourceId) {
+      return data(
+        db
+          .from("sources")
+          .select("id, classification, audience_evidence, deal_id")
+          .eq("id", sourceId)
+          .eq("organisation_id", actor.organisation_id)
+          .eq("kind", "upload")
+          .maybeSingle(),
       );
     },
 

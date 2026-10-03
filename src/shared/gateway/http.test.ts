@@ -102,4 +102,76 @@ describe("handle", () => {
     await handle(new Request(URL_), {}, run);
     expect(run).toHaveBeenCalledWith(expect.objectContaining({ key: null, body: undefined }));
   });
+
+  describe("multipart", () => {
+    const FIELDS = ["file", "classification", "deal_id"];
+    const upload = (body: BodyInit, headers: Record<string, string> = {}, run = vi.fn(async () => ok)) =>
+      handle(
+        new Request("http://localhost:3000/api/v1/imports/upload", {
+          method: "POST",
+          headers: { origin: "http://localhost:3000", "idempotency-key": KEY, ...headers },
+          body,
+        }),
+        { multipart: FIELDS, idempotent: true },
+        run,
+      );
+    const form = (extra: [string, string][] = []) => {
+      const f = new FormData();
+      f.set("file", new File(["text,source_date\n"], "MIX-01.csv", { type: "text/csv" }));
+      f.set("classification", "restricted");
+      for (const [k, v] of extra) f.append(k, v);
+      return f;
+    };
+
+    it("refuses a JSON body with 415 before reading it", async () => {
+      const run = vi.fn(async () => ok);
+      expect(await code(await upload('{"file":"x"}', { "content-type": "application/json" }, run))).toEqual([
+        415,
+        "UNSUPPORTED_FILE",
+      ]);
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("counts bytes before parsing: 413 over the cap, also when chunked", async () => {
+      const run = vi.fn(async () => ok);
+      const big = new FormData();
+      big.set("file", new File([new Uint8Array(2 * 1024 * 1024 + 65 * 1024)], "big.csv"));
+      const encoded = new Response(big);
+      const type = encoded.headers.get("content-type")!;
+      const bytes = await encoded.arrayBuffer();
+      expect(await code(await upload(bytes, { "content-type": type }, run))).toEqual([413, "INVALID_INPUT"]);
+      const chunked = new Request("http://localhost:3000/api/v1/imports/upload", {
+        method: "POST",
+        headers: { origin: "http://localhost:3000", "idempotency-key": KEY, "content-type": type },
+        body: new Blob([bytes]).stream(),
+        duplex: "half",
+      } as RequestInit);
+      expect(chunked.headers.get("content-length")).toBeNull();
+      expect(await code(await handle(chunked, { multipart: FIELDS, idempotent: true }, run))).toEqual([
+        413,
+        "INVALID_INPUT",
+      ]);
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("refuses an unknown or repeated field with 400", async () => {
+      const run = vi.fn(async () => ok);
+      expect(await code(await upload(form([["role", "admin"]]), {}, run))).toEqual([400, "INVALID_INPUT"]);
+      expect(await code(await upload(form([["classification", "public"]]), {}, run))).toEqual([
+        400,
+        "INVALID_INPUT",
+      ]);
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("passes one parsed form with its file to the run", async () => {
+      const run = vi.fn(async () => ok);
+      await upload(form(), {}, run);
+      const { form: parsed } = (run.mock.calls[0] as unknown as [{ form: FormData }])[0];
+      const file = parsed.get("file") as File;
+      expect(file.name).toBe("MIX-01.csv");
+      expect(await file.text()).toBe("text,source_date\n");
+      expect(parsed.get("classification")).toBe("restricted");
+    });
+  });
 });
