@@ -275,6 +275,8 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         .from("actor_activity")
         .select("trace_id, decision, reasons, usage")
         .eq("organisation_id", organisationId)
+        // scripts/db/run.test.mjs writes db_test rows with partial usage; they are not root requests.
+        .neq("operation", "db_test")
         .gte("created_at", from)
         .lte("created_at", to);
       // own scope filters here, not after serialization: the admin client bypasses RLS.

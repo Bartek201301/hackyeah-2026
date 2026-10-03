@@ -5,12 +5,26 @@ import { check } from "@/shared/contracts/validate";
 import { assessLocalWindow, generateLocal } from "./providers/clients";
 import { serializeLaya } from "./providers/laya";
 import { serializeOllama } from "./providers/ollama";
+import { createBridgeTransport, createLoopbackTransport, type LocalTransport } from "./providers/transport";
 import { inputOnly, ProviderFailure, requireValue } from "./providers/validation";
 
-/** G2 local-only port. The gateway owns deterministic findings and durable accounting. */
-export function createDetectionPort(): DetectionPort | null {
+const liveFetch: typeof fetch = (input, init) => fetch(input, init);
+
+function configuredProvider(): { bearer: string; transport: LocalTransport } | null {
+  const bridgeUrl = process.env.MODEL_BRIDGE_URL;
+  const bridgeToken = process.env.MODEL_BRIDGE_TOKEN;
+  if (bridgeUrl && bridgeToken) {
+    const transport = createBridgeTransport(bridgeUrl, bridgeToken, liveFetch);
+    return transport ? { bearer: bridgeToken, transport } : null;
+  }
   const bearer = process.env.LAYA_API_KEY;
-  if (!bearer?.trim()) return null;
+  return bearer?.trim() ? { bearer, transport: createLoopbackTransport(liveFetch) } : null;
+}
+
+/** The gateway owns deterministic findings and durable accounting. */
+export function createDetectionPort(): DetectionPort | null {
+  const provider = configuredProvider();
+  if (!provider) return null;
   return {
     async parse() {
       throw new ProviderFailure("unavailable");
@@ -23,7 +37,13 @@ export function createDetectionPort(): DetectionPort | null {
         return { accepted: structuredClone(input), limits: structuredClone(policy.semantic) };
       });
       if (signal.aborted) throw new ProviderFailure("cancelled");
-      const observation = await assessLocalWindow(accepted, limits, bearer, signal);
+      const observation = await assessLocalWindow(
+        accepted,
+        limits,
+        provider.bearer,
+        signal,
+        provider.transport,
+      );
       const fail = (code: "incomplete" | "cancelled") =>
         new ProviderFailure(code, true, observation.usage.input_tokens, observation.usage.output_tokens);
       if (signal.aborted) throw fail("cancelled");
@@ -57,16 +77,17 @@ export function createDetectionPort(): DetectionPort | null {
   };
 }
 
-/** G2 local-only port; reservation and at-most-once dispatch belong to the gateway. */
+/** Reservation and at-most-once dispatch belong to the gateway. */
 export function createGenerationPort(): GenerationPort | null {
-  if (!process.env.LAYA_API_KEY?.trim()) return null;
+  const provider = configuredProvider();
+  if (!provider) return null;
   return {
     async generate(input, signal) {
       const accepted = inputOnly(() => {
         serializeOllama(input);
         return structuredClone(input);
       });
-      return generateLocal(accepted, signal);
+      return generateLocal(accepted, signal, provider.transport);
     },
   };
 }

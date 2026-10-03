@@ -18,22 +18,44 @@ against a guess, and each then needs its endpoint, my build and a browser pass.
 **Escalate this as a schedule item, not a UI gap.** If the decisions do not arrive in time, the
 runbook needs rewriting to seven steps that exist, which is far better than discovering it live.
 
+## Where to run it
+
+**Production: <https://hackyeah-2026.vercel.app>** — it redeploys on every merge to main. Use it for
+the demo; local `npm run dev` is for iterating only. Four prepared accounts, each signed in as its
+own session, never a role field.
+
 ## What I can demonstrate on the workbench today
 
-Updated after browser QA runs 2 and 2b (main `8dcb7da`, local, signed in as employee).
+Updated after browser QA run 3 (production, main `38ece27`, all three roles).
 
-**A real decision, end to end.** Ask the literal injection text and the gateway returns a genuine
-`403 BLOCK`: the screen says "Blocked — This request was refused by the control policy." and shows
-the reason `input_signature:SIG-001`. No provider was called, no tokens were spent and no budget was
-reserved, and the trace link opens the audited record. The second ask returns the identical decision
-from the stored outcome, so a judge who asks "why?" twice gets the same answer twice.
+**A real decision, end to end — verified on production for all three roles.** Ask the literal
+injection text and the gateway returns a genuine `403 BLOCK`: the screen says "Blocked — This
+request was refused by the control policy." and shows the reason `input_signature:SIG-001`. No
+provider was called, no tokens were spent and no budget was reserved, and the trace link opens the
+audited record. The second ask returns the identical decision from the stored outcome, so a judge
+who asks "why?" twice gets the same answer twice.
+
+**Central policy and threat feed, live.** As administrator, Policy and feed renders the active v1
+documents from the database: 70 fields across imports, assessment, execution, budgets and the
+comparison rate, both feed indicators, and the version badge with compare-and-swap on save. Point at
+"Semantic assessment — Required. This cannot be disabled." The same screen reached as an analyst
+refuses itself: "Not permitted". That contrast is worth 20 seconds.
+
+**Role-filtered source lists, from real rows.** An employee sees four sources; an administrator sees
+all seven, restricted included. Same endpoint, same organisation, filtered server-side before
+serialization.
 
 **The fail-closed state**, which remains a good story on its own: _"every protected operation
 withholds its result until identity, policy, content and budget have all been checked, and when a
 required service is unavailable it refuses rather than guesses."_
 
-**Not demonstrable until the model bridge lands (T03 phase 8):** any `ALLOW`, citations, the S01/S02
-contrast, server stage text and cancellation. Do not promise them in the opening.
+**Not demonstrable yet:** any `ALLOW`, citations, the S01/S02 contrast, server stage text and
+cancellation. Two separate reasons, and both must clear: `LAYA_API_KEY` is absent from production by
+design, so the assessment cannot run there; and `documents`/`excerpts` are still empty until the
+import pipeline lands, so there is nothing to cite even where the models do run. Do not promise an
+allowed answer in the opening. On production a benign question is withheld as **"Service
+unavailable — The required content assessment is unavailable, so the result is withheld."** — quote
+that sentence rather than paraphrasing it; the withholding _is_ the guarantee.
 
 ### Injection demo — use the literal text, and say what the layer is
 
