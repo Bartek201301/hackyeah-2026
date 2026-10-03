@@ -26,14 +26,7 @@ export type TraceReadState =
       /** The gateway's own narrowing instruction, shown verbatim when present. */
       serverMessage: string | null;
     }
-  | { kind: "notFound" }
-  | { kind: "denied" }
-  | { kind: "unauthenticated" }
-  | { kind: "invalidInput" }
-  | { kind: "rateLimited" }
-  | { kind: "auditUnavailable" }
-  | { kind: "stateUnavailable" }
-  | { kind: "clientError" };
+  | ReadFailure;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -121,25 +114,30 @@ function isCancelled(trace: AuditProjection, code: string | null): boolean {
 }
 
 /**
- * Maps an HTTP status plus a response body to exactly one screen state.
- * The error code decides first, because a governed refusal can arrive with any status.
+ * The refusal states shared by every audit read: one trace, the trace list and the metrics.
+ * Kept in one place so the three screens cannot drift apart on what a given code means.
  */
-export function classifyTraceRead(status: number, body: unknown): TraceReadState {
-  const error = readError(body);
-  const projections = readProjections(body);
-  const trace = projections?.[0] ?? null;
+export type ReadFailure = {
+  kind:
+    | "notFound"
+    | "denied"
+    | "unauthenticated"
+    | "invalidInput"
+    | "rateLimited"
+    | "auditUnavailable"
+    | "stateUnavailable"
+    | "clientError";
+};
 
-  const ok = (): TraceReadState =>
-    trace === null
-      ? { kind: "notFound" }
-      : {
-          kind: "ok",
-          trace,
-          incomplete: isIncomplete(trace, error?.code ?? null),
-          cancelled: isCancelled(trace, error?.code ?? null),
-          eventsCapped: (trace.events?.length ?? 0) >= EVENT_CAP,
-          serverMessage: error?.message ? error.message : null,
-        };
+/**
+ * Returns the failure state, or `null` when the response may be rendered.
+ *
+ * The error code decides before the status, because a governed refusal can arrive with any
+ * status, and HTTP 200 is not approval. `hasPayload` says whether a usable payload was found,
+ * which is what separates "incomplete but showable" from "nothing trustworthy to show".
+ */
+export function classifyFailure(status: number, body: unknown, hasPayload: boolean): ReadFailure | null {
+  const error = readError(body);
 
   if (error) {
     switch (error.code) {
@@ -160,9 +158,9 @@ export function classifyTraceRead(status: number, body: unknown): TraceReadState
         return { kind: "stateUnavailable" };
       case "INCOMPLETE":
       case "CANCELLED":
-        // These describe the audited operation. With a projection the trace is shown with a
+        // These describe the audited operation. With a payload the screen renders it with a
         // notice; without one there is nothing trustworthy to render.
-        return trace === null ? { kind: "clientError" } : ok();
+        return hasPayload ? null : { kind: "clientError" };
       default:
         // POLICY_UNAVAILABLE, SEMANTIC_UNAVAILABLE, MODEL_UNAVAILABLE and the mutation-only
         // codes are not reachable on an audit read; anything unforeseen is a client error.
@@ -171,6 +169,26 @@ export function classifyTraceRead(status: number, body: unknown): TraceReadState
   }
 
   if (status !== 200) return { kind: "clientError" };
-  if (projections === null) return { kind: "clientError" };
-  return ok();
+  return hasPayload ? null : { kind: "clientError" };
+}
+
+/** Maps an HTTP status plus a response body to exactly one state of the trace screen. */
+export function classifyTraceRead(status: number, body: unknown): TraceReadState {
+  const error = readError(body);
+  const projections = readProjections(body);
+  const trace = projections?.[0] ?? null;
+
+  const failure = classifyFailure(status, body, projections !== null);
+  if (failure) return failure;
+  // A single-trace read that returned no item is a trace this actor cannot see.
+  if (trace === null) return { kind: "notFound" };
+
+  return {
+    kind: "ok",
+    trace,
+    incomplete: isIncomplete(trace, error?.code ?? null),
+    cancelled: isCancelled(trace, error?.code ?? null),
+    eventsCapped: (trace.events?.length ?? 0) >= EVENT_CAP,
+    serverMessage: error?.message ? error.message : null,
+  };
 }

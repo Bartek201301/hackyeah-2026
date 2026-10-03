@@ -58,6 +58,25 @@ export function formatCount(value: number | null): string {
   return group(value);
 }
 
+/** One decimal with the unit. A null percentage is N/A at the call site, never 0%. */
+export function formatPercent(value: number): string {
+  return `${value.toFixed(1)}%`;
+}
+
+/**
+ * Integer micro-USD rendered exactly, with the unit stated.
+ *
+ * Six decimals rather than the usual two or four: one micro-USD is 0.000001 USD, and an
+ * illustrative figure of a few micro-USD would round to `USD 0.00`. Showing a real cost as zero
+ * would imply a zero total operating cost, which the reporting rules forbid
+ * (docs/product/technical-spec.md:82). Every call site also prints the rate version and the
+ * "not an invoice" disclaimer.
+ */
+export function formatMicroUsd(microUsd: number | null): string {
+  if (microUsd === null) return copy.label.notMeasured;
+  return `USD ${(microUsd / 1_000_000).toFixed(6)}`;
+}
+
 /** Two decimals in 0.00–1.00. A null score is unmeasured, which is not a low score. */
 export function formatScore(value: number | null): string {
   if (value === null) return copy.label.notMeasured;
