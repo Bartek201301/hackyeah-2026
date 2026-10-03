@@ -90,6 +90,20 @@ Verified by extraction from the contract. All POST/PUT require header `Idempoten
 Note the asymmetry: `policy_update` requires `expected_version` ≥ 1 while `feed_import` allows ≥ 0
 (no feed installed yet).
 
+## Rules the schema itself pins
+
+`docs/contracts/policy.schema.json` fixes two values with `const`, so the generated TypeScript type
+makes them unassignable and no form can offer them as a choice:
+
+- `semantic.required` is `const: true` — required assessment cannot be switched off.
+- `execution.thinking` is `const: false` — generation runs with thinking disabled.
+
+Keep the runtime guard anyway: a policy document arrives over the network as untrusted data, and the
+type only protects code paths that already trust it.
+
+Also fixed: `imports.connector_dataset` and `SourceRequest.dataset` are the constant
+`demo_dataset_v1`, so a source form offers no free-text dataset field.
+
 ## Request and polling rules
 
 - **Never send `role`, `actor_id` or `organisation_id`.** Unknown request fields are strictly
