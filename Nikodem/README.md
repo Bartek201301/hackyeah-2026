@@ -33,22 +33,22 @@ Judging relevance: `Security/management reporting (20%)` — `docs/product/requi
 
 ## Index
 
-| File                                                   | Question it answers                                              | State                 |
-| ------------------------------------------------------ | ---------------------------------------------------------------- | --------------------- |
-| [01-field-map.md](01-field-map.md)                     | Where does every number come from, and what kind of truth is it? | ready                 |
-| [02-honesty-rules.md](02-honesty-rules.md)             | What am I allowed to claim on screen, in which words?            | ready                 |
-| [03-state-matrix.md](03-state-matrix.md)               | What does each view show in every state, with what copy?         | ready                 |
-| [04-component-plan.md](04-component-plan.md)           | Can the shared blocks express these views, what is missing?      | ready                 |
-| [05-test-plan.md](05-test-plan.md)                     | How are AT10/AT15/AT16 proven, and with which numbers?           | ready, partly blocked |
-| [06-integrator-requests.md](06-integrator-requests.md) | One message: what I need from Bartosz, and my default if silent  | ready to send         |
-| [07-build-order.md](07-build-order.md)                 | What do I build, in what order, after G1?                        | ready                 |
-| [08-p1-handoff.md](08-p1-handoff.md)                   | What P1 shipped, with its evidence and what is not verified      | delivered             |
-| [09-p2-handoff.md](09-p2-handoff.md)                   | What P2 shipped: dashboard, activity list, evidence and gaps     | delivered             |
-| [10-answers-to-julian.md](10-answers-to-julian.md)     | The trace route and the workbench/audit boundary, for N1 and N2  | ready to send         |
-| [11-p3-handoff.md](11-p3-handoff.md)                   | What P3 shipped: scope control, subcalls, the AT10-4 leak tests  | delivered             |
-| [12-p5-handoff.md](12-p5-handoff.md)                   | What P5 shipped: CSV download, the focus fix, the coverage table | delivered             |
-| [13-range-and-paging.md](13-range-and-paging.md)       | Day selection, paging, and the plan lines that were missed       | delivered             |
-| [fixtures/](fixtures/)                                 | Schema-valid labelled data for views and tests                   | ready                 |
+| File                                                   | Question it answers                                              | State                                   |
+| ------------------------------------------------------ | ---------------------------------------------------------------- | --------------------------------------- |
+| [01-field-map.md](01-field-map.md)                     | Where does every number come from, and what kind of truth is it? | ready                                   |
+| [02-honesty-rules.md](02-honesty-rules.md)             | What am I allowed to claim on screen, in which words?            | ready                                   |
+| [03-state-matrix.md](03-state-matrix.md)               | What does each view show in every state, with what copy?         | ready                                   |
+| [04-component-plan.md](04-component-plan.md)           | Can the shared blocks express these views, what is missing?      | ready                                   |
+| [05-test-plan.md](05-test-plan.md)                     | How are AT10/AT15/AT16 proven, and with which numbers?           | §7 is the live coverage table           |
+| [06-integrator-requests.md](06-integrator-requests.md) | One message: what I need from Bartosz, and my default if silent  | sent; items 1, 2, 6, 8, 10 answered     |
+| [07-build-order.md](07-build-order.md)                 | What do I build, in what order, after G1?                        | P1–P5 delivered; see its delivery table |
+| [08-p1-handoff.md](08-p1-handoff.md)                   | What P1 shipped, with its evidence and what is not verified      | delivered                               |
+| [09-p2-handoff.md](09-p2-handoff.md)                   | What P2 shipped: dashboard, activity list, evidence and gaps     | delivered                               |
+| [10-answers-to-julian.md](10-answers-to-julian.md)     | The trace route and the workbench/audit boundary, for N1 and N2  | closed; the link is implemented         |
+| [11-p3-handoff.md](11-p3-handoff.md)                   | What P3 shipped: scope control, subcalls, the AT10-4 leak tests  | delivered                               |
+| [12-p5-handoff.md](12-p5-handoff.md)                   | What P5 shipped: CSV download, the focus fix, the coverage table | delivered                               |
+| [13-range-and-paging.md](13-range-and-paging.md)       | Day selection, paging, and the plan lines that were missed       | delivered                               |
+| [fixtures/](fixtures/)                                 | Schema-valid labelled data for views and tests                   | ready                                   |
 
 `05-test-plan.md` is partly blocked: `npm run test` (vitest) arrived with G1, but it collects only
 `src/**/*.test.ts` in a Node environment, and there is no browser runner, so component-level and e2e
