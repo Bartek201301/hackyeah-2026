@@ -46,6 +46,7 @@ Judging relevance: `Security/management reporting (20%)` — `docs/product/requi
 | [09-p2-handoff.md](09-p2-handoff.md)                   | What P2 shipped: dashboard, activity list, evidence and gaps     | delivered             |
 | [10-answers-to-julian.md](10-answers-to-julian.md)     | The trace route and the workbench/audit boundary, for N1 and N2  | ready to send         |
 | [11-p3-handoff.md](11-p3-handoff.md)                   | What P3 shipped: scope control, subcalls, the AT10-4 leak tests  | delivered             |
+| [12-p5-handoff.md](12-p5-handoff.md)                   | What P5 shipped: CSV download, the focus fix, the coverage table | delivered             |
 | [fixtures/](fixtures/)                                 | Schema-valid labelled data for views and tests                   | ready                 |
 
 `05-test-plan.md` is partly blocked: `npm run test` (vitest) arrived with G1, but it collects only

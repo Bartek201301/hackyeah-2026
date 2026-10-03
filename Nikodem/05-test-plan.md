@@ -165,3 +165,66 @@ the feature's code path.
 - List commands actually run with their exit codes; name every gate not run.
 - Screenshots come from real runs; replayed evidence is labelled replayed.
 - A fixture-driven unit test never counts as evidence that a live path works.
+
+## 7. Coverage after P1–P3 — what actually runs today
+
+State of the branch `codex/audit-focus-and-export` on top of `main` at PR #18. The feature holds 91
+assertions in seven files; the repository runs 252. Legend: **unit** = asserted by `npm run test`;
+**construction** = the model cannot express the failure, so there is nothing left to assert at this
+layer; **not run** = no runner or no data exists for it, and it is reported as not run.
+
+### 7.1 AT10 — audit
+
+| ID      | Where it is asserted                                                         | Status                                          |
+| ------- | ---------------------------------------------------------------------------- | ----------------------------------------------- |
+| AT10-1  | —                                                                            | not run; needs T03 routes and two real sessions |
+| AT10-2  | `scope.test.ts` — refusal state, and figures beside a refusal ignored        | unit; the real-403 half needs T03               |
+| AT10-3  | `safety.test.ts` §"the list is never an aggregate"                           | unit                                            |
+| AT10-4  | `safety.test.ts` — four leak assertions against the view models              | unit at model level; DOM scan not run           |
+| AT10-5  | `safety.test.ts` — reason codes survive, `Finding` has no `value` key        | unit at model level                             |
+| AT10-6  | `export.test.ts` covers the refusal and row-cap handling                     | the byte assertion is not run; needs the route  |
+| AT10-7  | `envelope.test.ts` incomplete + unknown usage; `trace.test.ts` unknown group | unit                                            |
+| AT10-8  | `envelope.test.ts` event cap; `activity.test.ts` page cap                    | unit for the flags; the copy itself needs a DOM |
+| AT10-9  | `envelope.test.ts` and `metrics.test.ts` unavailable states                  | unit                                            |
+| AT10-10 | `activity.test.ts` unauthenticated mapping                                   | unit; "clears earlier numbers" by construction  |
+| AT10-11 | `metrics.test.ts` invalid-input mapping                                      | partial; no range picker exists yet             |
+| AT10-12 | `export.test.ts` — the export trace id is reported                           | unit; "body never rendered" by construction     |
+| AT10-13 | `activity.test.ts` rate-limited mapping                                      | unit; the absent retry control needs a DOM      |
+
+### 7.2 AT15 — reporting honesty
+
+| ID      | Where it is asserted                                                      | Status                                           |
+| ------- | ------------------------------------------------------------------------- | ------------------------------------------------ |
+| AT15-1  | `trace.test.ts` unknown group; `format.test.ts` null handling             | unit                                             |
+| AT15-2  | `format.test.ts` `formatDuration(0)`; `trace.test.ts` proven zero         | unit                                             |
+| AT15-3  | `trace.test.ts` — reserved never appears in actual                        | unit                                             |
+| AT15-4  | `trace.test.ts` and `metrics.test.ts` — separate generation and Laya rows | unit; "no combined total in the DOM" needs a DOM |
+| AT15-5  | `metrics.test.ts` — null reduction, and estimates without a baseline      | unit                                             |
+| AT15-6  | `metrics.test.ts` — disclaimer, rate version, and no cost rounded to zero | unit                                             |
+| AT15-7  | `metrics.test.ts` — Unknown, and the blocked-attempts caption             | unit                                             |
+| AT15-8  | `metrics.test.ts` oracle recomputes the reduction                         | partial; per-trace sums need real `/metrics`     |
+| AT15-9  | `metrics.test.ts` — estimate rows and the source trace                    | unit at model level                              |
+| AT15-10 | copy is rendered in two card headers                                      | not asserted; needs a DOM                        |
+| AT15-11 | `trace.test.ts` `decisionBadge` for all five values                       | unit                                             |
+| AT15-12 | `envelope.test.ts` recognises cancellation                                | partial; the sentence itself needs a DOM         |
+
+### 7.3 AT16 — browser and release
+
+| ID     | Status                                                                                                                                                           |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AT16-1 | not run; needs a session per role. Login exists since T02 phase 3, so this is now a browser task                                                                 |
+| AT16-2 | feature side by construction — every label is passed explicitly. **App side fails:** `src/app/loading.tsx` renders the Polish `LoadingState` default on `/audit` |
+| AT16-3 | code half done — every interactive element now carries a focus ring; the walk itself is not run                                                                  |
+| AT16-4 | not run                                                                                                                                                          |
+| AT16-5 | by construction — every `Badge` in this feature carries text, never colour alone                                                                                 |
+| AT16-6 | by construction — an in-flight guard plus a disabled button; the network log itself is not run                                                                   |
+| AT16-7 | feature side by construction; the app-level Polish default above is the open item                                                                                |
+
+### 7.4 What this table says plainly
+
+Every assertion that can be made without a browser or without live data is made. What remains is one
+runner and one set of routes, not a backlog of unwritten tests: **AT10-1, AT10-6, AT10-12, AT16-1,
+AT16-4 and AT16-6 cannot be satisfied by anything this feature can add.** P5 narrowed AT10-6 and AT10-12 to
+their observable halves: the handling is asserted, the bytes and the network log are not. AT10-4 and AT10-5 — the two
+security assertions a judge is most likely to care about — are covered at the layer below the DOM and
+will stay "model level" until a DOM runner exists.

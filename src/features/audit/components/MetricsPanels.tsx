@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Activity, ClipboardList, FlaskConical, RotateCcw, ShieldAlert } from "lucide-react";
 import { Badge, Card, CardHeader, StatCard } from "@/shared/ui";
 import type { MetricsView } from "../metrics";
@@ -85,13 +86,13 @@ export function ResourcesPanel({ view }: { view: MetricsView }) {
           {view.reductionSourceTraceId ? (
             <p className="text-xs text-muted">
               {copy.disclaimer.estimate} {copy.metrics.reductionSource}{" "}
-              <a
-                className="font-semibold text-brand underline"
+              <Link
+                className="rounded-control font-semibold text-brand underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 href={`/audit?trace=${view.reductionSourceTraceId}`}
                 title={view.reductionSourceTraceId}
               >
                 {shortId(view.reductionSourceTraceId)}
-              </a>
+              </Link>
             </p>
           ) : (
             <p className="text-xs text-muted">{copy.disclaimer.noBaseline}</p>

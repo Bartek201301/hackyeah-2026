@@ -148,6 +148,17 @@ export const copy = {
     openTrace: "Open trace",
     tokens: "Settled generation tokens",
   },
+  export: {
+    button: "Download audit CSV",
+    preparing: "Preparing CSV…",
+    done: "CSV downloaded. Export trace {trace}.",
+    doneNoTrace: "CSV downloaded. The gateway reported no export trace identifier.",
+    overCapTitle: "This export exceeds 1000 rows.",
+    failedTitle: "The export could not be prepared.",
+    failedBody: "Try again, or narrow the range.",
+    deniedBody: "This export is not available to your account.",
+    neutralisation: "Cells are neutralised by the gateway, and the export itself is an audited access.",
+  },
   disclaimer: {
     overhead: "Gateway overhead breakdown is not exposed by this endpoint.",
     blocked: "Blocked attempts are refused requests, not confirmed breaches.",
