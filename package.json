@@ -11,6 +11,8 @@
     "check:rules": "node scripts/check-rules.mjs",
     "check": "npm run check:fast && npm run build",
     "doctor": "node scripts/doctor.mjs",
+    "demo:seed": "node --env-file-if-exists=.env.local scripts/demo-seed.mjs",
+    "test:db": "node --env-file-if-exists=.env.local --test scripts/db/*.test.mjs",
     "setup:agent-tools": "bash scripts/setup-agent-tools.sh",
     "codegraph:status": "codegraph status",
     "format": "prettier --write",
