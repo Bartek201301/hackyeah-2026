@@ -62,6 +62,12 @@ describe("handle", () => {
     ]);
     const big = JSON.stringify({ message: "x".repeat(17 * 1024) });
     expect(await code(await chat(post({}, big), run))).toEqual([413, "INVALID_INPUT"]);
+    const chunked = new Request(post({}), {
+      body: new Blob([big]).stream(),
+      duplex: "half",
+    } as RequestInit);
+    expect(chunked.headers.get("content-length")).toBeNull();
+    expect(await code(await chat(chunked, run))).toEqual([413, "INVALID_INPUT"]);
     expect(await code(await chat(post({}, "{"), run))).toEqual([400, "INVALID_INPUT"]);
     const extra = '{"message":"hi","role":"admin"}';
     expect(await code(await chat(post({}, extra), run))).toEqual([400, "INVALID_INPUT"]);

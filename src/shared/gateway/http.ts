@@ -10,6 +10,25 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const isUuid = (value: string) => UUID.test(value);
 
+/** null = over the limit. Counts bytes as they arrive, so a chunked body cannot buffer past it. */
+async function readLimited(request: Request): Promise<string | null> {
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return null;
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return new TextDecoder().decode(Buffer.concat(chunks));
+    size += value.byteLength;
+    if (size > MAX_BODY_BYTES) {
+      void reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+}
+
 type Context = { actor: ActorContext; body: unknown; key: string | null; signal: AbortSignal };
 
 /** One gateway entry for public routes: Origin → actor → Idempotency-Key → body → run. */
@@ -42,11 +61,8 @@ export async function handle(
     if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
       return toResponse(errorOutcome("UNSUPPORTED_FILE"));
     }
-    const tooLarge = () => toResponse(errorOutcome("INVALID_INPUT", { status: 413 }));
-    if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return tooLarge();
-    // ponytail: buffers a chunked body before the size check (signed-in callers only); stream-count if abused.
-    const text = await request.text();
-    if (Buffer.byteLength(text) > MAX_BODY_BYTES) return tooLarge();
+    const text = await readLimited(request);
+    if (text === null) return toResponse(errorOutcome("INVALID_INPUT", { status: 413 }));
     try {
       body = JSON.parse(text);
     } catch {
