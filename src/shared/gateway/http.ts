@@ -1,7 +1,7 @@
 import "server-only";
 import { getActor } from "@/shared/auth/actor";
 import type { ActorContext } from "@/shared/contracts";
-import { check } from "@/shared/contracts/validate";
+import { check, type SchemaName } from "@/shared/contracts/validate";
 import { GatewayError, errorOutcome, toResponse } from "./envelope";
 import type { Outcome } from "./ports";
 
@@ -34,7 +34,7 @@ type Context = { actor: ActorContext; body: unknown; key: string | null; signal:
 /** One gateway entry for public routes: Origin → actor → Idempotency-Key → body → run. */
 export async function handle(
   request: Request,
-  opts: { body?: "ChatRequest"; idempotent?: boolean },
+  opts: { body?: SchemaName; idempotent?: boolean },
   run: (ctx: Context) => Promise<Outcome>,
 ): Promise<Response> {
   // Defence in depth on top of SameSite cookies.
