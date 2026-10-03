@@ -1,6 +1,6 @@
 {
   "trace_id": "00000000-0000-4000-8000-0000000003b1",
-  "decision": null,
+  "decision": "BLOCK",
   "reasons": [],
   "policy_version": null,
   "feed_version": null,
@@ -27,7 +27,7 @@
     "reserved_generation_tokens": 0,
     "unresolved_reservation": false,
     "comparison_micro_usd": 0,
-    "comparison_rate_version": "illustrative-v1"
+    "comparison_rate_version": "none"
   },
   "timings": {
     "total_ms": 19,
@@ -39,7 +39,7 @@
   "data": null,
   "error": {
     "code": "UNAUTHENTICATED",
-    "message": "Your session has ended. Sign in again to view audit records.",
+    "message": "Sign in to use this operation.",
     "retryable": false
   }
 }

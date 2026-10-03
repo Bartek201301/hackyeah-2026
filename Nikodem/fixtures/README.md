@@ -16,3 +16,15 @@ Hand-authored `Response` envelopes for building and testing the audit views befo
   `additionalProperties: false`, required fields, enums and string limits.
 
 Expected values derived from these fixtures are in [../05-test-plan.md](../05-test-plan.md) §5.
+
+## One of these is no longer synthetic
+
+`error-401-unauthenticated.json` was rewritten from the live response of `GET /api/v1/audit/{id}` after
+T03 landed, called without a session. The synthetic version had `decision: null`; the real gateway sends
+`decision: "BLOCK"` alongside `error.code: "UNAUTHENTICATED"`. That is the drift item 11 of the request
+list warned about, and the most dangerous one here: a screen reading the decision instead of the error
+would tell a signed-out reader that their request was Blocked. `envelope.test.ts` now asserts the real
+body directly.
+
+The remaining files are still schema-derived and must be replaced the same way as each endpoint becomes
+real.
