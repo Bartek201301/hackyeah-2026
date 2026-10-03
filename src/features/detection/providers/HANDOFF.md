@@ -2,6 +2,10 @@
 
 Historical first-slice evidence. The approved local G2 scope and new public factories are documented
 in [the G2 factory handoff](../G2-HANDOFF.md), which supersedes the bridge prerequisite below for G2.
+Current factory environment contract: `createDetectionPort()` and `createGenerationPort()` read
+only `LAYA_API_KEY` from the server process environment at construction. Both return `null` when
+it is missing, empty or blank. Detection captures that bearer for its Laya requests; neither factory
+reads an Ollama environment variable. Laya and Ollama destinations are fixed loopback addresses.
 
 Owner: Maciej / Builder B. Prepared 3 October 2026 on Julian's Mac in the isolated
 `codex/maciej-detection-research` worktree. Main `3f883db` was merged as `27bf0a3`.
@@ -10,7 +14,8 @@ committed `Maciej/` research and plan; those documents were not edited in this s
 
 The raw provider clients now validate actual Laya and Qwen responses, preserve usage,
 withhold incomplete generation output, and bound local requests. They do not implement
-a protected gateway operation. Public detection `index.ts` still exports nothing.
+a protected gateway operation. At the historical first-slice commit, public detection `index.ts`
+exported nothing; the later G2 factory PR added the two exports.
 No app route, tunnel, shared contract, dependency manifest, database or evaluation
 fixture was changed. Julian's original checkout was not switched.
 
@@ -25,7 +30,7 @@ fixture was changed. Julian's original checkout was not switched.
 | `validation.ts`  | `ProviderFailure` and private validation helpers                                                       | Safe category, dispatch evidence, nullable input/output usage; no raw error/cause/body                                                                             |
 | `smoke-cases.ts` | `runSyntheticSmoke` (manual smoke runner only)                                                         | Synthetic inputs; safe metadata output; missing credentials or failed capability exits nonzero                                                                     |
 
-No `createDetectionPort` or `createGenerationPort` exists. Do not deep-import these clients
+At the historical first-slice commit no factories existed. Do not deep-import these clients
 from app/shared code. They have no durable acceptance, replay, budget reservation or cancellation
 ledger. `usable` means that one Laya wire response passed validation; it is not complete text
 coverage, a permission, or an `Assessment`. Incomplete observations retain scores/usage but cannot
