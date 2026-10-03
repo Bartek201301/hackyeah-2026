@@ -1,17 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type { ActorContext, Assessment, ChatRequest, ErrorCode, Finding } from "@/shared/contracts";
-import {
-  clock,
-  createCalls,
-  leaseExpired,
-  loadControls,
-  runVersions,
-  Stop,
-  stored,
-  TERMINAL,
-  unknownOutcome,
-} from "./calls";
+import { clock, createCalls, loadControls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
 import { decide, matchSignatures, sha256Hex, utf8Bytes } from "./checks";
 import {
   envelope,
@@ -76,21 +66,8 @@ export async function startChat(
   };
 }
 
-export async function readChat(deps: GatewayDeps, actor: ActorContext, runId: string): Promise<Outcome> {
-  const run = await deps.repository.readRun(actor, runId);
-  if (!run || run.kind !== "chat") return errorOutcome("NOT_FOUND");
-  if (leaseExpired(run)) return unknownOutcome(run);
-  return (
-    stored(run) ?? {
-      status: 202,
-      body: envelope({
-        trace_id: run.id,
-        ...runVersions(run),
-        data: { id: run.id, kind: run.kind, state: run.state, stage: run.stage },
-      }),
-    }
-  );
-}
+export const readChat = (deps: GatewayDeps, actor: ActorContext, runId: string) =>
+  readOwnRun(deps, actor, runId, ["chat"]);
 
 export async function executeChat(
   deps: GatewayDeps,
@@ -101,35 +78,9 @@ export async function executeChat(
 ): Promise<Outcome> {
   const t = clock();
   const repo = deps.repository;
-  const run = await t.time("persistence_ms", () => repo.readRun(actor, runId));
-  if (!run || run.kind !== "chat") return errorOutcome("NOT_FOUND");
-  const done = stored(run);
-  if (done) return done;
-  if (leaseExpired(run)) return unknownOutcome(run);
-
-  // Controls are validated before any intent is written.
-  const controls = await t.time("persistence_ms", () => loadControls(deps, actor));
-  if (!controls) return errorOutcome("POLICY_UNAVAILABLE", { trace_id: run.id });
-  const { policy, feed, versions } = controls;
-  const op = await t.time("persistence_ms", () =>
-    repo.beginOperation({
-      actor,
-      operation: "run_execute",
-      idempotencyKey,
-      requestSha256: sha256Hex(run.id),
-      traceId: run.id,
-      runId: run.id,
-    }),
-  );
-  if (op.policy_version !== versions.policy_version || op.feed_version !== versions.feed_version)
-    return errorOutcome("STATE_UNAVAILABLE", { trace_id: run.id, ...versions });
-  const lease = await t.time("persistence_ms", () =>
-    repo.claimRun(actor, run.id, policy.execution.max_elapsed_ms),
-  );
-  if (!lease) {
-    const now = await t.time("persistence_ms", () => repo.readRun(actor, run.id));
-    return (now && stored(now)) ?? errorOutcome("CONFLICT", { trace_id: run.id, ...versions });
-  }
+  const opened = await openRun(deps, actor, runId, idempotencyKey, "chat", t);
+  if (opened.exit) return opened.exit;
+  const { run, policy, feed, versions, op, lease } = opened;
 
   // From here on every exit goes through finalize.
   const overall = AbortSignal.any([signal, AbortSignal.timeout(policy.execution.max_elapsed_ms)]);

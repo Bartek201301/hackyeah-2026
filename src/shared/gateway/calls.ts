@@ -14,7 +14,7 @@ import type {
 } from "@/shared/contracts";
 import manifest from "@/shared/contracts/runtime-manifest.json";
 import { check } from "@/shared/contracts/validate";
-import { utcDay, utf8Bytes, verifyCoverage } from "./checks";
+import { sha256Hex, utcDay, utf8Bytes, verifyCoverage } from "./checks";
 import { envelope, errorOutcome, GatewayError } from "./envelope";
 import type { BegunOperation, BudgetUnit, GatewayDeps, Outcome, RunRecord, StoredResult } from "./ports";
 
@@ -72,7 +72,75 @@ export const leaseExpired = (run: RunRecord) =>
 export const unknownOutcome = (run: RunRecord) =>
   errorOutcome("INCOMPLETE", { trace_id: run.id, ...runVersions(run), message: UNKNOWN_OUTCOME });
 
+/** run_read: own run of one of `kinds` → its stored result, unknown after a lost lease, else 202 + Run. */
+export async function readOwnRun(
+  deps: GatewayDeps,
+  actor: ActorContext,
+  runId: string,
+  kinds: readonly RunRecord["kind"][],
+): Promise<Outcome> {
+  const run = await deps.repository.readRun(actor, runId);
+  if (!run || !kinds.includes(run.kind)) return errorOutcome("NOT_FOUND");
+  if (leaseExpired(run)) return unknownOutcome(run);
+  return (
+    stored(run) ?? {
+      status: 202,
+      body: envelope({
+        trace_id: run.id,
+        ...runVersions(run),
+        data: { id: run.id, kind: run.kind, state: run.state, stage: run.stage },
+      }),
+    }
+  );
+}
+
 export type Clock = ReturnType<typeof clock>;
+
+/**
+ * The execute skeleton every run kind shares: own run of this kind → stored result or lost lease →
+ * validated controls → durable intent → lease. `exit` is an early answer with nothing to finalize;
+ * otherwise the caller holds the lease and every later exit goes through finalize.
+ */
+export async function openRun(
+  deps: GatewayDeps,
+  actor: ActorContext,
+  runId: string,
+  idempotencyKey: string,
+  kind: RunRecord["kind"],
+  t: Clock,
+) {
+  const repo = deps.repository;
+  const run = await t.time("persistence_ms", () => repo.readRun(actor, runId));
+  if (!run || run.kind !== kind) return { exit: errorOutcome("NOT_FOUND") };
+  const done = stored(run);
+  if (done) return { exit: done };
+  if (leaseExpired(run)) return { exit: unknownOutcome(run) };
+
+  // Controls are validated before any intent is written.
+  const controls = await t.time("persistence_ms", () => loadControls(deps, actor));
+  if (!controls) return { exit: errorOutcome("POLICY_UNAVAILABLE", { trace_id: run.id }) };
+  const { policy, versions } = controls;
+  const op = await t.time("persistence_ms", () =>
+    repo.beginOperation({
+      actor,
+      operation: "run_execute",
+      idempotencyKey,
+      requestSha256: sha256Hex(run.id),
+      traceId: run.id,
+      runId: run.id,
+    }),
+  );
+  if (op.policy_version !== versions.policy_version || op.feed_version !== versions.feed_version)
+    return { exit: errorOutcome("STATE_UNAVAILABLE", { trace_id: run.id, ...versions }) };
+  const lease = await t.time("persistence_ms", () =>
+    repo.claimRun(actor, run.id, policy.execution.max_elapsed_ms),
+  );
+  if (!lease) {
+    const now = await t.time("persistence_ms", () => repo.readRun(actor, run.id));
+    return { exit: (now && stored(now)) ?? errorOutcome("CONFLICT", { trace_id: run.id, ...versions }) };
+  }
+  return { run, ...controls, op, lease };
+}
 
 export function clock() {
   const start = performance.now();
@@ -162,7 +230,12 @@ export function createCalls({
     open = false;
   };
 
-  const assess = async (text: string, operation: string, audience: "actor" | "public" = "actor") => {
+  /** `locator` is copied into the adapter's findings so a multi-unit run keeps them attributable. */
+  const assess = async (
+    text: string,
+    operation: string,
+    { audience = "actor", locator }: { audience?: "actor" | "public"; locator?: string } = {},
+  ) => {
     const detection: DetectionPort | null = deps.detection;
     // Adapter not composed: no reservation, no call.
     if (!detection) throw new Stop({ error: "SEMANTIC_UNAVAILABLE" });
@@ -201,8 +274,9 @@ export function createCalls({
     );
     if (!covered) throw new Stop({ error: "SEMANTIC_UNAVAILABLE" });
     semantic = result.semantic;
-    findings.push(...result.findings);
-    return result;
+    const found = locator ? result.findings.map((f) => ({ ...f, locator })) : result.findings;
+    findings.push(...found);
+    return { ...result, findings: found };
   };
 
   const generate = async (messages: readonly ModelMessage[]) => {
