@@ -49,6 +49,7 @@ export function parseSecurityVerdict(text: string): SecurityVerdict | null {
   try {
     // Duplicate keys have ambiguous meaning across JSON consumers; never accept last-key-wins.
     if (
+      (text.match(/"(?:\\.|[^"\\])*"\s*:/g) ?? []).length !== 4 ||
       (text.match(/"(?:instruction_manipulation|sensitive_exposure|resource_abuse|uncertain)"\s*:/g) ?? [])
         .length !== 4
     )
