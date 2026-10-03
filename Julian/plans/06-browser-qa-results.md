@@ -82,7 +82,7 @@ checked summary text and citations). They read as deliberate, not broken.
 | -------------- | ----------------------------------------------------------------- |
 | 1440 px        | pass — no horizontal scroll                                       |
 | 500 px         | pass — sidebar collapses to a top bar, nav wraps, nothing clipped |
-| **375 px**     | **not run** — Chrome will not size a window below ~500 px wide    |
+| **375 px**     | **pass** — run by a human in device emulation (run 1b)            |
 | Focus ring     | pass — `2px solid` outline on each tabbed control                 |
 | Tab order      | pass — follows the visible nav order                              |
 | Console        | pass — **zero** messages across every view and interaction        |
@@ -133,3 +133,74 @@ the real, intended product behaviour, and that is all this run demonstrates.
 2. Phase 6 composition, for any `ALLOW`/`BLOCK` evidence, citations, cancellation and server stage
    text.
 3. A human at 375 px, and a reduced-motion pass.
+
+---
+
+# Run 1b — new screens and the analyst role
+
+| Field   | Value                                                                 |
+| ------- | --------------------------------------------------------------------- |
+| Date    | 2026-10-03, 19:05–21:30 UTC                                           |
+| Build   | Production `hackyeah-2026.vercel.app` (main, after PR #39 and PR #40) |
+| Browser | Chrome, signed in as **analyst**; 375 px pass run by a human          |
+| Tooling | Claude in Chrome extension; DOM and `performance` assertions in page  |
+
+## W3 review screen — fail-closed pass
+
+| Check                                 | Result                                                    |
+| ------------------------------------- | --------------------------------------------------------- |
+| `?view=review` renders the new screen | pass — "Candidates held for review"                       |
+| `GET /reviews` is 503                 | pass — one `role="alert"` notice with a trace link        |
+| No decision form without a candidate  | pass — no "Decide this candidate" card                    |
+| **No candidate text area rendered**   | pass — zero `<textarea>`, so no protected text can appear |
+
+## W5 export screen — fail-closed pass
+
+| Check                                 | Result                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| `?view=export` renders the new screen | pass — "Request a public summary"                                      |
+| Empty topic                           | pass — "Enter a topic for the summary." with **zero** network requests |
+| Topic cap                             | pass — `maxLength=1000`, counter tracks                                |
+| Valid topic submitted                 | pass — exactly one `POST /api/v1/exports`, 503                         |
+| Fail-closed state                     | pass — "Service unavailable" with a trace link                         |
+| **No download control**               | pass — zero download links; no ready card without a released result    |
+| Deal select                           | pass — disabled, "No assigned deal is available to this account."      |
+
+## Role visibility — B21 confirmed open
+
+Signed in as **analyst**, the Review and Policy links are both visible. The checklist allows this
+while `src/app/workbench/page.tsx` does not pass `role`, and the gateway denies the calls regardless,
+but it looks wrong in front of judges. Still worth fixing.
+
+## Production gateway state
+
+| Probe (as analyst)           | Result                                                 |
+| ---------------------------- | ------------------------------------------------------ |
+| `POST /api/v1/chat`          | 503 `STATE_UNAVAILABLE`, `policy_version: null`        |
+| `GET /api/v1/reviews`        | 503 `STATE_UNAVAILABLE` (catch-all seam)               |
+| `GET /api/v1/metrics`        | 503 `STATE_UNAVAILABLE` (catch-all seam)               |
+| `GET /api/v1/audit/activity` | 400 `INVALID_INPUT` — the route executes and validates |
+
+The chat failure is **not** the workbench and not missing policy rows: `getActor()` succeeds, and an
+empty policy would give `POLICY_UNAVAILABLE`. The repository call throws and
+[http.ts](../../src/shared/gateway/http.ts) catches it, most likely a missing server environment
+variable on the hosted deployment. Reported to the integrator with trace
+`6cc170b6-2b72-4aad-bed3-2b4f5e3fe28b`.
+
+## S01 and S02 — not yet available, by design
+
+Bartosz confirmed that the figures-and-citations part of S01 **cannot pass yet**: citations need
+imports and retrieval (T05/T06), which are not built, and `LAYA_API_KEY` is deliberately absent from
+the hosted deployment because the models run only on a team laptop. A real `ALLOW` needs the model
+bridge (T03 phase 8). Recorded here as **not yet available**, not as a workbench defect.
+
+What this build can honestly show once the environment is fixed: the injection prompt reaching a
+`403 BLOCK`, and a benign question withheld with "Request withheld". Neither has been run yet.
+
+## Still not run after run 1b
+
+1. Everything that needs the model bridge: `ALLOW`, citations, server stage text, cancel, and the
+   S01-versus-S02 contrast itself.
+2. The employee and reviewer roles, including the non-admin denial check.
+3. Reduced motion.
+4. Both new screens against live `/reviews` and `/exports` endpoints, which do not exist yet.
