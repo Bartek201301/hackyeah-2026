@@ -1,0 +1,208 @@
+{
+  "trace_id": "00000000-0000-4000-8000-000000000394",
+  "decision": "ALLOW",
+  "reasons": [],
+  "policy_version": 1,
+  "feed_version": 1,
+  "semantic": {
+    "status": "not_required",
+    "scores": {
+      "instruction_manipulation": null,
+      "sensitive_exposure": null,
+      "resource_abuse": null
+    },
+    "checkpoint_revision": null,
+    "windows_planned": 0,
+    "windows_completed": 0,
+    "coverage_complete": false,
+    "text_sha256": null,
+    "coverage_ranges": []
+  },
+  "usage": {
+    "generation_input_tokens": 0,
+    "generation_output_tokens": 0,
+    "generation_ms": 0,
+    "semantic_input_tokens": 0,
+    "semantic_ms": 0,
+    "reserved_generation_tokens": 0,
+    "unresolved_reservation": false,
+    "comparison_micro_usd": 0,
+    "comparison_rate_version": "illustrative-v1"
+  },
+  "timings": {
+    "total_ms": 22,
+    "deterministic_ms": 3,
+    "semantic_ms": 0,
+    "provider_ms": 0,
+    "persistence_ms": 17
+  },
+  "data": {
+    "items": [
+      {
+        "trace_id": "00000000-0000-4000-8000-000000000314",
+        "actor_id": "00000000-0000-4000-8000-000000000401",
+        "operation": "chat_start",
+        "created_at": "2026-10-03T10:02:11Z",
+        "decision": null,
+        "reasons": ["PROVIDER_UNAVAILABLE", "CANCELLED"],
+        "state": "incomplete",
+        "policy_version": 1,
+        "feed_version": 1,
+        "usage": {
+          "generation_input_tokens": null,
+          "generation_output_tokens": null,
+          "generation_ms": null,
+          "semantic_input_tokens": null,
+          "semantic_ms": 512,
+          "reserved_generation_tokens": 4096,
+          "unresolved_reservation": true,
+          "comparison_micro_usd": null,
+          "comparison_rate_version": "illustrative-v1"
+        },
+        "events": [
+          {
+            "stage": "intent",
+            "event_type": "intent",
+            "created_at": "2026-10-03T10:02:11Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [],
+            "semantic": {
+              "status": "not_required",
+              "scores": {
+                "instruction_manipulation": null,
+                "sensitive_exposure": null,
+                "resource_abuse": null
+              },
+              "checkpoint_revision": null,
+              "windows_planned": 0,
+              "windows_completed": 0,
+              "coverage_complete": false,
+              "text_sha256": null,
+              "coverage_ranges": []
+            },
+            "usage": {
+              "generation_input_tokens": null,
+              "generation_output_tokens": null,
+              "generation_ms": null,
+              "semantic_input_tokens": null,
+              "semantic_ms": 0,
+              "reserved_generation_tokens": 4096,
+              "unresolved_reservation": false,
+              "comparison_micro_usd": null,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          },
+          {
+            "stage": "input_assessment",
+            "event_type": "decision",
+            "created_at": "2026-10-03T10:02:12Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [],
+            "semantic": {
+              "status": "unavailable",
+              "scores": {
+                "instruction_manipulation": null,
+                "sensitive_exposure": null,
+                "resource_abuse": null
+              },
+              "checkpoint_revision": null,
+              "windows_planned": 2,
+              "windows_completed": 1,
+              "coverage_complete": false,
+              "text_sha256": null,
+              "coverage_ranges": []
+            },
+            "usage": {
+              "generation_input_tokens": null,
+              "generation_output_tokens": null,
+              "generation_ms": null,
+              "semantic_input_tokens": null,
+              "semantic_ms": 512,
+              "reserved_generation_tokens": 4096,
+              "unresolved_reservation": false,
+              "comparison_micro_usd": null,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          },
+          {
+            "stage": "generation",
+            "event_type": "provider_started",
+            "created_at": "2026-10-03T10:02:13Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [],
+            "semantic": {
+              "status": "not_required",
+              "scores": {
+                "instruction_manipulation": null,
+                "sensitive_exposure": null,
+                "resource_abuse": null
+              },
+              "checkpoint_revision": null,
+              "windows_planned": 0,
+              "windows_completed": 0,
+              "coverage_complete": false,
+              "text_sha256": null,
+              "coverage_ranges": []
+            },
+            "usage": {
+              "generation_input_tokens": null,
+              "generation_output_tokens": null,
+              "generation_ms": null,
+              "semantic_input_tokens": null,
+              "semantic_ms": 0,
+              "reserved_generation_tokens": 4096,
+              "unresolved_reservation": true,
+              "comparison_micro_usd": null,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          },
+          {
+            "stage": "generation",
+            "event_type": "incomplete",
+            "created_at": "2026-10-03T10:02:43Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [
+              {
+                "code": "PROVIDER_TIMEOUT",
+                "category": "availability",
+                "severity": "review",
+                "stage": "generation",
+                "locator": null
+              }
+            ],
+            "semantic": {
+              "status": "not_required",
+              "scores": {
+                "instruction_manipulation": null,
+                "sensitive_exposure": null,
+                "resource_abuse": null
+              },
+              "checkpoint_revision": null,
+              "windows_planned": 0,
+              "windows_completed": 0,
+              "coverage_complete": false,
+              "text_sha256": null,
+              "coverage_ranges": []
+            },
+            "usage": {
+              "generation_input_tokens": null,
+              "generation_output_tokens": null,
+              "generation_ms": null,
+              "semantic_input_tokens": null,
+              "semantic_ms": 0,
+              "reserved_generation_tokens": 4096,
+              "unresolved_reservation": true,
+              "comparison_micro_usd": null,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "error": null
+}

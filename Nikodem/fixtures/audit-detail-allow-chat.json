@@ -1,0 +1,233 @@
+{
+  "trace_id": "00000000-0000-4000-8000-000000000392",
+  "decision": "ALLOW",
+  "reasons": [],
+  "policy_version": 1,
+  "feed_version": 1,
+  "semantic": {
+    "status": "not_required",
+    "scores": {
+      "instruction_manipulation": null,
+      "sensitive_exposure": null,
+      "resource_abuse": null
+    },
+    "checkpoint_revision": null,
+    "windows_planned": 0,
+    "windows_completed": 0,
+    "coverage_complete": false,
+    "text_sha256": null,
+    "coverage_ranges": []
+  },
+  "usage": {
+    "generation_input_tokens": 0,
+    "generation_output_tokens": 0,
+    "generation_ms": 0,
+    "semantic_input_tokens": 0,
+    "semantic_ms": 0,
+    "reserved_generation_tokens": 0,
+    "unresolved_reservation": false,
+    "comparison_micro_usd": 0,
+    "comparison_rate_version": "illustrative-v1"
+  },
+  "timings": {
+    "total_ms": 31,
+    "deterministic_ms": 4,
+    "semantic_ms": 0,
+    "provider_ms": 0,
+    "persistence_ms": 24
+  },
+  "data": {
+    "items": [
+      {
+        "trace_id": "00000000-0000-4000-8000-000000000311",
+        "actor_id": "00000000-0000-4000-8000-000000000401",
+        "operation": "chat_start",
+        "created_at": "2026-10-03T09:14:02Z",
+        "decision": "ALLOW",
+        "reasons": ["SCOPE_VERIFIED", "SEMANTIC_COMPLETE"],
+        "state": "completed",
+        "policy_version": 1,
+        "feed_version": 1,
+        "usage": {
+          "generation_input_tokens": 1842,
+          "generation_output_tokens": 311,
+          "generation_ms": 4120,
+          "semantic_input_tokens": 2048,
+          "semantic_ms": 486,
+          "reserved_generation_tokens": 4096,
+          "unresolved_reservation": false,
+          "comparison_micro_usd": 10,
+          "comparison_rate_version": "illustrative-v1"
+        },
+        "events": [
+          {
+            "stage": "intent",
+            "event_type": "intent",
+            "created_at": "2026-10-03T09:14:02Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [],
+            "semantic": {
+              "status": "not_required",
+              "scores": {
+                "instruction_manipulation": null,
+                "sensitive_exposure": null,
+                "resource_abuse": null
+              },
+              "checkpoint_revision": null,
+              "windows_planned": 0,
+              "windows_completed": 0,
+              "coverage_complete": false,
+              "text_sha256": null,
+              "coverage_ranges": []
+            },
+            "usage": {
+              "generation_input_tokens": null,
+              "generation_output_tokens": null,
+              "generation_ms": null,
+              "semantic_input_tokens": null,
+              "semantic_ms": 0,
+              "reserved_generation_tokens": 4096,
+              "unresolved_reservation": false,
+              "comparison_micro_usd": null,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          },
+          {
+            "stage": "input_assessment",
+            "event_type": "decision",
+            "created_at": "2026-10-03T09:14:03Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [
+              {
+                "code": "BENIGN_QUERY",
+                "category": "instruction_manipulation",
+                "severity": "info",
+                "stage": "input_assessment",
+                "locator": null
+              }
+            ],
+            "semantic": {
+              "status": "complete",
+              "scores": {
+                "instruction_manipulation": 0.04,
+                "sensitive_exposure": 0.11,
+                "resource_abuse": 0.02
+              },
+              "checkpoint_revision": "laya-0.3.24/chk-2026-08-11",
+              "windows_planned": 2,
+              "windows_completed": 2,
+              "coverage_complete": true,
+              "text_sha256": "9f2c4ab77d1e5c0b8a3d6f41e27b90cc5d8e1f4a6b2c3d9e0f7a8b1c2d3e4f50",
+              "coverage_ranges": [
+                {
+                  "start_char": 0,
+                  "end_char": 3800,
+                  "input_tokens": 814
+                },
+                {
+                  "start_char": 3800,
+                  "end_char": 7400,
+                  "input_tokens": 814
+                }
+              ]
+            },
+            "usage": {
+              "generation_input_tokens": null,
+              "generation_output_tokens": null,
+              "generation_ms": null,
+              "semantic_input_tokens": 1628,
+              "semantic_ms": 296,
+              "reserved_generation_tokens": 4096,
+              "unresolved_reservation": false,
+              "comparison_micro_usd": null,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          },
+          {
+            "stage": "generation",
+            "event_type": "provider_started",
+            "created_at": "2026-10-03T09:14:04Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [],
+            "semantic": {
+              "status": "not_required",
+              "scores": {
+                "instruction_manipulation": null,
+                "sensitive_exposure": null,
+                "resource_abuse": null
+              },
+              "checkpoint_revision": null,
+              "windows_planned": 0,
+              "windows_completed": 0,
+              "coverage_complete": false,
+              "text_sha256": null,
+              "coverage_ranges": []
+            },
+            "usage": {
+              "generation_input_tokens": null,
+              "generation_output_tokens": null,
+              "generation_ms": null,
+              "semantic_input_tokens": null,
+              "semantic_ms": 0,
+              "reserved_generation_tokens": 4096,
+              "unresolved_reservation": true,
+              "comparison_micro_usd": null,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          },
+          {
+            "stage": "completion",
+            "event_type": "completion",
+            "created_at": "2026-10-03T09:14:08Z",
+            "policy_version": 1,
+            "feed_version": 1,
+            "findings": [
+              {
+                "code": "OUTPUT_WITHIN_SCOPE",
+                "category": "sensitive_exposure",
+                "severity": "info",
+                "stage": "output_assessment",
+                "locator": null
+              }
+            ],
+            "semantic": {
+              "status": "complete",
+              "scores": {
+                "instruction_manipulation": 0.03,
+                "sensitive_exposure": 0.09,
+                "resource_abuse": 0.01
+              },
+              "checkpoint_revision": "laya-0.3.24/chk-2026-08-11",
+              "windows_planned": 1,
+              "windows_completed": 1,
+              "coverage_complete": true,
+              "text_sha256": "1b7d3e9a0c5f82146e7b4a9d3c0f58e2b6a1d4c7f09e32b5a8d6c1f4e7b0a39d",
+              "coverage_ranges": [
+                {
+                  "start_char": 0,
+                  "end_char": 1240,
+                  "input_tokens": 420
+                }
+              ]
+            },
+            "usage": {
+              "generation_input_tokens": 1842,
+              "generation_output_tokens": 311,
+              "generation_ms": 4120,
+              "semantic_input_tokens": 420,
+              "semantic_ms": 190,
+              "reserved_generation_tokens": 4096,
+              "unresolved_reservation": false,
+              "comparison_micro_usd": 10,
+              "comparison_rate_version": "illustrative-v1"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "error": null
+}
