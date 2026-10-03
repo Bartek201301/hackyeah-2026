@@ -40,9 +40,13 @@ describe("number formatting", () => {
   });
 
   it("keeps scores at two decimals and distinguishes unmeasured from low", () => {
-    expect(formatScore(0)).toBe("0.00");
-    expect(formatScore(0.4)).toBe("0.40");
-    expect(formatScore(1)).toBe("1.00");
+    expect(formatScore(0)).toBe("0.000");
+    expect(formatScore(0.4)).toBe("0.400");
+    expect(formatScore(1)).toBe("1.000");
+    expect(formatScore(0.3)).toBe("0.300");
+    // Below the 0.30 threshold must never print as the threshold.
+    expect(formatScore(0.2972)).toBe("0.297");
+    expect(formatScore(0.29999)).toBe("0.299");
     expect(formatScore(null)).toBe("Not measured");
   });
 

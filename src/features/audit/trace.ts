@@ -56,6 +56,8 @@ export type AssessmentView = {
   coverageWarning: string | null;
   revision: string;
   hash: string;
+  /** The full SHA-256 behind the shortened `hash`, for the title attribute. */
+  hashFull: string | null;
   ranges: string;
 };
 
@@ -230,6 +232,7 @@ export function assessmentView(semantic: Assessment): AssessmentView {
             .replace("{planned}", group(semantic.windows_planned)),
     revision: formatRevision(semantic.checkpoint_revision),
     hash: formatHash(semantic.text_sha256),
+    hashFull: semantic.text_sha256,
     ranges: `${formatCount(semantic.coverage_ranges.length)} · ${formatTokens(assessedTokens)}`,
   };
 }
