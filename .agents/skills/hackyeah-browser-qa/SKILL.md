@@ -5,7 +5,7 @@ description: "Sprawdzenie interfejsu i demo HackYeah 2026 w przeglądarce: previ
 
 # Sprawdzenie UI i demo HackYeah
 
-Przeczytaj `AGENTS.md`, `SPEC.md` i kryteria zadania. Ustal adres, wersję wdrożenia oraz
+Przeczytaj `AGENTS.md`, `docs/product/requirements.md` i kryteria zadania. Ustal adres, wersję wdrożenia oraz
 ścieżkę użytkownika do sprawdzenia z dostępnego kontekstu. Użyj istniejącego narzędzia
 przeglądarkowego i jego instrukcji. Gdy brak adresu lub dostępu, zgłoś konkretny brak;
 nie zastępuj obserwacji przeglądarki odczytem kodu.
@@ -24,7 +24,7 @@ nie izoluje zapisów. Zacznij od nawigacji i odczytu. Formularze zapisujące dan
 w ramach udzielonego zlecenia na uzgodnionych rekordach testowych; gdy zakres nie jest jasny,
 wyjaśnij brak i kontynuuj niezależne sprawdzenia bez zapisów. Nie proś ponownie o już udzieloną zgodę.
 Nie resetuj ani nie usuwaj wspólnych danych demo. Próbę na production wykonuj zgodnie z planem
-zespołu zapisanym w SPEC i AGENTS.md. Chronione preview może wymagać dostępu członka zespołu.
+zespołu zapisanym w wymaganiach i AGENTS.md. Chronione preview może wymagać dostępu członka zespołu.
 
 ## Przebieg
 
@@ -45,4 +45,4 @@ Zwróć po polsku krótki raport: URL, sprawdzona wersja/commit (lub brak tej in
 ekranu, wykonane kroki i wynik, błędy z reprodukcją oraz niewykonane kontrole.
 Brak bazowych zrzutów oznacza brak potwierdzenia regresji wizualnej, nie blokuje samego sprawdzenia UI.
 Nie raportuj Core Web Vitals bez pomiaru i nie przedstawiaj pojedynczej próby jako danych użytkowników.
-Rozróżnij gotowość sprawdzonej ścieżki od pełnego warunku ukończenia z SPEC: check, CI, recenzja i demo.
+Rozróżnij gotowość sprawdzonej ścieżki od pełnego warunku ukończenia z wymagań: check, CI, recenzja i demo.

@@ -1,7 +1,7 @@
 # Architektura warstwy kontroli
 
 Status: **kontrakt kierunkowy**, bez decyzji o konkretnym gatewayu, bazie, dostawcy modelu
-czy formacie polityki. Obowiązkowe zdolności wyzwania są w [SPEC](../SPEC.md).
+czy formacie polityki. Obowiązkowe zdolności wyzwania są w [wymaganiach](requirements.md).
 Obecne repozytorium jest szkieletem Next.js/Supabase; opisany przepływ nie jest jeszcze zaimplementowany.
 
 ## CORE PRODUCT i REFERENCE DEMO
@@ -106,4 +106,4 @@ Nie dodajemy Kubernetes, Kafki, kolejek rozproszonych, wielu frameworków agento
 vector DB, blockchaina, własnej platformy logowania, pełnej automatyzacji bankowej,
 Excela/PowerPointa ani infrastruktury enterprise bez konkretnego wymagania.
 Priorytetem są działająca kontrola, mały narzut, konfiguracja, audyt i testowalność.
-Otwarte decyzje są w [SPEC](../SPEC.md#open-questions); nie należy ich domykać przy okazji małych zmian.
+Otwarte decyzje są w [wymaganiach](requirements.md#open-questions); nie należy ich domykać przy okazji małych zmian.

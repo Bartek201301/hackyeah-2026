@@ -1,9 +1,9 @@
-# SPEC — wyzwanie AI Control Layer
+# Wymagania wyzwania AI Control Layer
 
 Status: **wyzwanie wybrane, zakres implementacji i przydział pracy otwarte**. Źródłem wymagań
 jest oficjalny, czterostronicowy opis zadania HackYeah / Goldman Sachs „AI Control Layer”
 przekazany zespołowi 3 października 2026. [Strona z zadaniami HackYeah](https://hackyeah.pl/tasks-prizes).
-Koncepcja rozwiązania i stan rezultatów są w [opisie pomysłu](docs/IDEA.md).
+Koncepcja rozwiązania i stan rezultatów są w [opisie pomysłu](idea.md).
 Postęp implementacji zapisujemy w PR; ten dokument utrzymuje integrator po uzgodnieniu z zespołem.
 
 ## 1. Cel i granica produktu
@@ -12,7 +12,7 @@ Budujemy lekką, elastyczną **warstwę kontroli** pośredniczącą między apli
 LLM, klientami/serwerami MCP, narzędziami, API oraz danymi. Może przyjąć postać gatewaya,
 proxy, middleware, wrappera SDK lub równoważnego pośrednika. Musi chronić także komunikację
 agent–agent i żądane przez agentów działania. Przepływ i niezmienniki opisuje
-[architektura](docs/ARCHITECTURE.md).
+[architektura](architecture.md).
 
 Aplikacja bankowości inwestycyjnej, inbox, symulacja Excela/PowerPointa lub inny workflow
 mogą służyć jako **demo referencyjne**. Nie są zależnością rdzenia ani celem samym w sobie.

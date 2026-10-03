@@ -5,7 +5,7 @@ description: "Przegląd migracji, zapytań PostgreSQL i polityk Supabase RLS w H
 
 # Przegląd bazy HackYeah
 
-Przeczytaj `AGENTS.md`, `SPEC.md` i pliki objęte zadaniem. Pracuj w przydzielonym zakresie.
+Przeczytaj `AGENTS.md`, `docs/product/requirements.md` i pliki objęte zadaniem. Pracuj w przydzielonym zakresie.
 Jeśli zlecono przegląd, zwróć ustalenia; poprawki wykonuj tylko w zakresie zleconej implementacji.
 Gdy kontrakty lub sposób dostępu nadal są nieuzgodnione, zgłoś tę zależność zamiast wymyślać domenę.
 

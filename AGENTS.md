@@ -10,8 +10,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Zasady zespołu — wspólne dla Codex, Claude i pracy ręcznej
 
-Czytaj ten plik, SPEC.md i odpowiednią część docs/ARCHITECTURE.md przed pracą.
-SPEC opisuje wymagania wyzwania, architektura — niezmienniki i otwarte decyzje.
+Czytaj ten plik, docs/product/requirements.md i odpowiednią część docs/product/architecture.md przed pracą.
+Wymagania opisują wyzwanie, architektura — niezmienniki i otwarte decyzje.
 Kod po angielsku, dokumentacja i UI po polsku.
 Nie deklaruj „działa” bez uruchomionych kontroli. Build nie potwierdza działania bazy ani demo.
 
@@ -32,7 +32,7 @@ Laya to możliwa implementacja oceny, nie obowiązkowy element produktu.
 - Integrator: src/shared/**, src/app/**, supabase/**, zależności i lockfile, scripts/**,
   konfiguracja, dokumentacja, CI, scalenia i publikacja. Te zmiany też powstają na krótkich gałęziach i PR.
 - Builder A / B / C: każdy ma jeden uzgodniony katalog src/features/<nazwa>/**, wraz z testami
-  i prywatnymi typami. Nazwiska, loginy i katalogi przypisujemy w SPEC po wyborze zadania.
+  i prywatnymi typami. Nazwiska, loginy i katalogi przypisujemy w docs/product/requirements.md.
 - Jeśli rola lub zakres nie są znane, ustal je przed edycją. Jawne zlecenie człowieka na zmianę
   konfiguracji lub wspólnego kodu upoważnia do wykonania tego zakresu jako integrator.
 - Jedna osoba/agent edytuje dany zakres w danej chwili. Dodatkowe równoległe sesje potrzebują
@@ -45,7 +45,8 @@ Laya to możliwa implementacja oceny, nie obowiązkowy element produktu.
   Po dwóch nieudanych próbach tego samego problemu zatrzymaj się i opisz blokadę oraz alternatywy.
 - Pracuj wyłącznie nad zleconym zadaniem. Przeczytaj istniejące kontrakty i użyj ich;
   nie dodawaj zależności ani frameworków bez potrzeby, nie przebudowuj architektury przy małej zmianie.
-  Problem poza zakresem zapisz w SPEC/DECYZJE albo PR i kontynuuj bieżące zadanie.
+  Problem poza zakresem zapisz w docs/product/requirements.md, docs/team/decisions.md albo PR
+  i kontynuuj bieżące zadanie.
 - Nie zmieniaj po cichu wspólnych kontraktów, nie obchodź silnika polityki, nie osłabiaj kontroli
   dla demo i nie koduj znanych promptów sędziów jako wyjątków. Wybieraj działający pionowy wycinek.
   Zachowuj testy, audyt i telemetrię; oddziel fakty deterministyczne od ocen semantycznych.
@@ -95,7 +96,7 @@ Przy przeglądzie SQL/RLS używaj `hackyeah-db-review`, przy zmianach dostępu, 
 i integracji `hackyeah-security-review`, a przy sprawdzaniu UI/demo `hackyeah-browser-qa`.
 Źródło instrukcji: `.agents/skills/<nazwa>/SKILL.md`; Claude Code ma wejścia w `.claude/skills/`.
 Pozostałe narzędzia mogą czytać te same pliki wprost. Używaj tylko skilla pasującego do zadania.
-Skille rozwijają te zasady i SPEC; przykłady ECC nie zmieniają kontraktów, własności ani wymaganych kontroli.
+Skille rozwijają te zasady i wymagania; przykłady ECC nie zmieniają kontraktów, własności ani wymaganych kontroli.
 Przed użyciem kodu Next.js sprawdź dokumentację zainstalowanej wersji. Przegląd nie upoważnia
 do wykonania migracji, resetu danych ani instalacji dodatkowych narzędzi.
 Instrukcja dla zespołu, wersja i aktualizacja: [docs/ai/ecc/README.md](docs/ai/ecc/README.md).
@@ -113,6 +114,6 @@ Klucze i .env.local nie trafiają do Git. Publikowalny klucz nie zastępuje poli
 
 ## Gotowe oznacza
 
-Zielone npm run check i CI, akceptacja kolegi, spełnione kryteria SPEC oraz sprawdzona ścieżka
+Zielone npm run check i CI, akceptacja kolegi, spełnione kryteria wymagań oraz sprawdzona ścieżka
 użytkownika na preview. Demo musi zostać sprawdzone także na production. Brak dostępu, zależności
 lub sprawdzenia zgłoś wprost — nie zastępuj dowodu założeniem.

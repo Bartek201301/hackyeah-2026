@@ -35,7 +35,7 @@ Dotychczasowy hook formatowania i kontrole projektu pozostają obowiązujące.
 
 ## Zasady użycia
 
-Źródłem zasad zespołu są [AGENTS.md](../../../AGENTS.md) i [SPEC.md](../../../SPEC.md).
+Źródłem zasad zespołu są [AGENTS.md](../../../AGENTS.md) i [wymagania](../../product/requirements.md).
 Przegląd korzysta tylko z fragmentów ECC istotnych dla naszego zadania. Przykładowe
 pakiety, schematy SQL, komendy i odnośniki do agentów w materiałach upstream nie
 oznaczają, że te narzędzia są zainstalowane lub że mamy je dodać. Względne linki

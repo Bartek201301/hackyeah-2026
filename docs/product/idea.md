@@ -19,7 +19,7 @@ asystenta dokumentów lub demo bankowe.
 
 | Wymaganie / rezultat                      | Planowany sposób spełnienia i dowód dla sędziów                                                                                                                                                         |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Funkcjonalna, łatwa do integracji warstwa | Jeden punkt przechwycenia żądań i działań oraz adapter do agenta/klienta; prosta ścieżka dozwolona i blokowana, diagram w [architekturze](ARCHITECTURE.md).                                             |
+| Funkcjonalna, łatwa do integracji warstwa | Jeden punkt przechwycenia żądań i działań oraz adapter do agenta/klienta; prosta ścieżka dozwolona i blokowana, diagram w [architekturze](architecture.md).                                             |
 | Centralny silnik polityki                 | Jeden edytowalny plik lub równoważne źródło z aktywnymi kontrolami, progami, dozwolonymi modelami/narzędziami, rolami i budżetami. Zmiana konfiguracji ma zmienić werdykt przewidywalnie.               |
 | Hybrydowe zabezpieczenia                  | Deterministyczne sprawdzenia tożsamości, dostępu, pamięci, PII/sekretów, limitów i sygnatur wraz z wymienną oceną semantyczną prompt injection, eksfiltracji i ryzyka działań; filtr wejścia i wyjścia. |
 | Budżety i zasoby                          | Limity tokenów, kosztu API, żądań, czasu/compute i pętli agenta; blokada, ograniczenie lub routing przy wyczerpaniu. Uwzględniamy modele lokalne i komercyjne.                                          |
@@ -38,4 +38,4 @@ w dashboardzie oraz eksporcie audytu. Diagram i wymagania są już opisane w rep
 jeszcze zaimplementowane.** Ich braków nie zastępuje skrypt prezentacyjny.
 
 Nazwa produktu, domena demo, dostawca semantyczny, format polityki i topologia pozostają
-otwarte. Szczegółowe wymagania oraz wagi oceny są w [SPEC](../SPEC.md).
+otwarte. Szczegółowe wymagania oraz wagi oceny są w [wymaganiach](requirements.md).

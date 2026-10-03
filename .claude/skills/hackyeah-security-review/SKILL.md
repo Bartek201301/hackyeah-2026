@@ -8,4 +8,4 @@ description: "Przegląd bezpieczeństwa funkcji HackYeah 2026: walidacja wejści
 Przeczytaj i zastosuj [wspólną instrukcję projektu](../../../.agents/skills/hackyeah-security-review/SKILL.md).
 Ścieżka od korzenia repozytorium: `.agents/skills/hackyeah-security-review/SKILL.md`.
 To jest wejście Claude Code do tego samego skilla, którego używa Codex.
-Zasady projektu znajdują się w `AGENTS.md` i `SPEC.md`.
+Zasady projektu znajdują się w `AGENTS.md` i `docs/product/requirements.md`.

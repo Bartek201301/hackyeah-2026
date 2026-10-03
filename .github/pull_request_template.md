@@ -1,6 +1,6 @@
 ## Co zmienia się dla użytkownika?
 
-<!-- Krótki opis i odniesienie do historyjki ze SPEC. -->
+<!-- Krótki opis i odniesienie do historyjki z docs/product/requirements.md. -->
 
 ## Właściciel i zakres
 

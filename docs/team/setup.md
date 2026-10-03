@@ -1,7 +1,7 @@
 # Konfiguracja zespołu i usług
 
 Repo: https://github.com/Bartek201301/hackyeah-2026. Projekt publiczny; środowisko lokalne poza Git.
-Zasady: AGENTS.md. Zadanie i przypisania: SPEC.md. Nie zakładamy, że usługi już działają.
+Zasady: AGENTS.md. Zadanie i przypisania: docs/product/requirements.md. Nie zakładamy, że usługi już działają.
 
 ## 1. Każdy z czterech komputerów
 
@@ -22,7 +22,7 @@ Zasady: AGENTS.md. Zadanie i przypisania: SPEC.md. Nie zakładamy, że usługi j
 | Builder C                             | Oczekuje       | Oczekuje  | Oczekuje         |
 
 Wyniki zbiera integrator; nikt nie potwierdza za inną osobę. Asystent może być Codex lub Claude;
-oba czytają AGENTS.md i SPEC.md. Hook Claude to wygoda, format:check to wspólna kontrola.
+oba czytają AGENTS.md i docs/product/requirements.md. Hook Claude to wygoda, format:check to wspólna kontrola.
 
 ## 2. GitHub — właściciel repo i integrator
 
@@ -59,7 +59,7 @@ Integrator sprawdza i wykonuje istniejącą migrację health_check, a potem uruc
 Każda kolejna migracja: uzgodnienie kontraktu → commit i przegląd PR → wykonanie zapisanej migracji
 w SQL Editor → sprawdzenie wyniku → wpis do supabase/APPLIED.md → scalenie zależnego kodu.
 Nie stosujemy automatycznych migracji z gałęzi. Zastosowane pliki są niezmienne; poprawki to nowe migracje.
-Szablon SQL ma RLS i brak dostępu domyślnego. Polityki oraz granty muszą odpowiadać uzgodnionemu SPEC.
+Szablon SQL ma RLS i brak dostępu domyślnego. Polityki oraz granty muszą odpowiadać uzgodnionym wymaganiom.
 
 Dane demo: stałe ID i UPSERT bez duplikatów. Resety wyłącznie po uzgodnieniu z całym zespołem.
 Przed próbą i prezentacją zatrzymaj zapisy testowe. Cofnięcie wdrożenia nie cofa migracji.
@@ -80,10 +80,10 @@ CI nie korzysta z bazy; zielone CI nie jest potwierdzeniem zdrowia wdrożenia.
 
 ## 5. Po wyborze wyzwania AI Control Layer
 
-1. SPEC zawiera wagi i rezultaty z oficjalnego opisu wyzwania, ale nie przypisuje
+1. Wymagania zawierają wagi i rezultaty z oficjalnego opisu wyzwania, ale nie przypisują
    na siłę trzech funkcji builderom. Uzgodnij ludzi, pionowe wycinki i demo do 3 minut.
 2. Uzgodnij minimalne wspólne typy interakcji, polityki, decyzji, audytu i budżetu oraz dostęp
-   do danych przed zależnym kodem. Zachowaj niezmienniki z docs/ARCHITECTURE.md.
+   do danych przed zależnym kodem. Zachowaj niezmienniki z docs/product/architecture.md.
 3. Integrator na krótkiej gałęzi przygotowuje potrzebne kontrakty, migracje, trasy i nawigację;
    `npm run new-feature <nazwa>` służy tylko uzgodnionym funkcjom.
 4. Pełny check, koleżeńska recenzja, potrzebne kompatybilne migracje, merge fundamentu.

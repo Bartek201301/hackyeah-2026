@@ -4,11 +4,13 @@ export function validateSupabaseConfig(rawUrl, rawKey) {
   const url = rawUrl?.trim().replace(/\/$/, "") ?? "";
   const key = rawKey?.trim() ?? "";
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL: wpisz https://<id>.supabase.co w .env.local (SETUP-ME.md).");
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL: wpisz https://<id>.supabase.co w .env.local (docs/team/setup.md).",
+    );
   }
   if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) {
     throw new Error(
-      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: wymagany sb_publishable_...; klucze secret i legacy JWT są niedozwolone. Sprawdź SETUP-ME.md.",
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: wymagany sb_publishable_...; klucze secret i legacy JWT są niedozwolone. Sprawdź docs/team/setup.md.",
     );
   }
   return { url, key };

@@ -16,7 +16,7 @@ export async function runHealthChecks(): Promise<HealthCheck[]> {
       {
         name: "Zmienne środowiskowe",
         ok: false,
-        detail: error instanceof Error ? error.message : "Sprawdź SETUP-ME.md.",
+        detail: error instanceof Error ? error.message : "Sprawdź docs/team/setup.md.",
       },
     ];
   }

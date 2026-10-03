@@ -8,4 +8,4 @@ description: "Przegląd migracji, zapytań PostgreSQL i polityk Supabase RLS w H
 Przeczytaj i zastosuj [wspólną instrukcję projektu](../../../.agents/skills/hackyeah-db-review/SKILL.md).
 Ścieżka od korzenia repozytorium: `.agents/skills/hackyeah-db-review/SKILL.md`.
 To jest wejście Claude Code do tego samego skilla, którego używa Codex.
-Zasady projektu znajdują się w `AGENTS.md` i `SPEC.md`.
+Zasady projektu znajdują się w `AGENTS.md` i `docs/product/requirements.md`.

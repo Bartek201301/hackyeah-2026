@@ -11,11 +11,11 @@ Trzech builderów, jeden integrator; podział funkcji pozostaje do uzgodnienia.
 4. `npm run doctor`, następnie `npm run dev` i http://localhost:3000/health.
 
 - Zasady dla wszystkich narzędzi: [AGENTS.md](AGENTS.md).
-- Zadanie, podział funkcji i kontrakty: [SPEC.md](SPEC.md).
-- Opis pomysłu i mapa wymagań: [docs/IDEA.md](docs/IDEA.md).
-- Przepływ, niezmienniki i otwarte granice: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-- Konfiguracja usług i potwierdzenia zespołu: [SETUP-ME.md](SETUP-ME.md).
-- Uzasadnienie: [DECYZJE.md](DECYZJE.md).
+- Zadanie, podział funkcji i kontrakty: [wymagania](docs/product/requirements.md).
+- Opis pomysłu i mapa wymagań: [idea](docs/product/idea.md).
+- Przepływ, niezmienniki i otwarte granice: [architektura](docs/product/architecture.md).
+- Konfiguracja usług i potwierdzenia zespołu: [setup](docs/team/setup.md).
+- Uzasadnienie: [decyzje](docs/team/decisions.md).
 - Wspólne skille AI: [instrukcja ECC](docs/ai/ecc/README.md) — przegląd bazy,
   bezpieczeństwa i demo w przeglądarce. Codex i Claude Code dostają je razem z repo;
   instalacja globalnego pluginu nie jest potrzebna.

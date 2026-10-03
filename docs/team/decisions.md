@@ -3,7 +3,7 @@
 Cztery osoby: trzy budują osobne funkcje, integrator utrzymuje wspólny fundament i scala.
 Wyzwaniem jest AI Control Layer. Next.js App Router, Supabase i Vercel to obecny szkielet
 repozytorium, nie wymóg narzucający postać pośrednika lub trwałą zależność od bazy.
-Wymagania są w SPEC.md, a niezmienniki w docs/ARCHITECTURE.md.
+Wymagania są w docs/product/requirements.md, a niezmienniki w docs/product/architecture.md.
 
 1. **Własność zamiast równoczesnych edycji.** Każdy builder ma jeden feature; shared, app,
    migracje, zależności i konfiguracja należą do integratora. Wspólne zmiany też przechodzą PR.

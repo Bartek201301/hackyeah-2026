@@ -5,10 +5,11 @@ description: "Przegląd bezpieczeństwa funkcji HackYeah 2026: walidacja wejści
 
 # Przegląd bezpieczeństwa HackYeah
 
-Przeczytaj `AGENTS.md`, `SPEC.md`, odpowiednią część `docs/ARCHITECTURE.md` i pliki objęte zadaniem.
+Przeczytaj `AGENTS.md`, `docs/product/requirements.md`, odpowiednią część
+`docs/product/architecture.md` i pliki objęte zadaniem.
 Pracuj w przydzielonym zakresie.
 Jeśli zlecono przegląd, zwróć ustalenia; poprawki wykonuj tylko w zakresie zleconej implementacji.
-Brak decyzji o logowaniu lub dostępie w SPEC jest otwartym kontraktem, a nie zgodą na otwarty zapis.
+Brak decyzji o logowaniu lub dostępie w wymaganiach jest otwartym kontraktem, a nie zgodą na otwarty zapis.
 
 ## Materiał ECC
 
