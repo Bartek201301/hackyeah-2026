@@ -4,11 +4,9 @@ Researched 3 October 2026. Audience: Maciej, Bartosz and Julian. This register t
 
 ## Actual merge state and available interfaces
 
-After a successful fetch, main was `8c1484b`: G0 is merged, G1 is not. The main tree still contains the starter `src/shared/types.ts` and example feature, without DetectionPort or GenerationPort. Their current authoritative design is [protocols.md](../../../docs/contracts/protocols.md).
+Initial research saw main `8c1484b` before G1. On the 3 October refresh, `origin/main` was `dd9211a`; G1 was merged as `f04054b`, and T02 session/core-schema/RPC changes had also merged. The isolated `codex/maciej-detection-research` worktree merged this main without changing Julian's active checkout. The current `src/shared/contracts/index.ts` exports the documented `DetectionPort` and `GenerationPort`, OpenAPI aliases, validators and typed client. `src/features/detection/index.ts` remains an empty entry point: `createDetectionPort` and `createGenerationPort` are comments, not callable exports. Import the merged types, never duplicate them.
 
-Unmerged G1 `0773c59a8b61c39284b507294b0247d03a6d6a43` contains `src/shared/contracts/index.ts`, schema-derived OpenAPI aliases, validators, typed client, runtime manifest and `src/features/detection/index.ts`. The ports match the documented parse/assess/generate shapes. The feature entry point is empty, with comments proposing `createDetectionPort` and `createGenerationPort`; these are not callable exports yet. Checkpoint revision, qwen digest and verified timestamp are null. Proposed Vitest and contract tooling are not merged scripts on the research baseline.
-
-Do not import a local duplicate of those types. After G1 merges, Maciej must inspect the merge SHA, exact exports and failure conventions and work through the feature index for Bartosz's composition boundary. Research and independent preparation can continue before then.
+The current runtime manifest still has null `laya_checkpoint_revision`, `ollama_model_digest` and `verified_at`, despite the live local evidence in [readiness](../model-readiness/laya-ollama.md). `package.json` has no CSV/PDF parser dependency or Python environment lock. `src/app/api/v1/[...path]/route.ts` still returns the shared 503 unavailable response; T03 composition and the first integrated request have not landed. T02 migrations are recorded as applied in `supabase/APPLIED.md`, but Builder B should not mutate that shared project or treat database presence as a completed gateway.
 
 ## Findings and recommendations
 
@@ -28,7 +26,13 @@ Severity here describes implementation risk if a gap is ignored; it is not a cla
 | D10 / high    | Semantic protocol excludes secrets, while full mixed-input scanning can include synthetic credential-bearing content; provider mask-token replacement also changes the scanned view.                                                       | **Bartosz + Maciej:** clarify permitted assessment content, deterministic short-circuit behavior and explicit transformed-view provenance. Never claim original complete coverage after undocumented redaction.                                                              | AT04/S05: scanned content/hash contract precise; operational credentials never enter prompts/logs.      |
 | D11 / medium  | Neutral tool calls require IDs; provider examples may omit them. GenerationResult has finished but no typed finish reason.                                                                                                                 | **Maciej + Bartosz:** recommend stable call-ID/index tool IDs with replay consistency; define mapping of output-cap stop versus valid completion and tool-result association.                                                                                                | G2/AT07: real tool round trip, bounded output, truncated answers withheld.                              |
 
-These are findings from static contracts and pinned provider source, not measured provider failures. D01 and D06 have direct upstream evidence. D02–D05/D08/D10/D11 require shared design clarification. D07 requires label review. D09 requires a capability spike, not an assertion that PDF.js is inherently unsuitable.
+These are findings from contracts and pinned provider source, now supplemented by one live model smoke. D01 has observed aggregate input usage; D06 has observed failed standalone pin and successful bundled readiness. D02–D05/D08/D10/D11 require shared design clarification. D07 requires label review. D09 requires a capability spike, not an assertion that PDF.js is inherently unsuitable.
+
+## Safe continuation on refreshed main
+
+Builder B can continue within `src/features/detection/**` against the merged ports: implement strict provider request/response mapping and its owned tests, preserve actual usage and incomplete/failure states, and keep all model calls on loopback behind the future protected bridge. The fixed question serializer, score/usage validators, deterministic normalization and bounded admission/ledger test cases can be developed without modifying shared code. The live Laya/Ollama smoke establishes the initial provider capability, not bridge or gateway readiness.
+
+Before a connected G2 request, Bartosz must lock the Python/Node dependencies, map the project's Laya revision setting to the bundled repository pin, record the Qwen digest in the owned runtime manifest, and resolve D01 (reservation units) plus the bridge's trusted config, recovery and cancellation contract (D04–D05). D02–D03 need agreed shared metadata/feed delivery before parser output or deterministic findings are wired into ingestion. PDF parser dependency and compatibility need Bartosz's approval. Do not publish the Mac's raw Laya/Ollama ports or expose a bridge tunnel before its bearer, fixed routes, bounds and durable call ledger work. Do not use smoke scores for approval, run held-out calibration early, or claim G2 while the gateway route is a 503 seam.
 
 ## Manual first-delivery handoff
 
@@ -37,7 +41,7 @@ Prepare this for Bartosz after actual readiness checks; do not replace pending e
 ```text
 Handoff: T04 / first G2 model adapters
 Ready commit/PR: pending implementation
-Public exports: pending merged G1 and implemented factory exports
+Public exports: merged DetectionPort/GenerationPort types; factory exports pending implementation
 Inputs/outputs: merged shared ports, agreed failure/reconciliation contract
 Checks actually run: report commands, exit codes and artifact locations
 Real services: loaded Laya revision/device and actual Ollama digest
@@ -46,7 +50,7 @@ Still unavailable: all capabilities without corresponding evidence
 Unblocks: Bartosz's real gateway slice only when live checks pass
 ```
 
-Julian's coordination note should request the runtime/cache locations, secure Mac access/availability, awake/power/network arrangements and tunnel ownership. The user has confirmed this Mac is the host, but no external connection or service availability is inferred. Bartosz's note should request G1 merge/export handoff, dependencies/locks, environment mappings and decisions D01–D11. No teammate messages were sent automatically.
+Julian operates the model host in this thread and has confirmed loopback health and bounded model smokes. Mac uptime/power/network arrangements and protected tunnel ownership remain operational handoffs, with no external connection inferred. Bartosz's note should request dependency locks, runtime-manifest/environment mappings and decisions D01–D11; G1 itself is merged. No teammate messages were sent automatically.
 
 ## Research completion versus runtime completion
 
@@ -70,4 +74,8 @@ Completed on 3 October 2026 in an isolated `codex/maciej-detection-research` wor
 
 The isolated worktree reused the existing starter node_modules through an ignored symlink; no package installation or manifest/lock change occurred. Build output/type-generation caches are not research deliverables. No application code, canonical contracts or datasets were edited.
 
-Not run: a production build for these documentation-only changes, remote CI, peer review, preview or rehearsal, and all live semantic, generation, parser, bridge, database, browser, held-out and performance tests. Green research checks do not claim any of those gates passed.
+At the initial research commit, production build, remote CI, peer review, preview, rehearsal and all live model/parser/bridge/database/browser/evaluation/performance tests were not run. Later local model smokes are recorded in readiness; they do not complete the other gates.
+
+### Latest-main refresh verification
+
+On 3 October 2026, fetched `origin/main` at `dd9211a` and merged it into the clean isolated research branch. The merged branch's `npm run check:fast` passed formatting, contract type generation, TypeScript, ESLint, module rules, 12 tooling tests and 130 Vitest tests. `npm run check` reached the production build, which failed in the inspection worktree because its ignored `node_modules` symlink points outside Turbopack's filesystem root. A clean `origin/main` archive with `npm ci --offline` reproduced the build attempt without that symlink; Turbopack then failed because this tool sandbox denied a helper process binding a local port. A second attempt with elevated execution returned the same port denial, so this path stopped under the repository's two-attempt rule. These are local validation-environment failures, not a proven source build defect or a green build. No DB test, remote CI or gateway integration test was run during this refresh.
