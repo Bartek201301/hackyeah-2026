@@ -85,6 +85,8 @@ export function serializeOllama(input: GenerationInput) {
       if (message.role === "tool") {
         requireValue(message.tool_calls === undefined);
         toolId(message.tool_call_id);
+        // Ollama receives tool_name; require original call order so repeated names stay associated.
+        requireValue(pending.keys().next().value === message.tool_call_id);
         const name = pending.get(message.tool_call_id);
         requireValue(name);
         pending.delete(message.tool_call_id);

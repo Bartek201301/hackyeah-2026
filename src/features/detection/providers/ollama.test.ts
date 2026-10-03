@@ -201,3 +201,28 @@ it("rejects null tool-call list rather than treating it as an empty proposal", (
   const raw = { ...ollamaFixture(), message: { role: "assistant", content: "text", tool_calls: null } };
   expect(() => parseOllama(raw, generationInput(), QWEN_DIGEST)).toThrow("invalid_response");
 });
+
+it("rejects reordered results for repeated tool names before ambiguous wire association", () => {
+  const input = generationInput();
+  input.tools = registeredTools();
+  input.messages = [
+    ...input.messages,
+    {
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        { id: "first", name: "search_excerpts", arguments: { query: "one" } },
+        { id: "second", name: "search_excerpts", arguments: { query: "two" } },
+      ],
+    },
+    { role: "tool", content: "second result", tool_call_id: "second" },
+    { role: "tool", content: "first result", tool_call_id: "first" },
+  ];
+  expect(() => serializeOllama(input)).toThrow("invalid_input");
+  input.messages = [...input.messages.slice(0, 2), input.messages[3], input.messages[2]];
+  expect(serializeOllama(input).messages.at(-1)).toEqual({
+    role: "tool",
+    tool_name: "search_excerpts",
+    content: "second result",
+  });
+});
