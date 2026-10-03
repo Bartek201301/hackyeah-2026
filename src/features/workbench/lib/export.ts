@@ -42,9 +42,15 @@ export type ExportReady = { downloadPath: string; expiresAt: string };
  * protocols.md: "Download path is an authenticated gateway path, not a public Storage URL." A
  * leading `//` is protocol-relative and would leave the origin, so it is refused along with any
  * absolute URL.
+ *
+ * `/\\host` is refused for the same reason: browsers normalise a backslash to a forward slash when
+ * resolving a URL, so it resolves exactly like `//host` and leaves the origin while still passing a
+ * naive "starts with a single slash" check.
  */
 export function isGatewayDownloadPath(value: unknown): value is string {
-  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
+  if (typeof value !== "string" || !value.startsWith("/")) return false;
+  const separator = value[1];
+  return separator !== "/" && separator !== "\\";
 }
 
 /** Narrow a completed export payload. Rejects a chat answer, a review or an off-origin link. */

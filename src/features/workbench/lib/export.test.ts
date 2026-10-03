@@ -48,6 +48,9 @@ describe("isGatewayDownloadPath", () => {
     // A public Storage URL is exactly what protocols.md forbids here.
     expect(isGatewayDownloadPath("https://storage.example.com/bucket/file.pdf")).toBe(false);
     expect(isGatewayDownloadPath("//evil.example.com/file.pdf")).toBe(false);
+    // A browser resolves a backslash like a slash, so this leaves the origin exactly as "//" does.
+    expect(isGatewayDownloadPath("/\\evil.example.com/file.pdf")).toBe(false);
+    expect(isGatewayDownloadPath("/\\")).toBe(false);
     expect(isGatewayDownloadPath("javascript:alert(1)")).toBe(false);
     expect(isGatewayDownloadPath("exports/abc/download")).toBe(false);
     expect(isGatewayDownloadPath(null)).toBe(false);
