@@ -84,6 +84,10 @@ Public signup is disabled in the dashboard (Authentication → Sign In / Provide
 
 T02 introduces `npm run demo:seed`; it inserts source metadata and raw synthetic fixtures idempotently and must not approve content by bypassing the gateway. T11 runs genuine ingestion to prepare approved fixtures. Demo resets are a separate explicit coordinated action, never a side effect of dev/build/test. No real financial or personal data.
 
+## Connector import (T05)
+
+`POST /api/v1/imports/connector` (`{source_id, batch_id}`) is admin-only: any other role gets 403 before any write; an unknown, foreign or empty batch gets one 404. It answers 202 with an `import` run; `POST /runs/{id}/execute` assesses every non-blank line of every row as one unit (feed signatures, then one Laya call, then policy) and publishes atomically through `finalize_import`: all clean → `approved`/ALLOW, clean plus removed units → `partial`/REDACT, any held unit → `review`/REVIEW (candidate excerpt plus review request), nothing publishable → `blocked`/BLOCK (200, not 403). Unverified audience evidence below restricted always goes to review. Any service failure publishes nothing. A source with an approved or partial document refuses re-import with 409.
+
 ## Hosting and first vertical slice
 
 1. T01/T02 configure server secrets on preview and production; no browser bundling.
