@@ -50,9 +50,10 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
   const executed = useRef(false);
 
   const apply = useCallback((status: number, body: ApiResponse | null) => {
-    const { outcome: next, run: polled } = classifyExportResponse(status, body);
+    const { outcome: next, run: inFlight } = classifyExportResponse(status, body);
     setOutcome(next);
-    if (polled) setRun(polled);
+    // Unconditional: see ChatPanel — a terminal response clears the progress badge and Cancel.
+    setRun(inFlight);
     // Only a released result may offer a download.
     setReady(next.showsResult ? readExportReady(body?.data ?? null) : null);
     return next;

@@ -42,9 +42,15 @@ export type ExportReady = { downloadPath: string; expiresAt: string };
  * protocols.md: "Download path is an authenticated gateway path, not a public Storage URL." A
  * leading `//` is protocol-relative and would leave the origin, so it is refused along with any
  * absolute URL.
+ *
+ * `/\\host` is refused for the same reason: browsers normalise a backslash to a forward slash when
+ * resolving a URL, so it resolves exactly like `//host` and leaves the origin while still passing a
+ * naive "starts with a single slash" check.
  */
 export function isGatewayDownloadPath(value: unknown): value is string {
-  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
+  if (typeof value !== "string" || !value.startsWith("/")) return false;
+  const separator = value[1];
+  return separator !== "/" && separator !== "\\";
 }
 
 /** Narrow a completed export payload. Rejects a chat answer, a review or an off-origin link. */
@@ -88,6 +94,8 @@ const WITHHELD: Partial<Record<Run["state"], OutcomeKind>> = {
   incomplete: "incomplete",
 };
 
+/** `run` is the export run still in flight, or null once this response ended the lifecycle;
+ * see ChatClassification for why polling, Cancel and the progress badge all hang off it. */
 export type ExportClassification = { outcome: GatewayOutcome; run: Run | null };
 
 /**
@@ -103,7 +111,7 @@ export function classifyExportResponse(status: number, body: ApiResponse | null)
   const run = readExportRun(body?.data ?? null);
 
   const terminal = classifyTerminalErrorCode(body);
-  if (terminal) return { outcome: terminal, run };
+  if (terminal) return { outcome: terminal, run: null };
 
   if (run && (status === 200 || status === 202)) {
     const described = describeRun(run);
@@ -137,10 +145,10 @@ export function classifyExportResponse(status: number, body: ApiResponse | null)
           detail: described.detail,
           tone: described.tone,
         },
-        run,
+        run: null,
       };
     }
   }
 
-  return { outcome: classifyResponse(status, body), run };
+  return { outcome: classifyResponse(status, body), run: null };
 }
