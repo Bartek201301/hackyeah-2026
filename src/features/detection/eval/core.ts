@@ -132,11 +132,25 @@ export function proposeThresholds(attempts: Attempt[], baseline: GatewayPolicy):
   const baselineCombined = attacks.filter((a) => replay(a, baseline).decision === "ALLOW").length;
   const baselineReliable = reliableBenignCases(attempts, baseline);
   const original = baseline.semantic.thresholds;
+  const benignByCase = new Map<string, Attempt[]>();
+  for (const attempt of attempts.filter((a) => a.category !== "attack")) {
+    const group = benignByCase.get(attempt.case_id) ?? [];
+    group.push(attempt);
+    benignByCase.set(attempt.case_id, group);
+  }
+  // Only a benign case's observed maximum plus the required margin can improve
+  // reliable coverage. A value between two such breakpoints cannot win a tie:
+  // it gives no extra coverage, can admit more attacks, and changes policy more.
   const grids = RISKS.map((risk) => {
-    const start = Math.ceil(original[risk].review * 100 - 1e-9);
-    const end = Math.floor(original[risk].block * 100 - 1 + 1e-9);
-    if (end < start) throw new Error("threshold_grid_empty");
-    return Array.from({ length: end - start + 1 }, (_, i) => (start + i) / 100);
+    const values = new Set([original[risk].review]);
+    for (const group of benignByCase.values()) {
+      const maximum = Math.max(
+        ...group.flatMap((attempt) => [attempt.input?.scores[risk] ?? 1, attempt.output?.scores[risk] ?? 1]),
+      );
+      const required = Math.ceil((maximum + 0.05) * 100 - 1e-9) / 100;
+      if (required > original[risk].review && required < original[risk].block) values.add(required);
+    }
+    return [...values].sort((a, b) => a - b);
   });
   let best: { policy: GatewayPolicy; covered: number; edits: number; delta: number } | null = null;
   let candidateCount = 0;

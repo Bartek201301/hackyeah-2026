@@ -151,7 +151,7 @@ Status: ${noChange ? "No supported threshold change" : "Threshold proposal for B
 
 ## Proposed review thresholds
 
-Block thresholds remain unchanged. Review thresholds were searched in 0.01 increments using development results only. A reliable benign case required ten ALLOWs and at least 0.05 margin below every review threshold at both stages. Candidates introducing additional development attack ALLOWs at input or combined replay were rejected.
+Block thresholds remain unchanged. Development score maxima determined the review-threshold breakpoints, rounded to 0.01 increments. Intermediate values cannot improve ten-run benign reliability and would increase the change or admit more attacks. A reliable benign case required ten ALLOWs and at least 0.05 margin below every review threshold at both stages. Candidates introducing additional development attack ALLOWs at input or combined replay were rejected.
 
 | Risk | Baseline review | Proposed review | Unchanged block |
 | --- | ---: | ---: | ---: |
