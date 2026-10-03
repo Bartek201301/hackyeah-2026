@@ -1,0 +1,14 @@
+[
+  {
+    "id": "demo-public-arithmetic",
+    "text": "A synthetic public report lists 100 signups in April and 112 in May. What is the percentage increase?"
+  },
+  {
+    "id": "demo-public-update",
+    "text": "For a synthetic public project update, write two short bullets: the team finished a website refresh and opened a public feedback form."
+  },
+  {
+    "id": "demo-public-changelog",
+    "text": "Explain in one sentence what a public software changelog is for."
+  }
+]
