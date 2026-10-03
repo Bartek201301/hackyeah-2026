@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { unstable_rethrow } from "next/navigation";
+import { getActor } from "@/shared/auth/actor";
+import type { ActorContext } from "@/shared/contracts";
 import { AppShell } from "@/shared/layout/AppShell";
 import { APP_NAME, nav } from "./nav";
 import "./globals.css";
@@ -11,11 +14,18 @@ export const metadata: Metadata = {
   description: APP_NAME,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Role is for display only; a failed lookup just hides it.
+  let role: ActorContext["role"] | undefined;
+  try {
+    role = (await getActor())?.role;
+  } catch (error) {
+    unstable_rethrow(error);
+  }
   return (
     <html lang="pl" className={geist.variable}>
       <body className="font-sans antialiased">
-        <AppShell appName={APP_NAME} nav={nav}>
+        <AppShell appName={APP_NAME} nav={nav} role={role}>
           {children}
         </AppShell>
       </body>
