@@ -24,6 +24,12 @@ type WorkbenchPageProps = {
    * hiding a link is presentation, never a control, and the gateway checks each call regardless.
    */
   role?: ActorContext["role"];
+  /**
+   * Deal ids the signed-in actor is assigned to, from the app page. Narrows scope on an upload; it
+   * cannot grant access. Labels are not available yet (`public.deals` is not readable by
+   * `authenticated`), so these render as identifiers until a server-side projection exists — B6.
+   */
+  dealIds?: readonly string[];
 };
 
 /* Review and export are not built: both wait on a contract decision, named here rather than
@@ -41,7 +47,7 @@ const WAITING: Record<"review" | "export", { title: string; description: string 
   },
 };
 
-export async function WorkbenchPage({ searchParams, role }: WorkbenchPageProps) {
+export async function WorkbenchPage({ searchParams, role, dealIds }: WorkbenchPageProps) {
   const params = (await searchParams) ?? {};
   const view = parseView(params.view);
 
@@ -53,7 +59,7 @@ export async function WorkbenchPage({ searchParams, role }: WorkbenchPageProps) 
       <WorkbenchNav active={view} showAdminViews={isAdmin} />
 
       {view === "chat" && <ChatPanel />}
-      {view === "sources" && <SourcesPanel />}
+      {view === "sources" && <SourcesPanel dealIds={dealIds} />}
       {view === "policy" && (
         <div className="flex flex-col gap-6">
           <PolicyPanel />

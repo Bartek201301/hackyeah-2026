@@ -219,3 +219,21 @@ _Blocks: nothing; prevents duplicated work._
   live.
 - **Who generates the PDF?** Bartosz. Workbench only renders the download interaction.
 - **Who decides access?** The gateway. UI role visibility is presentation only.
+
+### Answered by Bartosz, 2026-10-03
+
+- **B5 — endpoint order.** Chat is first: `POST /chat` plus run read, for G2 at about 21:30. Then
+  imports, then policy/feed, then review, then export. **W1 is therefore the priority.**
+- **B6 — role and deals.** Take `role` and `deal_ids` only from `getActor()` in a server component
+  and pass them as props; no browser Supabase reads. Deal _labels_ are not available yet
+  (`public.deals` is not readable by `authenticated`), and a server-side label projection comes
+  after G2. **For G2, chat sends no `deal_id`.** Role stays presentation only.
+  _Read together with the instruction that features contain no auth calls, the server component
+  doing the `getActor()` call is the app page — so this confirms the prop approach in B21 and
+  extends it to `deal_ids`._
+- **B20 — session.** Resolved by PR #14: `src/proxy.ts` redirects page requests without a session to
+  `/login`, and the four prepared accounts exist via `demo:seed`. An API 401 renders a "signed out,
+  sign in again" state with a link to `/login`.
+- **B1 — component testing.** Keep decision logic in pure `.ts` modules for now; jsdom and
+  testing-library may come later if there is time. **No change needed — that is already the
+  architecture.**
