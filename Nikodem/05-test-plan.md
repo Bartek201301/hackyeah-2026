@@ -193,20 +193,20 @@ layer; **not run** = no runner or no data exists for it, and it is reported as n
 
 ### 7.2 AT15 — reporting honesty
 
-| ID      | Where it is asserted                                                      | Status                                           |
-| ------- | ------------------------------------------------------------------------- | ------------------------------------------------ |
-| AT15-1  | `trace.test.ts` unknown group; `format.test.ts` null handling             | unit                                             |
-| AT15-2  | `format.test.ts` `formatDuration(0)`; `trace.test.ts` proven zero         | unit                                             |
-| AT15-3  | `trace.test.ts` — reserved never appears in actual                        | unit                                             |
-| AT15-4  | `trace.test.ts` and `metrics.test.ts` — separate generation and Laya rows | unit; "no combined total in the DOM" needs a DOM |
-| AT15-5  | `metrics.test.ts` — null reduction, and estimates without a baseline      | unit                                             |
-| AT15-6  | `metrics.test.ts` — disclaimer, rate version, and no cost rounded to zero | unit                                             |
-| AT15-7  | `metrics.test.ts` — Unknown, and the blocked-attempts caption             | unit                                             |
-| AT15-8  | `metrics.test.ts` oracle recomputes the reduction                         | partial; per-trace sums need real `/metrics`     |
-| AT15-9  | `metrics.test.ts` — estimate rows and the source trace                    | unit at model level                              |
-| AT15-10 | copy is rendered in two card headers                                      | not asserted; needs a DOM                        |
-| AT15-11 | `trace.test.ts` `decisionBadge` for all five values                       | unit                                             |
-| AT15-12 | `envelope.test.ts` recognises cancellation                                | partial; the sentence itself needs a DOM         |
+| ID      | Where it is asserted                                                                                                       | Status                                                               |
+| ------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| AT15-1  | `trace.test.ts` unknown group; `format.test.ts` null handling                                                              | unit                                                                 |
+| AT15-2  | `format.test.ts` `formatDuration(0)`; `trace.test.ts` proven zero                                                          | unit                                                                 |
+| AT15-3  | `trace.test.ts` — reserved never appears in actual                                                                         | unit                                                                 |
+| AT15-4  | `trace.test.ts` and `metrics.test.ts` — separate generation and Laya rows                                                  | unit; "no combined total in the DOM" needs a DOM                     |
+| AT15-5  | `metrics.test.ts` — null reduction, and estimates without a baseline                                                       | unit                                                                 |
+| AT15-6  | `metrics.test.ts` — disclaimer, rate version, and no cost rounded to zero                                                  | unit                                                                 |
+| AT15-7  | `metrics.test.ts` — Unknown, and the blocked-attempts caption                                                              | unit                                                                 |
+| AT15-8  | `live-trace.test.ts` checks every displayed value against a real stored record; `metrics.test.ts` recomputes the reduction | **asserted for one real trace**; organisation totals need `/metrics` |
+| AT15-9  | `metrics.test.ts` — estimate rows and the source trace                                                                     | unit at model level                                                  |
+| AT15-10 | copy is rendered in two card headers                                                                                       | not asserted; needs a DOM                                            |
+| AT15-11 | `trace.test.ts` `decisionBadge` for all five values                                                                        | unit                                                                 |
+| AT15-12 | `envelope.test.ts` recognises cancellation                                                                                 | partial; the sentence itself needs a DOM                             |
 
 ### 7.3 AT16 — browser and release
 

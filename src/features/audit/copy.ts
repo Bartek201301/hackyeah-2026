@@ -28,6 +28,7 @@ export const copy = {
     policyVersion: "Policy version",
     feedVersion: "Threat feed version",
     rootRequest: "root request",
+    recordedAt: "recorded",
   },
   usage: {
     title: "Resource use",

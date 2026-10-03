@@ -154,6 +154,23 @@ Default: a stage whose name contains `search_excerpts` or `read_excerpt` — the
 `root request` and stages are never summed into a request count, so a wrong heuristic mislabels a group
 but cannot corrupt a figure. A one-field answer would replace the guess with a fact.
 
+**19. What `AuditProjection.created_at` means.** In the first real record I read
+(`ad393f2f-0e12-4170-b9e8-369530736bf4`) the projection's `created_at` was `19:53:09.344599`, which is
+exactly the timestamp of the **last** stored event, while the first event was `19:53:08.046175`. The
+same pattern appeared in a second trace. Is it the time the record was last written, the time the
+operation finished, or something else? It is not the moment the request started, which is how an
+unlabelled timestamp beside "root request" reads.
+Blocks: nothing; the header now says `recorded <time>` rather than implying a start time.
+Default: treat it as the record's own timestamp and never present it as the start of the operation.
+
+**20. `decision` on a refusal is inconsistent.** Three real responses from `GET /audit/{id}`:
+401 `UNAUTHENTICATED` carried `decision: "BLOCK"`, 400 `INVALID_INPUT` carried `decision: null`, and a
+successful read of a failed operation carried `decision: "ALLOW"` at the envelope root. The first two
+are refusals of the same endpoint with opposite decisions. This feature reads `error` first and never
+the root decision, so nothing is broken here — but if the inconsistency is unintended, it will mislead
+any consumer that trusts the root.
+Blocks: nothing.
+
 ## What I do not need
 
 Raw document access, excerpt text, review candidate contents, policy write access, budget RPCs, or any
