@@ -13,6 +13,8 @@ The checksum-verified Laya 0.3.24 wheel was statically inspected. Published sour
 
 ## Confirmed accounting discrepancy — D01
 
+Runtime evidence from 3 October 2026 reinforces the unit distinction: one authenticated Laya `typed-decisions` call over a short synthetic state using the exact three fixed `noul` questions reported `usage.input_tokens: 199` while `usage.state_tokens: 18`, with `state_tokens_dropped: 0` and `truncated: false`. These are actual provider fields from one smoke request, not a worst-case bound or dataset measurement. The reservation formula below still requires contract resolution and long-window testing.
+
 The [technical spec](../../../docs/product/technical-spec.md) reserves `max_windows × context_tokens`. With three fixed questions, an upper bound on the provider's reported input unit is `max_windows × 3 × context_tokens`, before any additional inference/retry allowance. At the current limits, those formulas give 65,536 versus 196,608 tokens. These are calculated ceilings, not actual consumption. The aggregate may be lower, but reserving one row for three rows is not a safe maximum.
 
 OpenAPI additionally caps each `coverage_ranges[].input_tokens` at 1024 without defining whether it means sequence length or aggregate usage. Do not fit the schema by clamping provider totals, dividing by three and discarding the remainder, or redefining actual usage as a unique-content count.
