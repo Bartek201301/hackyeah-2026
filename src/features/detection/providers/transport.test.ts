@@ -3,7 +3,7 @@ import policy from "../../../../docs/contracts/policy.example.json";
 import type { GatewayPolicy, GenerationPort } from "@/shared/contracts";
 import { assessLocalWindow, generateLocal } from "./clients";
 import { QWEN_DIGEST, QWEN_MODEL } from "./ollama";
-import { createLoopbackTransport, type LocalEndpoint } from "./transport";
+import { createBridgeTransport, createLoopbackTransport, type LocalEndpoint } from "./transport";
 
 const request = () => ({
   body: { synthetic: true },
@@ -22,7 +22,7 @@ const genInput = (): Parameters<GenerationPort["generate"]>[0] => ({
 
 describe("bounded loopback transport (in-process fake provider)", () => {
   it("pins URL, path, auth, JSON, redirect refusal and abort signal", async () => {
-    const provider = vi.fn<typeof fetch>().mockResolvedValue(json({ ok: true }));
+    const provider = vi.fn<typeof fetch>().mockImplementation(async () => json({ ok: true }));
     await expect(createLoopbackTransport(provider)("layaAssess", request())).resolves.toEqual({ ok: true });
     expect(provider).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/v1/systemone",
@@ -178,6 +178,53 @@ describe("bounded loopback transport (in-process fake provider)", () => {
     await expect(
       createLoopbackTransport(provider)("layaAssess", { ...request(), deadline: Date.now() - 1 }),
     ).rejects.toMatchObject({ code: "timeout", dispatched: false });
+    expect(provider).not.toHaveBeenCalled();
+  });
+});
+
+describe("authenticated bridge transport (in-process fake provider)", () => {
+  const token = "a".repeat(64);
+  it("sends its captured bearer to exactly the four fixed HTTPS paths", async () => {
+    const provider = vi.fn<typeof fetch>().mockImplementation(async () => json({ ok: true }));
+    const bridge = createBridgeTransport("https://bridge.example.invalid", token, provider);
+    expect(bridge).not.toBeNull();
+    for (const endpoint of ["layaHealth", "layaAssess", "ollamaTags", "ollamaChat"] as const) {
+      await bridge?.(endpoint, {
+        ...request(),
+        body: endpoint === "layaAssess" || endpoint === "ollamaChat" ? { synthetic: true } : undefined,
+        bearer: endpoint.startsWith("laya") ? token : undefined,
+      });
+    }
+    expect(provider.mock.calls.map(([url]) => url)).toEqual([
+      "https://bridge.example.invalid/laya/health",
+      "https://bridge.example.invalid/laya/v1/systemone",
+      "https://bridge.example.invalid/ollama/api/tags",
+      "https://bridge.example.invalid/ollama/api/chat",
+    ]);
+    for (const [, init] of provider.mock.calls) {
+      expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${token}`);
+      expect(init).toMatchObject({ redirect: "error", cache: "no-store" });
+    }
+  });
+  it.each([
+    "http://bridge.example.invalid",
+    "https://bridge.example.invalid/path",
+    "https://bridge.example.invalid/?x=1",
+    "https://user:pass@bridge.example.invalid",
+    "https://bridge.example.invalid/#fragment",
+  ])("rejects bad bridge origin %s", (url) => {
+    expect(createBridgeTransport(url, token, vi.fn<typeof fetch>())).toBeNull();
+  });
+  it("rejects invalid token and a caller bearer mismatch", async () => {
+    expect(createBridgeTransport("https://bridge.example.invalid", "short")).toBeNull();
+    const provider = vi.fn<typeof fetch>();
+    const bridge = createBridgeTransport("https://bridge.example.invalid", token, provider);
+    await expect(
+      bridge?.("layaHealth", { ...request(), bearer: "wrong", body: undefined }),
+    ).rejects.toMatchObject({
+      code: "invalid_input",
+      dispatched: false,
+    });
     expect(provider).not.toHaveBeenCalled();
   });
 });
