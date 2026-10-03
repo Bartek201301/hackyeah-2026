@@ -1,7 +1,7 @@
 /*
- * Nawigacja aplikacji. Plik edytuje WYŁĄCZNIE skrypt `npm run new-feature`
- * (uruchamiany przez integratora na gałęzi; PR scalany przed pracą builderów).
- * Nie dopisuj tu nic ręcznie na swojej gałęzi.
+ * App navigation. This file is edited ONLY by the `npm run new-feature` script
+ * (run by the integrator on a branch; PR merged before builders start work).
+ * Do not add anything here by hand on your branch.
  */
 import type { NavItem } from "@/shared/layout/AppShell";
 import { meta as example } from "@/features/example";

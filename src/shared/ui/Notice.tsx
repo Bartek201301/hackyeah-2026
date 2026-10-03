@@ -16,7 +16,7 @@ const icons: Record<NoticeTone, ReactNode> = {
   danger: <CircleAlert className="size-4 shrink-0 text-danger" aria-hidden />,
 };
 
-/** Komunikat w treści strony, np. wynik wysłania formularza. */
+/** Inline page message, e.g. the result of submitting a form. */
 export function Notice({ tone = "info", children }: { tone?: NoticeTone; children: ReactNode }) {
   return (
     <div

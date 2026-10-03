@@ -1,21 +1,21 @@
-## Co zmienia się dla użytkownika?
+## What changes for the user?
 
-<!-- Krótki opis i odniesienie do historyjki z docs/product/requirements.md. -->
+<!-- Short description and link to the story in docs/product/requirements.md. -->
 
-## Właściciel i zakres
+## Owner and scope
 
-- Osoba / rola:
-- Feature / katalog:
-- Zmiany wspólne (integrator) lub brak:
-- Potrzebna zmiana wspólnego kontraktu / blokujące PR lub brak:
+- Person / role:
+- Feature / directory:
+- Shared changes (integrator) or none:
+- Needed shared-contract change / blocking PRs or none:
 
-## Weryfikacja
+## Verification
 
-- [ ] `npm run check` przechodzi
-- [ ] Zaktualizowano gałąź względem `origin/main`
-- Dla zmian kontroli: przypadek dozwolony, blokowany, zmiana konfiguracji i ślad audytu
-  (lub uzasadnienie, dlaczego nie dotyczą tego PR):
-- [ ] Dla UI: sprawdzono ekran, ładowanie, pusty stan i błąd
-- Preview / dowód sprawdzenia:
-- Migracja: nie dotyczy / plik i potwierdzenie integratora:
-- Pozostałe ograniczenia:
+- [ ] `npm run check` passes
+- [ ] Branch updated against `origin/main`
+- For control changes: allowed case, blocked case, configuration change and audit trail
+  (or why they do not apply to this PR):
+- [ ] For UI: checked the screen, loading, empty state and error
+- Preview / verification evidence:
+- Migration: not applicable / file and integrator confirmation:
+- Remaining limitations:

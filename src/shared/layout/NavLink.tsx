@@ -10,7 +10,7 @@ type NavLinkProps = {
   href: string;
   children: ReactNode;
   icon?: ReactNode;
-  /** Wersja pozioma (pasek na telefonie) — bez ikony. */
+  /** Horizontal variant (phone bar) — no icon. */
   compact?: boolean;
 };
 

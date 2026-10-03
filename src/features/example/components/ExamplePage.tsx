@@ -3,7 +3,7 @@ import { meta } from "../meta";
 import { getExampleItems } from "../queries";
 import { ExampleForm } from "./ExampleForm";
 
-/* Ekran featura (komponent serwerowy): pobiera dane i składa widok z klocków @/shared/ui. */
+/* Feature screen (server component): loads data and builds the view from @/shared/ui blocks. */
 export async function ExamplePage() {
   const items = await getExampleItems();
 
@@ -16,8 +16,8 @@ export async function ExamplePage() {
         </Card>
         {items.length === 0 ? (
           <EmptyState
-            title="Jeszcze nic tu nie ma"
-            description="Elementy pojawią się po podłączeniu tabeli w bazie."
+            title="Nothing here yet"
+            description="Items will appear once a database table is connected."
           />
         ) : (
           <Card className="flex flex-col divide-y divide-border p-0">

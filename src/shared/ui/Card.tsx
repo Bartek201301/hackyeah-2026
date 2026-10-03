@@ -2,11 +2,11 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/shared/cn";
 
 type CardProps = HTMLAttributes<HTMLDivElement> & {
-  /** "highlight" = karta w kolorze marki (max. jedna na ekran — najważniejsza liczba/akcja). */
+  /** "highlight" = brand-coloured card (max. one per screen — the most important number/action). */
   variant?: "default" | "highlight";
 };
 
-/** Biała, mocno zaokrąglona karta bez ramki, unosząca się nad tłem — podstawowy kontener treści. */
+/** White, heavily rounded borderless card floating above the background — the basic content container. */
 export function Card({ variant = "default", className, ...rest }: CardProps) {
   return (
     <div
@@ -24,13 +24,13 @@ export function Card({ variant = "default", className, ...rest }: CardProps) {
 
 type CardHeaderProps = {
   title: string;
-  /** Szary podpis pod tytułem, np. "Śledź zgłoszenia z ostatniego tygodnia". */
+  /** Grey caption under the title, e.g. "Track tickets from the last week". */
   description?: string;
-  /** Element po prawej: filtr (Select), przycisk, Badge. */
+  /** Element on the right: filter (Select), button, Badge. */
   actions?: ReactNode;
 };
 
-/** Nagłówek sekcji wewnątrz karty: tytuł + podpis po lewej, akcja po prawej. */
+/** Section header inside a card: title + caption on the left, action on the right. */
 export function CardHeader({ title, description, actions }: CardHeaderProps) {
   return (
     <div className="mb-5 flex items-start justify-between gap-4">

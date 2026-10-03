@@ -1,8 +1,8 @@
 /*
- * Wspólne klocki UI. Featury budują ekrany WYŁĄCZNIE z nich + klas tokenowych
- * z src/app/globals.css. Żywy katalog: strona /ui w działającej aplikacji.
- * Zasady stylu: DESIGN.md w katalogu głównym repo.
- * Brakuje klocka? Zgłoś integratorowi zamiast pisać własny.
+ * Shared UI building blocks. Features build screens ONLY from these + token classes
+ * from src/app/globals.css. Live catalogue: the /ui page in the running app.
+ * Style rules: DESIGN.md in the repo root.
+ * Missing a block? Ask the integrator instead of writing your own.
  */
 export { Badge, type Tone } from "./Badge";
 export { BarChart, type BarDatum } from "./BarChart";

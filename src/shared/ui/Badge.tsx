@@ -11,7 +11,7 @@ const tones: Record<Tone, string> = {
   danger: "bg-danger text-on-brand",
 };
 
-/** Pigułka statusu lub zmiany, np. <Badge tone="success">+12,4%</Badge> */
+/** Status or change pill, e.g. <Badge tone="success">+12.4%</Badge> */
 export function Badge({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   return (
     <span

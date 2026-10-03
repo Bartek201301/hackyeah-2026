@@ -3,16 +3,16 @@ import { TriangleAlert } from "lucide-react";
 
 type ErrorStateProps = {
   title?: string;
-  /** Komunikat dla użytkownika — po ludzku, bez stack trace. */
+  /** Message for the user — plain language, no stack trace. */
   description?: string;
-  /** Np. przycisk "Spróbuj ponownie". */
+  /** E.g. a "Try again" button. */
   action?: ReactNode;
 };
 
-/** Stan błędu: coś się nie udało, użytkownik widzi co i może spróbować ponownie. */
+/** Error state: something failed; the user sees what and can try again. */
 export function ErrorState({
-  title = "Coś poszło nie tak",
-  description = "Spróbuj ponownie za chwilę.",
+  title = "Something went wrong",
+  description = "Try again in a moment.",
   action,
 }: ErrorStateProps) {
   return (

@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
 /*
- * TOKENY DESIGNU — jedyne źródło kolorów, promieni i cieni w aplikacji.
- * Właściciel: integrator. Featury używają wyłącznie klas z tych tokenów
- * (np. bg-brand, text-muted, border-border, rounded-card) i komponentów z @/shared/ui.
- * Zmiana koloru marki = zmiana jednej linii: --color-brand.
+ * DESIGN TOKENS — the only source of colours, radii and shadows in the app.
+ * Owner: integrator. Features use only classes from these tokens
+ * (e.g. bg-brand, text-muted, border-border, rounded-card) and components from @/shared/ui.
+ * Changing the brand colour = changing one line: --color-brand.
  */
 @theme {
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 
-  /* Marka: nasycony indygo. Jedna mocna barwa na ekran — reszta to biel i szarości. */
+  /* Brand: saturated indigo. One strong colour per screen — the rest is white and greys. */
   --color-brand: oklch(0.56 0.21 272);
   --color-brand-hover: oklch(0.5 0.21 272);
   --color-brand-strong: oklch(0.47 0.22 276);
   --color-brand-soft: oklch(0.94 0.035 272);
   --color-on-brand: oklch(1 0 0);
 
-  /* Tło lekko lawendowo-szare, karty białe — karta "unosi się" nad tłem. */
+  /* Background slightly lavender-grey, cards white — the card "floats" above the background. */
   --color-bg: oklch(0.955 0.01 264);
   --color-surface: oklch(1 0 0);
   --color-surface-muted: oklch(0.975 0.006 264);
@@ -24,7 +24,7 @@
   --color-muted: oklch(0.55 0.02 264);
   --color-border: oklch(0.92 0.01 264);
 
-  /* Ciemny akcent: dymki wykresów, karta promocyjna. Używać oszczędnie. */
+  /* Dark accent: chart tooltips, promo card. Use sparingly. */
   --color-ink: oklch(0.2 0.015 264);
   --color-on-ink: oklch(0.97 0.005 264);
 

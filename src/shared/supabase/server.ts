@@ -5,9 +5,9 @@ import { cookies } from "next/headers";
 import { getSupabaseEnv } from "@/shared/env";
 
 /*
- * Klient Supabase dla kodu serwerowego: komponenty serwerowe (queries.ts)
- * i Server Actions (actions.ts). To jest DOMYŚLNY klient — używaj go wszędzie,
- * gdzie się da. Import w komponencie z "use client" zakończy build błędem.
+ * Supabase client for server code: server components (queries.ts)
+ * and Server Actions (actions.ts). This is the DEFAULT client — use it wherever
+ * you can. Importing it in a "use client" component fails the build.
  */
 export async function createSupabaseServer() {
   const cookieStore = await cookies();
@@ -22,8 +22,8 @@ export async function createSupabaseServer() {
         try {
           cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
         } catch {
-          // Wywołane z komponentu serwerowego, gdzie nie można ustawiać ciasteczek.
-          // Bez logowania nie ma tu czego zapisywać, więc bezpiecznie pomijamy.
+          // Called from a server component, where cookies cannot be set.
+          // Without sign-in there is nothing to save here, so we safely skip it.
         }
       },
     },

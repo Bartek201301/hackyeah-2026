@@ -8,15 +8,15 @@ export async function runHealthChecks(): Promise<HealthCheck[]> {
   try {
     const env = getSupabaseEnv();
     return [
-      { name: "Zmienne środowiskowe", ok: true, detail: "Konfiguracja poprawna." },
+      { name: "Environment variables", ok: true, detail: "Configuration is valid." },
       ...(await checkSupabaseConnection(env)),
     ];
   } catch (error) {
     return [
       {
-        name: "Zmienne środowiskowe",
+        name: "Environment variables",
         ok: false,
-        detail: error instanceof Error ? error.message : "Sprawdź docs/team/setup.md.",
+        detail: error instanceof Error ? error.message : "Check docs/team/setup.md.",
       },
     ];
   }

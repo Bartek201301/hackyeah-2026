@@ -1,4 +1,4 @@
-// Kontrola zależności; właścicieli zmian weryfikuje recenzent PR (AGENTS.md).
+// Dependency check; change ownership is verified by the PR reviewer (AGENTS.md).
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -28,7 +28,9 @@ export function analyzeSource(root, file, text) {
     ) {
       specifier = node.arguments[0];
       if (!specifier || (!ts.isStringLiteral(specifier) && !ts.isNoSubstitutionTemplateLiteral(specifier))) {
-        errors.push(`${location}: import/require musi mieć stałą ścieżkę, aby sprawdzić granice modułów.`);
+        errors.push(
+          `${location}: import/require must use a constant path so module boundaries can be checked.`,
+        );
       }
     }
     if (specifier && (ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier))) {
@@ -49,19 +51,18 @@ export function analyzeSource(root, file, text) {
     const line = source.getLineAndCharacterOfPosition(pos).line + 1;
     const label = `${location}:${line}: ${spec}`;
     if (area === "features" && targetArea === "features" && targetFeature !== feature) {
-      errors.push(`${label} — import innego featura; wspólny kod należy do shared.`);
+      errors.push(`${label} — imports another feature; shared code belongs in shared.`);
     }
-    if (area === "features" && targetArea === "app")
-      errors.push(`${label} — feature nie może importować app.`);
+    if (area === "features" && targetArea === "app") errors.push(`${label} — a feature must not import app.`);
     if (area === "shared" && ["features", "app"].includes(targetArea))
-      errors.push(`${label} — shared nie może zależeć od ${targetArea}.`);
+      errors.push(`${label} — shared must not depend on ${targetArea}.`);
     if (
       area === "app" &&
       targetArea === "features" &&
       rest.length &&
       !(rest.length === 1 && /^index(?:\.[cm]?[jt]sx?)?$/.test(rest[0]))
     ) {
-      errors.push(`${label} — app importuje tylko publiczne index.ts featura.`);
+      errors.push(`${label} — app imports only the feature's public index.ts.`);
     }
   }
   if (
@@ -70,7 +71,7 @@ export function analyzeSource(root, file, text) {
       text,
     )
   ) {
-    warnings.push(`${location}: sprawdź kolory — preferuj tokeny z shared/ui. To wskazówka, nie błąd.`);
+    warnings.push(`${location}: check colours — prefer tokens from shared/ui. This is a hint, not an error.`);
   }
   return { errors, warnings };
 }
@@ -86,7 +87,7 @@ export function checkRules(root = process.cwd()) {
   const warnings = [];
   for (const file of walk(join(root, "src"))) {
     if (normalize(relative(root, file)).startsWith("src/features/") && file.endsWith(".css")) {
-      errors.push(`${relative(root, file)}: CSS należy do wspólnych tokenów.`);
+      errors.push(`${relative(root, file)}: CSS belongs in the shared tokens.`);
     }
     if (!/\.[cm]?[jt]sx?$/.test(file)) continue;
     const result = analyzeSource(root, file, readFileSync(file, "utf8"));
@@ -106,15 +107,17 @@ export function checkRules(root = process.cwd()) {
         ].filter(Boolean),
       );
       const shared = [...changed].filter((file) => !file.startsWith("src/features/"));
-      if (shared.length) warnings.push(`Zmiany wspólne wymagają integratora: ${shared.join(", ")}.`);
+      if (shared.length) warnings.push(`Shared changes require the integrator: ${shared.join(", ")}.`);
       const features = new Set(
         [...changed].filter((file) => file.startsWith("src/features/")).map((file) => file.split("/")[2]),
       );
       if (features.size > 1)
-        warnings.push(`Zmiany w kilku featurach: ${[...features].join(", ")}. Potwierdź właścicieli w PR.`);
+        warnings.push(
+          `Changes in several features: ${[...features].join(", ")}. Confirm the owners in the PR.`,
+        );
     }
   } catch {
-    /* Brak historii Git nie wpływa na kontrolę importów. */
+    /* Missing Git history does not affect the import check. */
   }
   return { errors, warnings };
 }
@@ -123,6 +126,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const { errors, warnings } = checkRules();
   for (const warning of warnings) console.log(`⚠️ ${warning}`);
   for (const error of errors) console.error(`❌ ${error}`);
-  console.log(errors.length ? `check:rules — błędy: ${errors.length}` : "✅ check:rules — struktura OK.");
+  console.log(errors.length ? `check:rules — errors: ${errors.length}` : "✅ check:rules — structure OK.");
   process.exitCode = errors.length ? 1 : 0;
 }

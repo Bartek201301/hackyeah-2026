@@ -7,14 +7,14 @@ const control =
 
 type FieldProps = {
   label: string;
-  /** Podpowiedź pod polem. */
+  /** Hint below the field. */
   hint?: string;
-  /** Komunikat błędu walidacji — podświetla pole na czerwono. */
+  /** Validation error message — highlights the field in red. */
   error?: string;
   children: ReactNode;
 };
 
-/** Etykieta + pole + podpowiedź/błąd. Pole przekaż jako dziecko: <Field label="Tytuł"><Input name="title" /></Field> */
+/** Label + field + hint/error. Pass the field as a child: <Field label="Title"><Input name="title" /></Field> */
 export function Field({ label, hint, error, children }: FieldProps) {
   return (
     <label className="flex flex-col gap-1.5">

@@ -4,14 +4,14 @@ type ProgressBarProps = {
   /** 0–100 */
   value: number;
   label?: string;
-  /** Tekst po prawej, np. "2 417" albo "68%". */
+  /** Text on the right, e.g. "2,417" or "68%". */
   valueLabel?: string;
   tone?: "brand" | "success" | "danger";
 };
 
 const tones = { brand: "bg-brand", success: "bg-success", danger: "bg-danger" };
 
-/** Cienki pasek postępu/udziału z etykietą — np. rozkład na kategorie, postęp zadania. */
+/** Thin progress/share bar with a label — e.g. a category breakdown, task progress. */
 export function ProgressBar({ value, label, valueLabel, tone = "brand" }: ProgressBarProps) {
   const pct = Math.max(0, Math.min(100, value));
   return (

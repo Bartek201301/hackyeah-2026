@@ -17,7 +17,7 @@ type AppShellProps = {
 };
 
 const home: NavItem = { href: "/", label: "Start", icon: House };
-const tools: NavItem[] = [{ href: "/ui", label: "Klocki UI", icon: Blocks }];
+const tools: NavItem[] = [{ href: "/ui", label: "UI blocks", icon: Blocks }];
 
 function Logo({ appName }: { appName: string }) {
   return (
@@ -58,8 +58,8 @@ function Session({ role }: { role: ActorContext["role"] }) {
 }
 
 /**
- * Szkielet każdej strony. Desktop: białe menu boczne (karta) + treść na lawendowym tle.
- * Telefon: górny pasek z logo i przewijaną nawigacją.
+ * Skeleton of every page. Desktop: white sidebar menu (card) + content on a lavender background.
+ * Phone: top bar with the logo and scrollable navigation.
  */
 export function AppShell({ appName, nav, role, children }: AppShellProps) {
   const all = [home, ...nav];
@@ -69,7 +69,7 @@ export function AppShell({ appName, nav, role, children }: AppShellProps) {
         <div className="sticky top-6 flex h-[calc(100dvh-3rem)] flex-col gap-8 overflow-y-auto rounded-card bg-surface p-5 shadow-card">
           <Logo appName={appName} />
           <NavGroup title="Menu" items={all} />
-          <NavGroup title="Narzędzia" items={tools} />
+          <NavGroup title="Tools" items={tools} />
           {role && (
             <div className="mt-auto">
               <Session role={role} />

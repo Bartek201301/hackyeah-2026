@@ -1,4 +1,4 @@
--- Dane demo: integrator uzupełnia po uzgodnieniu encji i kontraktów.
--- Użyj stałych identyfikatorów i UPSERT, aby ponowienie nie tworzyło duplikatów.
--- Jedna baza dla całego zespołu: wykonanie/reset tylko w uzgodnionym oknie.
--- Bez TRUNCATE, kasowania cudzych danych i automatycznego uruchamiania w CI/preview.
+-- Demo data: the integrator fills this in after entities and contracts are agreed.
+-- Use fixed identifiers and UPSERT so a rerun does not create duplicates.
+-- One database for the whole team: run/reset only in an agreed window.
+-- No TRUNCATE, no deleting other people's data and no automatic runs in CI/preview.

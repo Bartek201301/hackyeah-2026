@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { Button, ErrorState } from "@/shared/ui";
 
-/* Łapie błędy z każdej strony aplikacji. Szczegóły błędu są w konsoli przeglądarki i terminalu. */
+/* Catches errors from every page of the app. Error details are in the browser console and terminal. */
 export default function Error({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error(error);
@@ -11,8 +11,8 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
 
   return (
     <ErrorState
-      description={error.message || "Nieoczekiwany błąd."}
-      action={<Button onClick={() => retry()}>Spróbuj ponownie</Button>}
+      description={error.message || "Unexpected error."}
+      action={<Button onClick={() => retry()}>Try again</Button>}
     />
   );
 }
