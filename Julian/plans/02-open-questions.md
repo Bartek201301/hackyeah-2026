@@ -20,24 +20,39 @@ _Blocks: test evidence in every workbench PR (W0–W5)._
 _Mitigation already taken: W0 puts decision logic in `lib/*.ts` so tests pass under the existing
 runner either way._
 
-**B2. Screen routing.** Only `/workbench` exists and `src/app/**` is yours. Chat, sources, review,
-policy/feed and export are five screens, and the runbook jumps between them under time pressure. Add
-four one-line route files `src/app/workbench/{sources,review,policy,export}/page.tsx` following the
-existing `export { default } from "@/features/workbench"` pattern, or should workbench do in-page
-view switching? Note there is **no tabs primitive** in `src/shared/ui`.
-_Blocks: W2–W5 layout, deep links from audit traces, and browser QA._
+**B2. Screen routing — RESOLVED, no action needed.** Answered by the precedent PR #11 set: the audit
+feature kept its single `src/app/audit/page.tsx` one-liner and selects the view with a search
+parameter, stating the reason in `AuditPage` — a trace link can target a view "without a new route
+segment". Workbench now does the same: one route, `?view=sources|review|policy|export`, parsed in
+`lib/views.ts`. No integrator change required. Tell me if you would rather have real route segments
+and I will move the views.
 
 **B3. Missing shared primitives.** No primitive exists for tabs, dialog/modal, table, file input,
 checkbox/radio/switch, toast, stepper/stage list, accordion or pagination. Feature CSS is rejected by
 `scripts/check-rules.mjs`, so these cannot be built privately. Which will you add to `src/shared/ui`,
 and which should workbench compose from `Card`, `Field`, `Button` and `Badge`?
-_Blocks: W2 file selection, W3 queue table and candidate editor, W4 indicator list._
 
-**B4. Client call style, and multipart.** G1 exports a generic `createGatewayClient` and
-`newIdempotencyKey`, but no operation-specific helpers. Should workbench call the typed paths
-directly, or will you add helpers? And does `openapi-fetch` 0.17.0 carry a `multipart/form-data` body
-for `import_upload`, or does that one call need a plain `fetch` with `FormData`?
-_Blocks: W1 chat submission, W2 upload._
+Two concrete gaps hit while building W2 and W4:
+
+- **`Input` does not forward a ref** (`src/shared/ui/Field.tsx`), so a file input cannot be read
+  imperatively. Worked around by holding the chosen `File` in state, but a `ref`-forwarding `Input`
+  would be the normal fix.
+- **No tabs primitive**, so the view switcher in `components/WorkbenchNav.tsx` is a hand-rolled list
+  of links with `aria-current`. It is accessible and uses only token classes, but it is a primitive
+  three features will each reinvent.
+
+_Blocks: nothing now — W2 and W4 shipped around both — but W3's queue table and candidate editor
+would benefit._
+
+**B4. Client call style — multipart half RESOLVED.** `openapi-fetch` 0.17.0 handles `FormData`
+natively: `defaultBodySerializer` passes it straight through and deliberately omits `Content-Type`
+so the browser sets the multipart boundary (`node_modules/openapi-fetch/dist/index.mjs`). No custom
+serializer and no plain `fetch` needed; `lib/importForm.ts` builds the body. Note that headers go
+under `params.header`, not a top-level `headers` key.
+
+Still open: should workbench keep calling the typed paths directly, or will you add
+operation-specific helpers? Direct calls work and are in use.
+_Blocks: nothing._
 
 **B5. Endpoint landing order.** Which operation becomes the first non-503, and in what order do the
 rest arrive? Every `/api/v1/*` path currently returns `STATE_UNAVAILABLE`.
@@ -52,10 +67,15 @@ the browser Supabase client the intended source for a deal selector and for pres
 visibility, or will an API projection supply it?
 _Blocks: W1 deal scoping, W2 upload deal field, W5 export scoping._
 
-**B7. Trace link target.** The envelope returns `trace_id`, and runs have their own IDs. What is the
-stable authorized route for a trace link, and does its URL key on `trace_id` or on run ID? The two
-must not be assumed equal. Coordinate with Nikodem, who owns the trace view.
-_Blocks: W1 trace link, W2 import outcome link, W4 "did the next request use the new version"._
+**B7. Trace link target — RESOLVED.** PR #11 settled it: `/audit?trace=<trace_id>`, keyed on the
+envelope's `trace_id`. Wired in `components/OutcomeNotice.tsx` via `lib/trace.ts`, which refuses to
+build a link from a non-UUID and says "no audit record is available" instead, because
+technical-spec §9 allows an ephemeral trace id when the audit write itself failed.
+
+One small request: the `/audit` path is now a hardcoded string in `lib/trace.ts`, because
+`check-rules.mjs` forbids importing another feature. A shared route constant would remove that
+duplication before it outlives the demo.
+_Blocks: nothing._
 
 **B8. Review findings and locator.** DESIGN requires the review screen to show findings, the original
 locator and suggested safe text, but public `Review` carries only `id`, `version`, `candidate_text`,
