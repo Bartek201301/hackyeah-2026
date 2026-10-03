@@ -44,9 +44,13 @@ which also keeps the component free of the `setState` in an effect that React 19
 
 The matrix gave the activity list `No audit records for this UTC day.` / `Choose another day to see
 earlier activity.` But `GET /audit` takes no range parameter, only `after`, so **that list is not
-day-scoped**. The copy now reads `No audit records are visible in this scope.` /
+day-scoped**. The copy now reads `No audit records of your own are stored yet.` /
 `Records appear here once an audited operation has been stored.` The day wording stays on the metrics
 side, which really is confined to one day. [03 §3](03-state-matrix.md) records the change and the reason.
+
+A second correction followed the gateway work: `audit_list` has no scope parameter, so the list is own
+activity in both scopes. The card is now titled `Your recent activity`, the note above it says the scope
+and day apply to the figures and the export rather than to the list, and the actor column is gone.
 
 ## 4. The two worksheet edge cases that had no test
 

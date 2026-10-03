@@ -61,6 +61,11 @@ export function settledGenerationTokens(projection: AuditProjection): string {
   return formatTokens(input + output);
 }
 
+/**
+ * `showActor` is off everywhere the screen uses it, because `audit_list` has no scope parameter and
+ * every row is the reader's own. It stays as an option so the column has one tested home if the
+ * contract ever gains a scope, and so the shortening of a shown actor id remains asserted.
+ */
 export function activityRows(
   items: readonly AuditProjection[],
   options: { showActor: boolean } = { showActor: false },

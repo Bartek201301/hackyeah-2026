@@ -139,14 +139,17 @@ export const copy = {
     label: "UTC day",
     current: "Current UTC day",
     today: "Back to the current UTC day",
-    listNote: "The activity list is not filtered by day; it is the most recent records this scope can see.",
+    listNote:
+      "The activity list is always your own records and is not filtered by day; the scope and day above apply to the figures and the export.",
     windowMismatch: "The gateway reported a window wider than one UTC day, so it is shown as reported.",
   },
   activity: {
-    title: "Recent activity",
-    description: "The most recent audited operations in this scope, newest first.",
+    title: "Your recent activity",
+    // GET /audit has no scope parameter, so this list is own activity in both scopes, including for
+    // an admin. Saying "in this scope" beside an organisation heading would be a false label.
+    description: "Your most recent audited operations, newest first.",
     // Not "for this UTC day": GET /audit takes no range parameter, so this list is not day-scoped.
-    emptyTitle: "No audit records are visible in this scope.",
+    emptyTitle: "No audit records of your own are stored yet.",
     emptyDescription: "Records appear here once an audited operation has been stored.",
     pageCap: "Showing the 100 most recent records.",
     loadOlder: "Load older records",

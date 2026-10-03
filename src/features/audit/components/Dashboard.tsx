@@ -61,7 +61,9 @@ export function Dashboard({ scope = "own", day }: { scope?: ReportingScope; day:
         .GET("/audit", { signal })
         .then((result) => {
           const { status, body } = readEnvelope(result);
-          return classifyActivityRead(status, body, { showActor: scope === "organisation" });
+          // No actor column: GET /audit has no scope parameter, so every row is the reader's own and
+          // a repeated identifier would only suggest the list had been widened.
+          return classifyActivityRead(status, body);
         })
         .catch((): ActivityReadState => ({ kind: "clientError" })),
     ]).then(([metrics, activity]) => {
@@ -84,8 +86,8 @@ export function Dashboard({ scope = "own", day }: { scope?: ReportingScope; day:
   }
 
   // A refused organisation scope shows nothing from that scope. `GET /audit` takes no scope
-  // parameter, so its rows would be whatever the actor may see — and presenting those under the
-  // heading "Organisation activity" would be a false label on true data.
+  // parameter, so its rows are the reader's own — and leaving them on screen under a refused
+  // organisation heading would read as a partial organisation list.
   if (scope === "organisation" && metrics.kind === "denied") {
     return (
       <div className="flex flex-col gap-3">
@@ -110,7 +112,7 @@ export function Dashboard({ scope = "own", day }: { scope?: ReportingScope; day:
       const { status, body } = readEnvelope(
         await createGatewayClient().GET("/audit", { params: { query: { after: cursor } } }),
       );
-      const next = classifyActivityRead(status, body, { showActor: scope === "organisation" });
+      const next = classifyActivityRead(status, body);
       if (next.kind !== "ok") {
         setOlderFailed(true);
         return;
