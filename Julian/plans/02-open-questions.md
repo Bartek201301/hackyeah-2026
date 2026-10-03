@@ -113,12 +113,17 @@ attach headers and build a blob? And does the path's ID denote export ID or run 
 use the returned path and never derive one.
 _Blocks: W5 download interaction._
 
-**B18. Polish defaults in shared UI.** `ErrorState` ("Coś poszło nie tak"), `LoadingState`
-("Ładowanie…") and `BarChart` (Polish labels, `toLocaleString("pl-PL")`) ship Polish defaults in a
-product that mandates English. Fix in `src/shared/ui`, or should every workbench call site pass
-explicit English props?
-_Blocks: nothing — workbench will pass explicit English props meanwhile — but it is a release risk
-for any screen that forgets._
+**B18. Polish strings reach a rendered page today.** Measured on `GET /workbench` (dev server,
+2026-10-03): the served HTML contains **"Ładowanie…"** from `src/shared/ui/LoadingState.tsx:5`
+(default `label`) and **"Klocki UI"** from `src/shared/layout/AppShell.tsx:15` (tools nav).
+`ErrorState` ("Coś poszło nie tak", "Spróbuj ponownie za chwilę.") and `BarChart`
+(`toLocaleString("pl-PL")`, "Wartość"/"Porównanie") carry the same defaults but did not render here.
+The served document also declares **`<html lang="pl">`** (`src/app/layout.tsx:16`), so assistive
+technology is told the whole English interface is Polish. All of these are in integrator-owned files.
+Workbench copy itself is verified Polish-free.
+DESIGN mandates an English interface (R20), so this is a release-gate item, not a preference.
+_Blocks: nothing in workbench — every call site passes explicit English props — but AT16 and R20
+cannot pass while the shell and the loading boundary render Polish._
 
 **B19. Reload persistence.** What is the intended recovery when a create response is lost or the page
 is reloaded mid-run? Recovering by server run ID is safe; starting a duplicate operation is not. Is
