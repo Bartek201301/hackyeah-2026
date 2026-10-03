@@ -102,6 +102,13 @@ and `Incomplete trace` rows above. A generic client-error state catches anything
 English formatting is required by `DESIGN.md`. Note the shared `BarChart` hardcodes `pl-PL` grouping
 (`src/shared/ui/BarChart.tsx:28`) — see [04](04-component-plan.md) and [06](06-integrator-requests.md).
 
+The activity list's empty copy changed during the range work, and for a factual reason: this matrix gave
+it `No audit records for this UTC day.` / `Choose another day to see earlier activity.`, but `GET /audit`
+takes no range parameter — only `after` — so that list is **not** day-scoped. Promising a day filter it
+does not have would be a false statement on screen. It now reads
+`No audit records are visible in this scope.` / `Records appear here once an audited operation has been
+stored.` The day wording stays on the metrics side, which really is confined to one UTC day.
+
 Money changed from four decimals to six during P2, and the reason matters: one micro-USD is
 `0.000001` USD, so an illustrative figure of a few micro-USD rounded to `USD 0.0000` — a real cost
 displayed as nothing. `docs/product/technical-spec.md:82` forbids implying a zero total operating cost,

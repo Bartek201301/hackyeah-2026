@@ -28,6 +28,7 @@ import {
   type UploadField,
 } from "../lib/importForm";
 import { describeClassification, describeImportStatus, describeSourceKind } from "../lib/importStatus";
+import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
 import { OutcomeNotice } from "./OutcomeNotice";
 
 const client = createGatewayClient();
@@ -58,8 +59,8 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
 
   /* The shared Input does not forward a ref, so the chosen File is held in state. */
   const [file, setFile] = useState<File | null>(null);
-  /** One key per upload action, reused when retrying that same upload. */
-  const uploadKey = useRef<string | null>(null);
+  /** Key bound to the exact upload; changing any field mints a new one. */
+  const uploadKey = useRef<ActionKey | null>(null);
 
   const format = formatOf(draft.fileName);
 
@@ -115,12 +116,26 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
     }
     setErrors({});
     setBusy(true);
-    uploadKey.current ??= newIdempotencyKey();
+    uploadKey.current = keyForAction(
+      uploadKey.current,
+      canonicalInput({
+        fileName: draft.fileName,
+        fileSize: draft.fileSize,
+        classification: draft.classification,
+        dealId: draft.dealId.trim() || null,
+        sourceDate: draft.sourceDate || null,
+        period: draft.period.trim() || null,
+        unit: draft.unit.trim() || null,
+        factKey: draft.factKey.trim() || null,
+        basis: draft.basis || null,
+      }),
+      newIdempotencyKey,
+    );
 
     const { data, error, response } = await client.POST("/imports/upload", {
       // openapi-fetch passes FormData through and lets the browser set the multipart boundary.
       body: buildUploadBody(draft, file) as never,
-      params: { header: { "Idempotency-Key": uploadKey.current } },
+      params: { header: { "Idempotency-Key": uploadKey.current.key } },
     });
     setUploadOutcome(classify(response.status, envelopeOf(data, error)));
     setBusy(false);

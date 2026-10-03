@@ -111,6 +111,7 @@ export function ScopeLine({ view }: { view: MetricsView }) {
       <span className="tabular-nums">
         {copy.metrics.rangeLabel}: {view.rangeFrom} → {view.rangeTo}
       </span>
+      {!view.windowSingleDay && <Badge tone="warning">{copy.range.windowMismatch}</Badge>}
     </div>
   );
 }
