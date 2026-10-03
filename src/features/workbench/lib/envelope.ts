@@ -78,8 +78,9 @@ const failClosed = (body: ApiResponse | null, detail: string): GatewayOutcome =>
 });
 
 /**
- * Classify one response. `status` is the HTTP status; `body` is the parsed envelope when present
- * (openapi-fetch puts non-2xx envelopes on `error`, so callers pass `data ?? error`).
+ * Classify one response. `status` is the HTTP status; `body` is the parsed envelope when present.
+ * Callers read both from `readEnvelope` in @/shared/contracts/client, which covers 2xx and non-2xx
+ * (openapi-fetch puts non-2xx envelopes on `error`) and returns null for anything that is not one.
  */
 export function classifyResponse(status: number, body: ApiResponse | null): GatewayOutcome {
   const common = base(body);

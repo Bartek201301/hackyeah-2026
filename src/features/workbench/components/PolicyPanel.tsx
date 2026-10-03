@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Save } from "lucide-react";
-import { createGatewayClient, newIdempotencyKey } from "@/shared/contracts/client";
+import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
 import type { ApiResponse, GatewayPolicy } from "@/shared/contracts";
 import { Badge, Button, Card, CardHeader, Field, Input, Notice } from "@/shared/ui";
 import { classifyResponse, classifyTerminalErrorCode, type GatewayOutcome } from "../lib/envelope";
@@ -30,9 +30,6 @@ import {
 import { OutcomeNotice } from "./OutcomeNotice";
 
 const client = createGatewayClient();
-
-const envelopeOf = (data: unknown, error: unknown): ApiResponse | null =>
-  ((data ?? error) as ApiResponse | undefined) ?? null;
 
 const classify = (status: number, body: ApiResponse | null): GatewayOutcome =>
   classifyTerminalErrorCode(body) ?? classifyResponse(status, body);
@@ -66,9 +63,8 @@ export function PolicyPanel() {
 
   /* Fetching is kept free of setState so the effect applies the result in a callback. */
   const fetchPolicy = useCallback(async () => {
-    const { data, error, response } = await client.GET("/policy", {});
-    const body = envelopeOf(data, error);
-    const outcome = classify(response.status, body);
+    const { status, body } = readEnvelope(await client.GET("/policy", {}));
+    const outcome = classify(status, body);
     if (outcome.kind !== "result") return { policy: null, outcome };
     const raw: unknown = body?.data ?? null;
     const loaded =
@@ -99,12 +95,14 @@ export function PolicyPanel() {
   const save = async () => {
     if (!policy || !head) return;
     setBusy(true);
-    const { data, error, response } = await client.PUT("/policy", {
-      // CAS against the head we loaded; the document carries head + 1 (technical-spec §5).
-      body: toPolicySubmission(head, policy),
-      params: { header: { "Idempotency-Key": newIdempotencyKey() } },
-    });
-    const outcome = classify(response.status, envelopeOf(data, error));
+    const { status, body } = readEnvelope(
+      await client.PUT("/policy", {
+        // CAS against the head we loaded; the document carries head + 1 (technical-spec §5).
+        body: toPolicySubmission(head, policy),
+        params: { header: { "Idempotency-Key": newIdempotencyKey() } },
+      }),
+    );
+    const outcome = classify(status, body);
     setSaveOutcome(outcome);
     setBusy(false);
     // A conflict means someone else moved the head: reload rather than resubmit.

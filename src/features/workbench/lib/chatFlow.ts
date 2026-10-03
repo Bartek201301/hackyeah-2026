@@ -61,8 +61,8 @@ export type ChatClassification = {
 /**
  * Classify any chat-lifecycle response: create, execute or poll.
  *
- * `status` is the HTTP status, `body` the parsed envelope (openapi-fetch puts non-2xx envelopes on
- * `error`, so callers pass `data ?? error`).
+ * `status` is the HTTP status, `body` the parsed envelope. Both come from `readEnvelope` in
+ * @/shared/contracts/client, which handles the 2xx/non-2xx split and fails closed on a non-envelope.
  */
 export function classifyChatResponse(status: number, body: ApiResponse | null): ChatClassification {
   const run = readChatRun(body?.data ?? null);
