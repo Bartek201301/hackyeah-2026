@@ -26,7 +26,7 @@ own session, never a role field.
 
 ## What I can demonstrate on the workbench today
 
-Updated after browser QA run 3 (production, main `38ece27`, all three roles).
+Updated after browser QA run 4 (production, main `ad70a6b`: the import list).
 
 **A real decision, end to end — verified on production for all three roles.** Ask the literal
 injection text and the gateway returns a genuine `403 BLOCK`: the screen says "Blocked — This
@@ -54,6 +54,19 @@ four prepared accounts, four different lists, filtered server-side before serial
 Two lines worth saying out loud: the external reviewer sees **no internal source at all**, and the
 analyst sees two of the three restricted sources — the difference is deal membership, not
 classification. Verified on production for all four accounts (run 3b).
+
+If the admin list shows **8** rather than 7, the extra row is `db_test synthetic (BOREAL)` left in
+the shared project by `npm run test:db`. Say so plainly if a judge counts; do not improvise a story.
+
+**Imports are scoped by ownership, on the same screen.** Sources and import lists both halves at
+once. An administrator sees every import of the organisation; everybody else sees their own uploads
+and nothing else — verified on production (run 4): the two `db_test` documents appear for the
+reviewer who owns them and for the admin as oversight, while the employee's panel says "This account
+has no imports yet." The rows render as **"Held for review · Restricted · Separation was uncertain,
+so an administrator must review the candidate."** If a judge asks why a restricted document is not
+public, the answer is on screen: _processing status and classification are separate — an approved
+document is not necessarily public._ Until P05 imports the corpus, `review` is the only status this
+screen has ever shown on production; do not promise an `approved` import.
 
 **The fail-closed state**, which remains a good story on its own: _"every protected operation
 withholds its result until identity, policy, content and budget have all been checked, and when a
