@@ -76,6 +76,8 @@ export type ActivityRow = {
   created_at: string;
 };
 export type EventRow = { event_type: string; payload: Record<string, unknown>; created_at: string };
+/** sources row as selected for source_list; projected and schema-checked before release. */
+export type SourceRow = { id: string; label: string; classification: string; kind: string };
 /** Names follow protocols.md; startRun/readRun/claimRun are additions. Every method throws GatewayError
  *  carrying the RPC's ErrorCode, or STATE_UNAVAILABLE for anything else. */
 export interface RepositoryPort {
@@ -124,6 +126,8 @@ export interface RepositoryPort {
     operationId: string;
     outcome: FinalOutcome;
   }): Promise<boolean>;
+  /** Sources visible to this actor (sourceScope), newest first, at most `limit`. */
+  listSources(actor: ActorContext, limit: number): Promise<SourceRow[]>;
 }
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {
