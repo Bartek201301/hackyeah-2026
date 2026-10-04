@@ -59,6 +59,7 @@ type Opts = {
   assessThrows: boolean;
   detection: boolean;
   generation: Partial<GenerationResult> | "throw" | null;
+  verifier: Partial<GenerationResult> | "throw";
   budget: boolean;
   onReserve: () => void;
   finishThrows: boolean;
@@ -70,6 +71,8 @@ type Opts = {
   excerpts: PermittedExcerpt[];
   /** IDs the access recheck still permits; null = every requested ID. */
   permitted: string[] | null;
+  /** Once this log entry exists, readRun shows the owner's cancel (state cancel_requested). */
+  cancelAfter: string | null;
 };
 
 // TEST FAKE: unit tests only; the app never composes these.
@@ -82,6 +85,7 @@ function harness(over: Partial<Opts> = {}) {
     assessThrows: false,
     detection: true,
     generation: {},
+    verifier: {},
     budget: false,
     onReserve: () => {},
     finishThrows: false,
@@ -92,6 +96,7 @@ function harness(over: Partial<Opts> = {}) {
     controls: {},
     excerpts: [],
     permitted: null,
+    cancelAfter: null,
     ...over,
   };
   const log: string[] = [];
@@ -117,6 +122,9 @@ function harness(over: Partial<Opts> = {}) {
   };
 
   const repository: RepositoryPort = {
+    async updatePolicy() {
+      throw new Error("not used");
+    },
     async loadActivePolicyAndFeed() {
       log.push("loadActivePolicyAndFeed");
       return {
@@ -154,7 +162,8 @@ function harness(over: Partial<Opts> = {}) {
       };
     },
     async readRun(_actor, id) {
-      return id === run.id ? run : null;
+      if (id !== run.id) return null;
+      return o.cancelAfter && log.includes(o.cancelAfter) ? { ...run, state: "cancel_requested" } : run;
     },
     async claimRun() {
       log.push("claimRun");
@@ -188,6 +197,12 @@ function harness(over: Partial<Opts> = {}) {
     async listImports() {
       throw new Error("not used");
     },
+    async listReviews() {
+      throw new Error("not used");
+    },
+    async readReview() {
+      throw new Error("not used");
+    },
     async loadDatasetBatch() {
       throw new Error("not used");
     },
@@ -204,6 +219,18 @@ function harness(over: Partial<Opts> = {}) {
       throw new Error("not used");
     },
     async createUploadSource() {
+      throw new Error("not used");
+    },
+    async storeExport() {
+      throw new Error("not used");
+    },
+    async finalizeExport() {
+      throw new Error("not used");
+    },
+    async readExport() {
+      throw new Error("not used");
+    },
+    async readExportFile() {
       throw new Error("not used");
     },
     async loadUploadSource() {
@@ -237,6 +264,9 @@ function harness(over: Partial<Opts> = {}) {
     async recordAccessDecision() {
       throw new Error("not used");
     },
+    async cancelRun() {
+      throw new Error("not used");
+    },
   };
 
   const detection: DetectionPort = {
@@ -266,6 +296,24 @@ function harness(over: Partial<Opts> = {}) {
     async generate(input) {
       log.push("generate");
       prompts.push(input.messages);
+      if (input.purpose) {
+        if (o.verifier === "throw") throw new Error("verifier down");
+        return {
+          text: JSON.stringify({
+            instruction_manipulation: false,
+            sensitive_exposure: false,
+            resource_abuse: false,
+            uncertain: false,
+          }),
+          tool_calls: [],
+          input_tokens: 500,
+          output_tokens: 27,
+          duration_ms: 650,
+          model_digest: manifest.ollama_model_digest,
+          finished: true,
+          ...o.verifier,
+        };
+      }
       if (o.generation === "throw") throw new Error("ollama down");
       return {
         text: ANSWER,
@@ -320,6 +368,116 @@ const finalState = (h: ReturnType<typeof harness>) => {
 };
 
 describe("executeChat", () => {
+  const verifiedPolicy = () => ({
+    ...structuredClone(policyJson),
+    semantic: { ...structuredClone(policyJson.semantic), chat_verification: "qwen-context-v1" as const },
+  });
+
+  it("resolves moderate chat flags, preserves raw evidence, and accounts for all three Qwen calls", async () => {
+    const h = harness({ inputScore: 0.6042, outputScore: 0.3382, controls: { policy: verifiedPolicy() } });
+    const out = await h.execute();
+    valid(out);
+    expect(out.body.decision).toBe("ALLOW");
+    expect(out.body.usage).toMatchObject({
+      generation_input_tokens: 1100,
+      generation_output_tokens: 104,
+      generation_ms: 2113,
+      unresolved_reservation: false,
+    });
+    expect(out.body.semantic.chat_checks).toHaveLength(2);
+    expect(out.body.semantic.chat_checks?.[0].laya_scores.instruction_manipulation).toBe(0.6042);
+    expect(out.body.semantic.chat_checks?.[0].verification?.verdict.instruction_manipulation).toBe(false);
+    expect(h.reserves.map((r) => r.provider)).toEqual(["laya", "ollama", "ollama", "laya", "ollama"]);
+    expect(h.finals[0].event.semantic).toEqual(out.body.semantic);
+    expect(JSON.stringify(h.finals[0].event)).not.toContain(MESSAGE);
+    expect(JSON.stringify(h.finals[0].event)).not.toContain(ANSWER);
+  });
+
+  it.each(["strong", "policy-block", "signature", "strict"])(
+    "verification cannot clear a %s denial",
+    async (kind) => {
+      const policy = verifiedPolicy();
+      if (kind === "strict") policy.mode = "strict";
+      const h = harness({
+        controls: { policy },
+        // policy-block: above the policy's 0.65 block threshold but below the 0.70 ceiling.
+        inputScore: kind === "strong" ? 0.7 : kind === "policy-block" ? 0.6542 : 0.34,
+        ...(kind === "signature" ? { message: INJECTION } : {}),
+      });
+      const out = await h.execute();
+      expect(out.body.decision).toBe("BLOCK");
+      expect(h.calls("generate")).toBe(0);
+      withheld(h, out, kind === "signature" ? INJECTION : MESSAGE);
+    },
+  );
+
+  it.each([
+    { text: '{"instruction_manipulation":false}' },
+    { finished: false },
+    { model_digest: "incorrect" },
+    { tool_calls: [{ id: "tool", name: "search_excerpts" as const, arguments: { query: "never execute" } }] },
+    "throw" as const,
+  ])(
+    "withholds on unavailable/invalid verification instead of treating failure as benign",
+    async (verifier) => {
+      const h = harness({ inputScore: 0.34, controls: { policy: verifiedPolicy() }, verifier });
+      const out = await h.execute();
+      expect(out.body.decision).toBeNull();
+      expect(h.calls("generate")).toBe(1);
+      withheld(h, out);
+    },
+  );
+
+  it("withholds uncertain verification and enforces the model-turn budget before another call", async () => {
+    const h = harness({
+      inputScore: 0.34,
+      controls: { policy: verifiedPolicy() },
+      verifier: {
+        text: JSON.stringify({
+          instruction_manipulation: false,
+          sensitive_exposure: false,
+          resource_abuse: false,
+          uncertain: true,
+        }),
+      },
+    });
+    expect((await h.execute()).body.decision).toBe("REVIEW");
+    const policy = verifiedPolicy();
+    policy.execution.max_model_turns = 1;
+    const limited = harness({ inputScore: 0.34, controls: { policy } });
+    const out = await limited.execute();
+    expect(limited.calls("generate")).toBe(1);
+    expect(out.body.error?.code).toBe("INCOMPLETE");
+    withheld(limited, out);
+  });
+
+  it("keeps unknown verifier consumption unresolved and never releases after audit failure", async () => {
+    const h = harness({
+      inputScore: 0.34,
+      outputScore: 0.34,
+      controls: { policy: verifiedPolicy() },
+      verifier: { input_tokens: null },
+      finalize: false,
+    });
+    const out = await h.execute();
+    expect(out.body.error?.code).toBe("AUDIT_UNAVAILABLE");
+    expect(h.finals[0].usage.generation_input_tokens).toBeNull();
+    expect(h.finals[0].usage.unresolved_reservation).toBe(true);
+    expect(out.body.data).toBeNull();
+  });
+
+  it("rejects an oversized verifier envelope before reserving generation", async () => {
+    const policy = verifiedPolicy();
+    policy.execution.max_input_utf8_bytes = 256;
+    const h = harness({ inputScore: 0.34, controls: { policy } });
+    const out = await h.execute();
+    expect(out.body.error?.code).toBe("INCOMPLETE");
+    expect(h.calls("generate")).toBe(0);
+    expect(h.reserves.map((r) => r.provider)).toEqual(["laya"]);
+    expect(out.body.usage.unresolved_reservation).toBe(false);
+    withheld(h, out);
+  });
+
   it("1. ALLOW runs the full sequence and releases only after finalize", async () => {
     const h = harness();
     const out = await h.execute();
@@ -681,6 +839,30 @@ describe("executeChat", () => {
     expect(finalState(h)).toEqual(["failed", "completed"]);
   });
 
+  it("a cancel before the input check: no reservation, 409 CANCELLED, run cancelled", async () => {
+    const h = harness({ cancelAfter: "claimRun" });
+    const out = await h.execute();
+    withheld(h, out);
+    expect(out.status).toBe(409);
+    expect(out.body.error?.code).toBe("CANCELLED");
+    expect([h.calls("reserve"), h.calls("assess")]).toEqual([0, 0]);
+    expect(finalState(h)).toEqual(["cancelled", "completed"]);
+    expect(h.finals[0].result).toMatchObject({ status: 409, error: { code: "CANCELLED" } });
+  });
+
+  it("a cancel between Laya and Ollama: no Ollama reservation, the Laya call kept and settled", async () => {
+    const h = harness({ cancelAfter: "assess" });
+    const out = await h.execute();
+    withheld(h, out);
+    expect(out.status).toBe(409);
+    expect(out.body.error?.code).toBe("CANCELLED");
+    expect(h.log.filter((l) => l.startsWith("reserve"))).toEqual(["reserve(laya)"]);
+    expect([h.calls("generate"), h.calls("finish")]).toEqual([0, 1]);
+    expect(out.body.usage.unresolved_reservation).toBe(false);
+    // A provider call started, so the execute operation's outcome is unknown.
+    expect(finalState(h)).toEqual(["cancelled", "unknown"]);
+  });
+
   it("settles at zero and calls no provider when aborted during the reservation", async () => {
     const controller = new AbortController();
     const h = harness({ onReserve: () => controller.abort() });
@@ -708,6 +890,18 @@ describe("executeChat", () => {
 describe("executeChat retrieval and citations", () => {
   const cited = (over: Partial<Opts> = {}) =>
     harness({ excerpts: [EX1, EX2], generation: { text: CITED }, ...over });
+
+  it("a clear Qwen verdict cannot bypass revoked source access and covers the rewritten answer", async () => {
+    const policy = structuredClone(policyJson) as import("@/shared/contracts").GatewayPolicy;
+    policy.semantic.chat_verification = "qwen-context-v1";
+    const h = cited({ inputScore: 0.34, outputScore: 0.34, controls: { policy }, permitted: [] });
+    const out = await h.execute();
+    expect(out.body.decision).toBe("BLOCK");
+    expect(out.body.reasons).toContain("citation:access_revoked");
+    expect(out.body.data).toBeNull();
+    expect(out.body.semantic.chat_checks?.[1].text_sha256).toBe(sha256Hex(REWRITTEN));
+    expect(out.body.semantic.chat_checks?.[1].verification?.verdict.uncertain).toBe(false);
+  });
 
   it("ALLOW cites permitted excerpts, rewritten to [1]..[k] in first-appearance order", async () => {
     const h = cited();

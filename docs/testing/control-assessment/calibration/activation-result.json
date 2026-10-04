@@ -1,0 +1,46 @@
+{
+  "status": 200,
+  "body": {
+    "decision": "ALLOW",
+    "reasons": [],
+    "policy_version": 3,
+    "feed_version": 1,
+    "semantic": {
+      "status": "not_required",
+      "scores": {
+        "instruction_manipulation": null,
+        "sensitive_exposure": null,
+        "resource_abuse": null
+      },
+      "checkpoint_revision": null,
+      "windows_planned": 0,
+      "windows_completed": 0,
+      "coverage_complete": false,
+      "text_sha256": null,
+      "coverage_ranges": []
+    },
+    "usage": {
+      "generation_input_tokens": 0,
+      "generation_output_tokens": 0,
+      "generation_ms": 0,
+      "semantic_input_tokens": 0,
+      "semantic_ms": 0,
+      "reserved_generation_tokens": 0,
+      "unresolved_reservation": false,
+      "comparison_micro_usd": 0,
+      "comparison_rate_version": "none"
+    },
+    "timings": {
+      "total_ms": 0,
+      "deterministic_ms": 0,
+      "semantic_ms": 0,
+      "provider_ms": 0,
+      "persistence_ms": 0
+    },
+    "data": {
+      "version": 3
+    },
+    "error": null,
+    "trace_id": "55eecc1a-3f1b-4f26-a07a-639e16a586fa"
+  }
+}

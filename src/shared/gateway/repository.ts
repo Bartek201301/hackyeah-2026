@@ -9,11 +9,13 @@ import type {
   ActivityRow,
   DatasetBatch,
   EventRow,
+  ExportRow,
   ImportRow,
   MetricsActivityRow,
   MetricsReservationRow,
   PermittedExcerpt,
   RepositoryPort,
+  ReviewRow,
   RunRecord,
   SourceRow,
   WindowQuery,
@@ -39,6 +41,9 @@ async function data<T>(query: PromiseLike<{ data: T; error: { message: string } 
   }
   return result.data;
 }
+
+/** Every column of a ReviewRow; candidate_text is private review content, admin-only. */
+const REVIEW_COLUMNS = "id, version, candidate_text, classification, status, document_id";
 
 const RUN_COLUMNS =
   "id, kind, state, stage, policy_version, feed_version, input_private, result_private, lease_expires_at";
@@ -76,6 +81,19 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
   }
 
   return {
+    async updatePolicy({ actor, idempotencyKey, expectedVersion, policy, requestSha256, documentSha256 }) {
+      return data(
+        db.rpc("update_policy", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_idempotency_key: idempotencyKey,
+          p_expected_version: expectedVersion,
+          p_document: policy,
+          p_request_sha256: requestSha256,
+          p_document_sha256: documentSha256,
+        }),
+      );
+    },
     async loadActivePolicyAndFeed(organisationId) {
       const head = await data(
         db
@@ -225,10 +243,34 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
           .eq("trace_id", traceId)
           .eq("organisation_id", actor.organisation_id)
           .order("created_at")
+          // One transaction writes intent and decision with the same timestamp (cancel_run,
+          // record_access_decision); the enum's declaration order puts intent first.
+          .order("event_type")
           .order("id")
           .limit(201),
       );
       return { activity: row, events: events ?? [] };
+    },
+
+    async cancelRun({ actor, runId, idempotencyKey, requestSha256, result }) {
+      const run = await data(
+        db.rpc("cancel_run", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_run_id: runId,
+          p_idempotency_key: idempotencyKey,
+          p_request_sha256: requestSha256,
+          p_result: result,
+        }),
+      );
+      return {
+        kind: run.kind,
+        state: run.state,
+        stage: run.stage,
+        policy_version: run.policy_version,
+        feed_version: run.feed_version,
+        accepted: run.accepted === true,
+      };
     },
 
     async finalizeRun({ runId, leaseToken, operationId, outcome }) {
@@ -371,6 +413,46 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       return result.finalized === true;
     },
 
+    async storeExport(key, bytes) {
+      await data(
+        db.storage
+          .from("generated-exports")
+          .upload(key, bytes, { contentType: "application/pdf", upsert: false }),
+      );
+    },
+
+    async finalizeExport({ runId, leaseToken, operationId, outcome, publication }) {
+      const result = await data(
+        db.rpc("finalize_export", {
+          p_run_id: runId,
+          p_lease_token: leaseToken,
+          p_operation_id: operationId,
+          p_outcome: outcome,
+          p_export: publication,
+        }),
+      );
+      return result.finalized === true;
+    },
+
+    async readExport(actor, id) {
+      return data<ExportRow | null>(
+        db
+          .from("exports")
+          .select("id, run_id, storage_key, expires_at, status, excerpt_versions")
+          .eq("id", id)
+          // Owner only, filtered here because the admin client bypasses RLS.
+          .eq("organisation_id", actor.organisation_id)
+          .eq("actor_id", actor.actor_id)
+          .maybeSingle(),
+      );
+    },
+
+    async readExportFile(key) {
+      const blob = await data(db.storage.from("generated-exports").download(key));
+      if (!blob) throw new GatewayError("STATE_UNAVAILABLE");
+      return new Uint8Array(await blob.arrayBuffer());
+    },
+
     async listActivity({ organisationId, actorId, after, limit }) {
       const scoped = () =>
         db
@@ -509,6 +591,36 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         policy_version: result.policy_version,
         feed_version: result.feed_version,
       };
+    },
+
+    async listReviews(organisationId, limit) {
+      const rows = await data<ReviewRow[] | null>(
+        db
+          .from("review_requests")
+          .select(REVIEW_COLUMNS)
+          .eq("organisation_id", organisationId)
+          // `review_status` is declared ('pending', 'approved', 'rejected', 'expired'), and Postgres
+          // orders an enum by declaration, so ascending status is the work queue: pending first.
+          .order("status", { ascending: true })
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(limit),
+      );
+      return rows ?? [];
+    },
+
+    async readReview(organisationId, id) {
+      // maybeSingle: another organisation's id is simply absent here, which the engine turns into
+      // the same 404 as an id that does not exist.
+      const row = await data<ReviewRow | null>(
+        db
+          .from("review_requests")
+          .select(REVIEW_COLUMNS)
+          .eq("organisation_id", organisationId)
+          .eq("id", id)
+          .maybeSingle(),
+      );
+      return row ?? null;
     },
   };
 }

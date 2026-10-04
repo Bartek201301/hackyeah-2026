@@ -13,6 +13,7 @@ import { CANCEL_UNAVAILABLE } from "../lib/runState";
  */
 
 const PENDING = devEnvelope({ data: devRun("pending", "queued") });
+const QUESTION = "Brief me on revenue.";
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -49,7 +50,7 @@ const startRun = async () => {
   vi.resetModules();
   const { ChatPanel } = await import("./ChatPanel");
   render(<ChatPanel />);
-  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Brief me on revenue." } });
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: QUESTION } });
   fireEvent.click(screen.getByRole("button", { name: /Send question/ }));
   await waitFor(() => expect(screen.getByRole("button", { name: /Cancel run/ })).toBeTruthy());
 };
@@ -79,5 +80,71 @@ describe("Cancel run, when the gateway cannot cancel", () => {
     await waitFor(() => expect(screen.getAllByText(/Cancelled/).length).toBeGreaterThan(0));
     expect(screen.queryByText(CANCEL_UNAVAILABLE)).toBeNull();
     expect(screen.queryByRole("button", { name: /Cancel run/ })).toBeNull();
+  });
+});
+
+/*
+ * TEST FAKE gateway for the retry path: records what each request carried, creates the run and
+ * then fails the execute call with a retryable error, which is what puts "Try again" on screen.
+ */
+const failingGateway = () => {
+  const sent: { url: string; key: string | null; body: string }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown, init?: RequestInit) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      const headers = typeof input === "string" ? new Headers(init?.headers) : request.headers;
+      const body = typeof input === "string" ? String(init?.body ?? "") : await request.clone().text();
+      sent.push({ url, key: headers.get("idempotency-key"), body });
+      if (url.endsWith("/execute")) return json(503, DEV_UNAVAILABLE_SEAM);
+      return json(url.endsWith("/chat") ? 202 : 200, PENDING);
+    }),
+  );
+  return sent;
+};
+
+/** Ask the question and wait for the retryable failure, which is what offers "Try again". */
+const askAndFail = async () => {
+  vi.resetModules();
+  const { ChatPanel } = await import("./ChatPanel");
+  render(<ChatPanel />);
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: QUESTION } });
+  fireEvent.click(screen.getByRole("button", { name: /Send question/ }));
+  await waitFor(() => expect(screen.getByRole("button", { name: /Try again/ })).toBeTruthy());
+};
+
+describe("the Ask composer", () => {
+  it("clears itself and keeps the question on screen as the turn it asked", async () => {
+    failingGateway();
+    await askAndFail();
+
+    expect(screen.getByText(QUESTION)).toBeTruthy();
+    expect(screen.getByRole("textbox")).toHaveProperty("value", "");
+  });
+
+  it("reports the stage once while the run is in flight", async () => {
+    gateway(() => json(503, DEV_UNAVAILABLE_SEAM));
+    await startRun();
+
+    // The outcome notice already classifies progress and says what the stage means. A second badge
+    // beside it printed the same words twice in a row, which reads as two separate events.
+    expect(screen.getAllByText(/Queued/)).toHaveLength(1);
+    // And what it says is the server's own stage, never an invented thought.
+    expect(screen.getByText("queued")).toBeTruthy();
+  });
+
+  it("retries the question that was asked, not the empty composer", async () => {
+    const sent = failingGateway();
+    await askAndFail();
+
+    fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
+    await waitFor(() => expect(sent.filter((r) => r.url.endsWith("/chat"))).toHaveLength(2));
+
+    const [first, second] = sent.filter((r) => r.url.endsWith("/chat"));
+    // The composer is empty by now, so a retry that read it would send an empty question.
+    expect(JSON.parse(second!.body)).toEqual({ message: QUESTION });
+    // Same question, so the same key: a replay returns the stored outcome instead of a second run.
+    expect(second!.key).toBe(first!.key);
   });
 });

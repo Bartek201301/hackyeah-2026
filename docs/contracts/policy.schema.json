@@ -154,6 +154,10 @@
             }
           },
           "required": ["instruction_manipulation", "sensitive_exposure", "resource_abuse"]
+        },
+        "chat_verification": {
+          "const": "qwen-context-v1",
+          "description": "Optional bounded Qwen verification for balanced-mode chat only; semantic protocol v2. Laya scores at or above 0.7 and deterministic denials remain withholding."
         }
       },
       "required": [

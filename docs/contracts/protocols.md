@@ -91,6 +91,7 @@ interface GenerationPort {
       messages: readonly ModelMessage[];
       tools: readonly RegisteredTool[];
       limits: GatewayPolicy["execution"];
+      purpose?: "security_verification_v1"; // internal fixed rubric/schema; never public request input
     },
     signal: AbortSignal,
   ): Promise<GenerationResult>;
@@ -100,6 +101,8 @@ interface GenerationPort {
 `GatewayPolicy`, `Finding`, `Assessment` are schema-derived. T01 defines provider-neutral `ModelMessage` as `{role:'system'|'user'|'assistant'|'tool',content:string,tool_calls?:ToolCall[],tool_call_id?:string}`; `ToolCall` is `{id:string,name:'search_excerpts'|'read_excerpt',arguments:Record<string,unknown>}`. Validate arguments against SearchRequest or `{id:UUID}` before any execution. `RegisteredTool` is `{name:ToolCall['name'],description:string,input_schema:object}`; registry is code-owned. `GenerationResult` is `{text:string,tool_calls:ToolCall[],input_tokens:number|null,output_tokens:number|null,duration_ms:number|null,model_digest:string,finished:boolean}`. Reject text/tool mixing that fails the schema. Provider wrappers map into these fields; tools never receive an ActorContext supplied by a model.
 
 Gateway constructor receives detection, generation and repository ports. Repository port operations are named `loadActor`, `loadActivePolicyAndFeed`, `beginOperation`, `reserveCall`, `finishCall`, `finalizeRun`, `searchPermittedExcerpts`, `loadPermittedExcerpt`, `resolveReview`, `updatePolicy`, `updateFeed`. The atomic responsibilities are specified in the data model, not left to client-side read-then-write logic. ActorContext is never serialized back as a permission grant.
+
+`updatePolicy` takes the trusted actor, idempotency key, expected version, validated full policy and canonical request/document SHA-256 hashes. Its service-only RPC rechecks active admin membership and atomically commits the next snapshot, control head and configuration audit/activity. It returns `{trace_id,policy_version,feed_version}`; identical retries return the original result even after later updates. A stale version or changed request under the same key conflicts. Schema/business validation runs before the transaction. No historical policy row is rewritten.
 
 ## Model bridge (T04)
 
