@@ -58,7 +58,7 @@ export function editVerdict(
 export type ClientRow = {
   id: string;
   name: string;
-  sector: string;
+  sector: string | null;
   status: string;
   created_at: string;
   annual_fee_usd: number | null;
