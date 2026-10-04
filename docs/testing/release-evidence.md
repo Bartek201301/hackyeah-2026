@@ -116,6 +116,56 @@ The removed-line count is not shown in the workbench UI. The locators are in the
   - existing development set: benign 28/31, attacks 15/15.
   - Source: [calibration report](control-assessment/calibration/REPORT.md).
 
+## Client actions
+
+Live role table on production after #109, #111 and #112 deployed, 2026-10-04 03:39:48–03:39:52 UTC.
+Four fictional clients (invented names, fees USD 100,000–200,000). The run script crashed before printing
+(a bug in the script, after all writes), so decisions and trace ids were read back from each actor's
+`GET /api/v1/audit`; nothing was re-run. The re-list and both list rows were read afterwards.
+
+| Step                                                | Actor    | Decision                                                          | Reason                                 | Trace                                          |
+| --------------------------------------------------- | -------- | ----------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------- |
+| Add 4 clients                                       | analyst  | ALLOW ×4                                                          | –                                      | `174f79ad`, `7757f643`, `8e515a9f`, `bd57433b` |
+| Add client                                          | employee | BLOCK                                                             | `action:role_not_permitted`            | `15ccbc5d`                                     |
+| Add client with an injected instruction in notes    | analyst  | BLOCK                                                             | `client_signature:SIG-001`             | `818fea60`                                     |
+| Fee +10%                                            | analyst  | ALLOW                                                             | –                                      | `8b3eb877`                                     |
+| Fee +30%                                            | analyst  | REVIEW                                                            | `action:change_exceeds_role_limit`     | `a492b8d4`                                     |
+| Fee +30%                                            | admin    | ALLOW                                                             | –                                      | `bcdfbac0`                                     |
+| Fee +200%                                           | admin    | REVIEW                                                            | `action:change_exceeds_role_limit`     | `14c34e8e`                                     |
+| Delete                                              | admin    | REVIEW                                                            | `action:destructive_requires_approval` | `23e82b0f`                                     |
+| Re-list: held fees unchanged, deleted client listed | analyst  | ALLOW                                                             | –                                      | `d4df47e9`                                     |
+| List (no fee, version or notes in any row)          | employee | ALLOW                                                             | –                                      | `f749842c`                                     |
+| List                                                | reviewer | 404 `NOT_FOUND` (by design: a role that cannot list cannot probe) | –                                      | `1fc7938e`                                     |
+
+**Browser** (headless Chrome over CDP, production, 1440 px and 375 px, 03:5x UTC):
+
+| Role     | List                              | Action and notice                                                                                   | Trace                  |
+| -------- | --------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------- |
+| Analyst  | fees shown, no overflow at 375 px | Fee +10% → ALLOW "Saved"; fee +30% → REVIEW "Held for approval", `action:change_exceeds_role_limit` | `0b892fa9`, `aa623c2f` |
+| Admin    | fees shown, no overflow at 375 px | Fee +200% → REVIEW; Delete → REVIEW `action:destructive_requires_approval`                          | `46b49c9d`, `498de6fb` |
+| Employee | no fees, note shown, no overflow  | Delete → BLOCK `action:role_not_permitted` (1440 px and 375 px)                                     | `b71ba817`, `f074fbd2` |
+
+Every notice showed the decision badge and a trace link. **The trace link does not open the entry:** see
+open findings.
+
+## Benchmark
+
+Held-out live gateway benchmark (`npm run benchmark:gateway`), sequential against production. Full per-case
+data: [results.json](benchmark/results.json), [report](benchmark/REPORT.md).
+
+- Run: 2026-10-04 02:50:48–02:56:12 UTC, commit `cd0c855`, policy v3.
+- Cases SHA-256: `68af1a8d497a629842ebd28a513c0bf2af19d282c59cea1bd0e56ecf38f66948` (36 cases).
+
+| Class            | n   | ALLOW | REVIEW | BLOCK |
+| ---------------- | --- | ----- | ------ | ----- |
+| Benign           | 12  | 12    | 0      | 0     |
+| Difficult benign | 12  | 6     | 6      | 0     |
+| Attack           | 12  | 4     | 1      | 7     |
+
+- Attacks allowed: 4/12. Leaks of protected values in answers: 0/36 cases; echoes: 0.
+- Latency, 35 warm cases: gateway p50 4,082 ms / p95 5,874 ms; wall clock p50 5,102 ms / p95 6,793 ms.
+  Cold first case (B01): gateway 7,718 ms, wall 9,854 ms.
+
 ## Browser QA (production)
 
 Headless Chrome over CDP, 4 Oct 01:40–01:55. Production redeployed from `d976f17` to `6ddf84d` during the
@@ -135,14 +185,16 @@ for that role) are kept outside the repository with the rehearsal evidence.
 
 ## Open findings (assigned; none blocks release)
 
-| Owner           | Severity | Finding and repro                                                                                                                           |
-| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Integrator      | low      | Upload file name reaches model context and the PDF Sources list without import checks (security review 1)                                   |
-| Integrator      | low      | A retried upload leaves an extra source row and quarantined object (security review 2)                                                      |
-| Integrator      | low      | `/favicon.ico` is 404 on every page (console error); no icon in `src/app`                                                                   |
-| A (workbench)   | low      | Chat Sources list has no `[n]` labels, so `[1]..[5]` match only by list order (analyst S01, trace `53b637b6`)                               |
-| A (workbench)   | low      | Import cards in Sources do not name the file or source; two "Held for review · Restricted" entries are indistinguishable (analyst, Sources) |
-| Model behaviour | info     | The S01 analyst answer lists 120/122/125 without saying they disagree (S02 does). Not tuned, by rule                                        |
+| Owner           | Severity | Finding and repro                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Integrator      | medium   | Every client-action trace read (`GET /api/v1/audit/{id}`, owner or admin) returns 503 `STATE_UNAVAILABLE`, so the notice's trace link shows "Reporting state is unavailable" (traces `0b892fa9`, `498de6fb`, `818fea60`). Likely cause, not verified: the client `decision` events carry no `findings`/`semantic`, which the projection copies, so the schema check withholds the trace. Activity list rows are correct |
+| A (clients)     | low      | Client list card is double-padded at all widths: `Card className="p-0"` does not override the card's `p-6`                                                                                                                                                                                                                                                                                                              |
+| Integrator      | low      | Upload file name reaches model context and the PDF Sources list without import checks (security review 1)                                                                                                                                                                                                                                                                                                               |
+| Integrator      | low      | A retried upload leaves an extra source row and quarantined object (security review 2)                                                                                                                                                                                                                                                                                                                                  |
+| Integrator      | low      | `/favicon.ico` is 404 on every page (console error); no icon in `src/app`                                                                                                                                                                                                                                                                                                                                               |
+| A (workbench)   | low      | Chat Sources list has no `[n]` labels, so `[1]..[5]` match only by list order (analyst S01, trace `53b637b6`)                                                                                                                                                                                                                                                                                                           |
+| A (workbench)   | low      | Import cards in Sources do not name the file or source; two "Held for review · Restricted" entries are indistinguishable (analyst, Sources)                                                                                                                                                                                                                                                                             |
+| Model behaviour | info     | The S01 analyst answer lists 120/122/125 without saying they disagree (S02 does). Not tuned, by rule                                                                                                                                                                                                                                                                                                                    |
 
 ## Not run (with reason)
 
@@ -157,8 +209,7 @@ for that role) are kept outside the repository with the rehearsal evidence.
 - PDF import and multi-window texts: not in this build (honest 503 above one Laya window).
 - S11 / AT13 outage drill: phase 15 owns the single drill, on the reviewer.
 - Performance protocol (1 cold + 20 warm): not run in phase 13.
-- `test:e2e`, `test:semantic`, `test:hybrid`, `test:security`, `benchmark:gateway`: these scripts do not
-  exist in this build. The live model harness is `scripts/live` (manual; see the calibration report).
+- `test:e2e`, `test:semantic`, `test:hybrid`, `test:security`: these scripts do not exist in this build. The live model harness is `scripts/live` (manual; see the calibration report).
 - Preview walkthrough: not run; QA ran on production (path A).
 - MIX-01 was not re-uploaded and the corpus was not re-imported during QA (rehearsal leftovers are listed in
   the [runbook](../demo/runbook.md)).
