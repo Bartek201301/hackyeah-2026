@@ -614,3 +614,53 @@ listening (11434, 8787, 8080 all closed), so `createDetectionPort` returns null 
 every chat ends in `SEMANTIC_UNAVAILABLE`. MIX-01 should settle as **REDACT** (one clean fact line
 against a contact, a credential and an injection), but that needs either the key locally or a
 deployed environment with the bridge up. Covered by unit and panel tests meanwhile.
+
+---
+
+# Run 6 — the Ask layout on production, as the analyst
+
+| Target | <https://hackyeah-2026.vercel.app>, main `6dbb7e5` (PR #84 and #85 merged) |
+| ------ | -------------------------------------------------------------------------- |
+| Who    | Analyst, signed in by Maciej; the browser never saw a credential from me   |
+| Widths | 1440 px, then **375 px** through the DevTools device toolbar               |
+
+## What passed
+
+The Ask screen opens as a conversation: the greeting, three starter questions from `scenarios.md`,
+and the composer, with the sidebar marking **Ask** and **no in-page nav** — #84 landed as intended.
+A starter chip fills the composer with the exact scenario question and sends nothing by itself.
+
+Sending cleared the composer and left the question on screen as its own turn, with the outcome under
+it and the composer still reachable below. At **375 px** the chips stack full width, the sidebar
+becomes the hamburger drawer and `scrollWidth === clientWidth` — **no horizontal overflow**, which
+closes the phone-width gap that runs 1–5 left open. Chrome on macOS will not make a window narrower
+than ~500 px, so this needed the device toolbar; a `resize_window` to 375 silently gives a 500 px
+viewport and proves nothing.
+
+## The defect this run found
+
+An in-flight run said **"Queued — queued" twice in a row**: the panel's own progress line and the
+outcome notice both render the same classified progress. Sources and Public summary said it three
+times — badge, paragraph, notice. Fixed in PR #89 by keeping only the notice, which also carries the
+stage's meaning and the trace link and is already a live region. A test pins the stage to exactly one
+occurrence.
+
+## The S01 question settled REVIEW, not ALLOW
+
+| Question | "Brief me on AsterCloud revenue, forecast and bid ceiling. Cite sources." (the S01 starter) |
+| -------- | ------------------------------------------------------------------------------------------- |
+| Outcome  | **Held for review** — "An administrator must review this before it can be released."        |
+| Reason   | `semantic:sensitive_exposure`                                                               |
+| Trace    | `82709cc7-6f48-4b01-8a09-113f2174fbb8`                                                      |
+
+No answer and no citations were released, which is the correct fail-closed behaviour for a REVIEW and
+renders exactly as designed. But scenarios.md expects S01 to be the ALLOW with citations, so **the
+primary demo question currently ends in the review state**. Not a workbench defect: the screen
+reported what the gateway decided. PR #83 ("verify moderate chat risk with bounded Qwen checks") looks
+like the fix; Bartosz's call.
+
+## Not covered by this run
+
+The admin **Review** queue (live since #85) and the production MIX-01 upload, which is held until
+Bartosz says P05 is finished. The analyst's own source list was not re-checked here, though an admin
+read earlier in the session returned **12 sources**, so the corpus is in.

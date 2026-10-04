@@ -123,6 +123,15 @@ describe("the Ask composer", () => {
     expect(screen.getByRole("textbox")).toHaveProperty("value", "");
   });
 
+  it("reports the stage once while the run is in flight", async () => {
+    gateway(() => json(503, DEV_UNAVAILABLE_SEAM));
+    await startRun();
+
+    // The outcome notice already classifies progress and says what the stage means. A second badge
+    // beside it printed the same words twice in a row, which reads as two separate events.
+    expect(screen.getAllByText(/Queued/)).toHaveLength(1);
+  });
+
   it("retries the question that was asked, not the empty composer", async () => {
     const sent = failingGateway();
     await askAndFail();
