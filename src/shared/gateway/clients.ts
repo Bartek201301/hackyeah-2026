@@ -236,6 +236,16 @@ export async function createClient(
     return refuse(deps, actor, operation, key, sha, text.verdict, { fields, findings: text.findings });
   }
 
+  // A second client with the same name makes every later action by name ambiguous: a person decides.
+  // ponytail: a replay of an already-written create then answers CONFLICT, not its first ALLOW (safe,
+  // nothing is written twice); a lookup by idempotency key before this check fixes that.
+  const same = (name: string) => name.trim().toLowerCase() === client.name.trim().toLowerCase();
+  const existing = await deps.repository.listClients(actor.organisation_id, CLIENT_LIMIT);
+  if (existing.some((r) => same(r.name))) {
+    const duplicate = { decision: "REVIEW", reasons: ["action:duplicate_client"] } as const;
+    return refuse(deps, actor, operation, key, sha, duplicate, { fields });
+  }
+
   const written = await deps.repository.createClient({
     actor,
     idempotencyKey: key,

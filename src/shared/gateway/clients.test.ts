@@ -228,6 +228,22 @@ describe("client_create", () => {
   });
 });
 
+describe("client_create duplicates", () => {
+  it("holds a create whose name already exists (any case) as REVIEW and writes nothing", async () => {
+    const h = harness();
+    const out = await createClient(h.deps, actorOf("analyst"), { name: ` ${NAME.toUpperCase()} ` }, KEY);
+    valid(out);
+    expect([out.status, out.body.decision, out.body.reasons]).toEqual([
+      200,
+      "REVIEW",
+      ["action:duplicate_client"],
+    ]);
+    expect(h.writes).toEqual([]);
+    expect(h.reviews[0]).toMatchObject({ operation: "client_create", idempotencyKey: KEY });
+    expect(JSON.stringify(h.reviews)).not.toContain(NAME);
+  });
+});
+
 describe("client_update", () => {
   const update = (changes: Record<string, unknown>, expected_version = 3) => ({ expected_version, changes });
 
