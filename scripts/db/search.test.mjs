@@ -11,10 +11,13 @@ import { admin, fixtures, must } from "./clients.mjs";
 const ORG = fixtures.organisation.id;
 const deal = (alias) => fixtures.deals.find((d) => d.alias === alias).id;
 const S01 = "Brief me on AsterCloud revenue, forecast and bid ceiling. Cite sources.";
-const CORPUS = ["PUB-01", "PUB-02", "INT-01", "INT-02", "RES-01", "RES-02", "OTH-01"];
+// RES-01 has been held in review since the P05 import (sensitive_exposure 0.3809) and S06 approval is not
+// in this build, so it has only a candidate excerpt. Candidates must never be searchable or readable.
+const CORPUS = ["PUB-01", "PUB-02", "INT-01", "INT-02", "RES-02", "OTH-01"];
 const db = admin();
 const actors = {};
 let boreal;
+let candidates;
 
 before(async () => {
   const { users } = must("list users", await db.auth.admin.listUsers({ perPage: 1000 }));
@@ -63,6 +66,10 @@ before(async () => {
       `Corpus missing: no approved excerpt for ${missing.join(", ")}. Run the P05 import first.`,
     );
   boreal = excerpts.filter((e) => labelOf(e) === "OTH-01").map((e) => e.id);
+  candidates = must(
+    "candidate excerpts",
+    await db.from("excerpts").select("id").eq("organisation_id", ORG).eq("status", "candidate"),
+  ).map((e) => e.id);
 });
 
 const search = (alias, { query = S01, audience = "actor", dealId = null } = {}) =>
@@ -82,9 +89,13 @@ const includesAll = (set, wanted, who) =>
 
 test("the analyst sees PUB, INT and AsterCloud RES rows, never Boreal", async () => {
   const found = await rows("analyst");
-  includesAll(labels(found), ["PUB-01", "INT-01", "INT-02", "RES-01", "RES-02"], "analyst");
+  includesAll(labels(found), ["PUB-01", "INT-01", "INT-02", "RES-02"], "analyst");
   assert.ok(!labels(found).has("OTH-01"));
   assert.ok(found.every((r) => !boreal.includes(r.id)));
+  assert.ok(
+    found.every((r) => !candidates.includes(r.id)),
+    "analyst search returned a candidate",
+  );
   assert.ok(found.every((r) => !("deal_id" in r)));
 });
 
@@ -124,6 +135,13 @@ test("reading the OTH-01 excerpt by ID returns nothing for every account", async
     );
     assert.deepEqual(read, [], alias);
   }
+  const held = await db.rpc("read_permitted_excerpts", {
+    p_organisation_id: ORG,
+    p_actor_id: actors.analyst,
+    p_audience: "actor",
+    p_ids: candidates,
+  });
+  assert.deepEqual(must("read candidates as analyst", held), []);
 });
 
 test("a deal the actor is not a member of is NOT_FOUND", async () => {
@@ -136,7 +154,11 @@ test("a deal the actor is not a member of is NOT_FOUND", async () => {
     assert.equal(error?.message, "NOT_FOUND", alias);
   }
   const narrowed = await rows("analyst", { dealId: deal("ASTER") });
-  includesAll(labels(narrowed), ["RES-01", "RES-02"], "analyst on ASTER");
+  includesAll(labels(narrowed), ["RES-02"], "analyst on ASTER");
+  assert.ok(
+    narrowed.every((r) => !candidates.includes(r.id)),
+    "ASTER search returned a candidate",
+  );
 });
 
 test("record_access_decision with the same key twice records one operation", async () => {

@@ -63,10 +63,32 @@ export function readExportReady(data: Data): ExportReady | null {
   return { downloadPath: download_path, expiresAt: expires_at };
 }
 
-/** The expiry as a UTC instant, so nobody reads a local time as the server's deadline. */
+/** The expiry as a UTC instant. Machine-readable: it belongs in `<time dateTime>`, not on screen. */
 export const expiryInstant = (expiresAt: string): string | null => {
   const t = Date.parse(expiresAt);
   return Number.isNaN(t) ? null : new Date(t).toISOString();
+};
+
+/**
+ * The expiry as a reader sees it: short, in their own zone, **with the zone named**.
+ *
+ * DESIGN.md allows a timestamp to be labelled UTC or localized with its zone, and forbids neither
+ * more nor less: a bare local time is the one thing that is wrong, because a deadline read in the
+ * wrong zone is a download someone thinks they still have. `timeZone` is for tests; the app passes
+ * nothing and gets the reader's own. The month is a name, so 04/10 is never read as 10 April.
+ */
+export const expiryLabel = (expiresAt: string, timeZone?: string): string | null => {
+  const t = Date.parse(expiresAt);
+  if (Number.isNaN(t)) return null;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+    timeZone,
+  }).format(new Date(t));
 };
 
 export const hasExpired = (expiresAt: string, now: number = Date.now()): boolean => {

@@ -7,7 +7,7 @@ import type { Citation } from "@/shared/contracts";
 // the product title and the generation time only; pdf-lib's default Producer/Creator are never written.
 // ponytail: plain A4 text layout; a richer template is out of scope.
 
-export const PDF_TITLE = "AI Control Gateway public summary";
+export const PDF_TITLE = "InterLock public summary";
 const WIDTH = 90;
 const SIZE = 11;
 const LEADING = 15;

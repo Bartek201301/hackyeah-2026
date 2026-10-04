@@ -34,6 +34,7 @@ import {
   MAX_TOPIC,
   classifyExportResponse,
   expiryInstant,
+  expiryLabel,
   hasExpired,
   readExportReady,
   readExportRun,
@@ -169,7 +170,9 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
     };
   }, [run, apply]);
 
-  const expiry = ready ? expiryInstant(ready.expiresAt) : null;
+  const expiry = ready ? expiryLabel(ready.expiresAt) : null;
+  // The exact instant stays machine-readable next to the human one.
+  const expiryIso = ready ? (expiryInstant(ready.expiresAt) ?? undefined) : undefined;
   const expired = ready ? hasExpired(ready.expiresAt) : false;
   // The same rule as Ask: the indicator carries the gateway's own stage while the run is in flight.
   const working = run && shouldKeepPolling(run) ? describeRun(run) : null;
@@ -263,12 +266,14 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
           <div className="flex flex-col gap-3">
             {expired ? (
               <Notice tone="danger">
-                This download expired at {expiry}. Create a new summary to get a fresh one.
+                This download expired at <time dateTime={expiryIso}>{expiry}</time>. Create a new summary to
+                get a fresh one.
               </Notice>
             ) : (
               <>
                 <p className="text-sm text-muted">
-                  Expires at {expiry}. The download checks your account again before it sends the file.
+                  Expires at <time dateTime={expiryIso}>{expiry}</time>. The download checks your account
+                  again before it sends the file.
                 </p>
                 <div>
                   {/* An anchor, not a Button: the shared Button renders a <button> and this is a
