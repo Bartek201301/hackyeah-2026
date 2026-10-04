@@ -58,6 +58,10 @@ const FIXED: Record<string, ReasonLabel> = {
     tone: "warning",
   },
   "action:invalid_fee": { label: "Fee is not a valid amount", tone: "danger" },
+  "action:duplicate_client": {
+    label: "A client with this name already exists, so a person decides",
+    tone: "warning",
+  },
   "action:unparsed": { label: "Request could not be read as a client action", tone: "warning" },
   "action:client_not_resolved": { label: "Client could not be identified", tone: "warning" },
   "generation:tool_call_refused": { label: "Model asked for a tool it may not use", tone: "danger" },
