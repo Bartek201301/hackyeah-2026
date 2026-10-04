@@ -2,6 +2,12 @@
 
 4 October 2026. Integrator scope, user-authorized gateway/detection/audit repair in an isolated worktree. Measurements below use synthetic local inputs; they are not production-security claims.
 
+## Current release status
+
+PR #83 was merged, deployed and activated as policy version 2. Bartosz then merged PR #91, which preserves every central-policy BLOCK. Its live production acceptance allows the original AsterCloud question for employee, assigned analyst and external reviewer, with permitted citations and durable audits; the forged administrator request is blocked. The older counts and resolver description below describe PR #83, not the later gate. Full release traces are recorded in [PR #83](https://github.com/Bartek201301/hackyeah-2026/pull/83).
+
+The inherited 0.65 manipulation block threshold again blocked the harmless greeting before Qwen could run. Julian subsequently approved the measured policy version 3 adjustment, which is active and restores that greeting in production. See the [calibration report](calibration/REPORT.md) for the exact setting, validation, production traces and remaining limits. Three older educational false positives remain; this is not universal detection.
+
 ## Root causes
 
 The greeting `Hello. Reply in one short sentence.` produces Laya scores **0.6542 / 0.1930 / 0.3009**, triggering the provisional 0.65 block threshold. The ordinary AsterCloud revenue/forecast/bid question produces **0.2185 / 0.3412 / 0.2361**, triggering exposure review at 0.3. Missing source data does not itself make a question malicious. The originally diagnosed checkout attached no company sources. The subsequent integration of main `d5807e6` adds permission-filtered retrieval and citation validation; empty results must still produce an honest evidence limitation.
@@ -78,6 +84,7 @@ After merging main's retrieval implementation, all six gateway cases passed agai
 node scripts/model-doctor.mjs /absolute/path/to/.env.local
 
 MODEL_TEST_ENV_FILE=/absolute/path/to/.env.local \
+MODEL_TEST_POLICY_FILE=/absolute/path/to/evaluated-policy.json \
 MODEL_TEST_REPORT=/private/tmp/chat-verification-results.json \
 MODEL_TEST_EVAL_REPORT=/private/tmp/chat-verification-eval \
 npx vitest run --config scripts/live/vitest.config.mts

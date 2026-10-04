@@ -5,7 +5,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { randomUUID } from "node:crypto";
 import { createHash } from "node:crypto";
-import policyJson from "../../docs/contracts/policy.example.json";
+import { check } from "../../src/shared/contracts/validate";
+import { validPolicyRelationships } from "../../src/shared/gateway/policy-update";
+
 import feed from "../../docs/contracts/threat-feed.example.json";
 import { createDetectionPort, createGenerationPort } from "../../src/features/detection/ports";
 import type { ActorContext, GatewayPolicy, ThreatFeed } from "../../src/shared/contracts";
@@ -21,9 +23,16 @@ import { decide, matchSensitive, matchSignatures, verifyCoverage } from "../../s
 import manifest from "../../src/shared/contracts/runtime-manifest.json";
 import rubric from "../../src/shared/contracts/security-verification.json";
 
+let evaluationPolicy: GatewayPolicy;
+
 beforeAll(() => {
   if (!process.env.MODEL_TEST_ENV_FILE)
     throw new Error("Provide MODEL_TEST_ENV_FILE; never put keys in command arguments.");
+  if (!process.env.MODEL_TEST_POLICY_FILE)
+    throw new Error("Provide MODEL_TEST_POLICY_FILE: the evaluated policy must be explicit.");
+  const policy = check("GatewayPolicy", JSON.parse(readFileSync(process.env.MODEL_TEST_POLICY_FILE, "utf8")));
+  if (!policy.ok || !validPolicyRelationships(policy.value)) throw new Error("Invalid evaluation policy.");
+  evaluationPolicy = policy.value;
   const env = parseEnv(readFileSync(process.env.MODEL_TEST_ENV_FILE, "utf8"));
   if (!env.LAYA_API_KEY) throw new Error("LAYA_API_KEY is missing from the private file.");
   process.env.LAYA_API_KEY = env.LAYA_API_KEY;
@@ -43,10 +52,7 @@ const actor: ActorContext = {
 async function run(message: string, excerpts: PermittedExcerpt[] = []) {
   const id = randomUUID();
   const opId = randomUUID();
-  const policy: GatewayPolicy = {
-    ...structuredClone(policyJson),
-    semantic: { ...structuredClone(policyJson.semantic), chat_verification: "qwen-context-v1" },
-  } as GatewayPolicy;
+  const policy = structuredClone(evaluationPolicy);
   const calls = new Set<string>();
   const accounting: unknown[] = [];
   let final: FinalOutcome | undefined;
@@ -57,7 +63,7 @@ async function run(message: string, excerpts: PermittedExcerpt[] = []) {
         kind: "chat",
         state: "pending",
         stage: "queued",
-        policy_version: 1,
+        policy_version: policy.version,
         feed_version: 1,
         input_private: { message },
         result_private: null,
@@ -68,13 +74,19 @@ async function run(message: string, excerpts: PermittedExcerpt[] = []) {
       return {
         policy,
         feed,
-        policy_version: 1,
+        policy_version: policy.version,
         feed_version: 1,
         feed_expires_at: new Date(Date.now() + 3600000).toISOString(),
       };
     },
     async beginOperation() {
-      return { operation_id: opId, state: "intent", replay: false, policy_version: 1, feed_version: 1 };
+      return {
+        operation_id: opId,
+        state: "intent",
+        replay: false,
+        policy_version: policy.version,
+        feed_version: 1,
+      };
     },
     async claimRun() {
       return "synthetic-test-lease";
@@ -184,7 +196,7 @@ for (const c of cases)
     }
   });
 
-for (const split of ["development", "adversarial", "joint-validation"])
+for (const split of ["development", "adversarial", "joint-validation", "calibration/validation"])
   it(`live frozen classifier gate: ${split}`, async () => {
     const samples = JSON.parse(readFileSync(`docs/testing/control-assessment/${split}.json`, "utf8")) as {
       id: string;
@@ -193,8 +205,7 @@ for (const split of ["development", "adversarial", "joint-validation"])
       audience: "actor";
       expected_risk: "benign" | "harmful";
     }[];
-    const policy = structuredClone(policyJson) as GatewayPolicy;
-    policy.semantic.chat_verification = "qwen-context-v1";
+    const policy = structuredClone(evaluationPolicy);
     const detection = createDetectionPort();
     const generation = createGenerationPort();
     if (!detection || !generation) throw new Error("Live adapters unavailable");
@@ -264,7 +275,7 @@ for (const split of ["development", "adversarial", "joint-validation"])
     const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
     if (process.env.MODEL_TEST_EVAL_REPORT)
       writeFileSync(
-        `${process.env.MODEL_TEST_EVAL_REPORT}.${split}.json`,
+        `${process.env.MODEL_TEST_EVAL_REPORT}.${split.replaceAll("/", "-")}.json`,
         JSON.stringify(
           {
             split,
