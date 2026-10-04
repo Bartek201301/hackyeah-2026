@@ -16,7 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, SquareX } from "lucide-react";
 import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
 import type { ApiResponse, Run } from "@/shared/contracts";
-import { Badge, Button, Card, Field, Textarea } from "@/shared/ui";
+import { Button, Card, Field, Textarea } from "@/shared/ui";
 import { cn } from "@/shared/cn";
 import type { GatewayOutcome } from "../lib/envelope";
 import { classifyChatResponse } from "../lib/chatFlow";
@@ -28,7 +28,6 @@ import {
   POLL_INTERVAL_MS,
   canCancel,
   cancelReachedDecision,
-  progressLabel,
   shouldKeepPolling,
 } from "../lib/runState";
 import { OutcomeNotice } from "./OutcomeNotice";
@@ -228,7 +227,6 @@ export function ChatPanel() {
     };
   }, [run, apply]);
 
-  const progress = run ? progressLabel(run) : null;
   const asked = sent !== null;
 
   return (
@@ -247,14 +245,6 @@ export function ChatPanel() {
               {sent}
             </p>
           </div>
-
-          {/* Safe server-reported stage only; no model output while work is in flight. */}
-          {progress && (
-            <p role="status" className="flex items-center gap-2 text-sm text-muted">
-              <Badge tone="brand">{progress}</Badge>
-              The gateway is still checking this request.
-            </p>
-          )}
 
           {outcome && <OutcomeNotice outcome={outcome} />}
 

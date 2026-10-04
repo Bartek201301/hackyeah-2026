@@ -193,6 +193,12 @@ function harness(over: Partial<Opts> = {}) {
     async listImports() {
       throw new Error("not used");
     },
+    async listReviews() {
+      throw new Error("not used");
+    },
+    async readReview() {
+      throw new Error("not used");
+    },
     async loadDatasetBatch() {
       throw new Error("not used");
     },

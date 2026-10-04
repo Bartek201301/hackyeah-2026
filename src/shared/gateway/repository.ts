@@ -14,6 +14,7 @@ import type {
   MetricsReservationRow,
   PermittedExcerpt,
   RepositoryPort,
+  ReviewRow,
   RunRecord,
   SourceRow,
   WindowQuery,
@@ -39,6 +40,9 @@ async function data<T>(query: PromiseLike<{ data: T; error: { message: string } 
   }
   return result.data;
 }
+
+/** Every column of a ReviewRow; candidate_text is private review content, admin-only. */
+const REVIEW_COLUMNS = "id, version, candidate_text, classification, status, document_id";
 
 const RUN_COLUMNS =
   "id, kind, state, stage, policy_version, feed_version, input_private, result_private, lease_expires_at";
@@ -522,6 +526,36 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         policy_version: result.policy_version,
         feed_version: result.feed_version,
       };
+    },
+
+    async listReviews(organisationId, limit) {
+      const rows = await data<ReviewRow[] | null>(
+        db
+          .from("review_requests")
+          .select(REVIEW_COLUMNS)
+          .eq("organisation_id", organisationId)
+          // `review_status` is declared ('pending', 'approved', 'rejected', 'expired'), and Postgres
+          // orders an enum by declaration, so ascending status is the work queue: pending first.
+          .order("status", { ascending: true })
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(limit),
+      );
+      return rows ?? [];
+    },
+
+    async readReview(organisationId, id) {
+      // maybeSingle: another organisation's id is simply absent here, which the engine turns into
+      // the same 404 as an id that does not exist.
+      const row = await data<ReviewRow | null>(
+        db
+          .from("review_requests")
+          .select(REVIEW_COLUMNS)
+          .eq("organisation_id", organisationId)
+          .eq("id", id)
+          .maybeSingle(),
+      );
+      return row ?? null;
     },
   };
 }

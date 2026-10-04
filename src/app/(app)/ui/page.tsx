@@ -18,6 +18,7 @@ import {
   Skeleton,
   StatCard,
   Textarea,
+  ThinkingIndicator,
 } from "@/shared/ui";
 
 const months = [
@@ -188,6 +189,16 @@ export default function UiCatalogPage() {
             <Skeleton className="h-4 w-48" />
             <Skeleton className="h-4 w-64" />
             <Skeleton className="h-24 w-full" />
+          </Card>
+          <Card className="flex flex-col gap-4">
+            <CardHeader
+              title="ThinkingIndicator"
+              description="Running request: shows only the stage text the caller passes"
+            />
+            <ThinkingIndicator label="Checking your request" />
+            <ThinkingIndicator label="Searching permitted sources" detail="Only documents you can access" />
+            <ThinkingIndicator label="Writing the answer" />
+            <ThinkingIndicator label="Checking the answer" />
           </Card>
         </div>
       </section>

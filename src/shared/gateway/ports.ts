@@ -307,7 +307,20 @@ export interface RepositoryPort {
     usage: Usage;
     event: Record<string, unknown> & { stage: string };
   }): Promise<{ trace_id: string; policy_version: number; feed_version: number }>;
+  /** Review requests of the organisation, pending first, then newest, at most `limit`. */
+  listReviews(organisationId: string, limit: number): Promise<ReviewRow[]>;
+  /** One review request of the organisation, or null when the id is not one of its own. */
+  readReview(organisationId: string, id: string): Promise<ReviewRow | null>;
 }
+/** review_requests row for the admin review reads; candidate_text is private review content. */
+export type ReviewRow = {
+  id: string;
+  version: number;
+  candidate_text: string;
+  classification: "public" | "internal" | "restricted";
+  status: "pending" | "approved" | "rejected" | "expired";
+  document_id: string;
+};
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {
   repository: RepositoryPort;
