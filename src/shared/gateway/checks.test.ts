@@ -195,6 +195,25 @@ describe("matchSensitive", () => {
     expect(codes("The task-management rollout and the desk-sharing plan start in 2026.")).toEqual([]);
     expect(codes("Short sk-123 is not a token.")).toEqual([]);
   });
+
+  it("finds +48 phones, checksum-valid PL IBANs and PESELs as personal data", () => {
+    for (const phone of ["+48 601 234 567", "+48-601-234-567", "+48601234567"])
+      expect(codes(`Call ${phone} today.`)).toEqual(["CONTACT_PHONE"]);
+    for (const iban of ["PL61 1090 1014 0000 0712 1981 2874", "PL61109010140000071219812874"])
+      expect(codes(`Pay to ${iban}.`)).toEqual(["BANK_ACCOUNT"]);
+    const found = matchSensitive("PESEL 44051401359 on file.", "import_signature");
+    expect(found.map((f) => [f.code, f.category])).toEqual([["NATIONAL_ID", "personal"]]);
+    expect(JSON.stringify(found)).not.toContain("44051401359");
+  });
+
+  it("ignores unprefixed numbers, UUID tails and invalid IBAN/PESEL checksums or dates", () => {
+    expect(codes("Revenue 176 000 000 and 601 234 567 units, invoice 2025-000123")).toEqual([]);
+    expect(codes("Trace 123e4567-e89b-12d3-a456-888888888888 logged.")).toEqual([]);
+    expect(codes("Reference 12345678901.")).toEqual([]);
+    expect(codes("Bad checksum 44051401358.")).toEqual([]);
+    expect(codes("Month sixty 17600000000 or 17600000006.")).toEqual([]);
+    expect(codes("Pay to PL62 1090 1014 0000 0712 1981 2874.")).toEqual([]);
+  });
 });
 
 describe("decide", () => {
