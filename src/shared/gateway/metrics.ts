@@ -100,7 +100,10 @@ export function aggregateUsage(
     semanticIn = addKnown(semanticIn, usage.semantic_input_tokens);
     semanticMs += usage.semantic_ms ?? 0;
     micro = addKnown(micro, usage.comparison_micro_usd);
-    if (usage.comparison_rate_version) rateVersions.add(usage.comparison_rate_version);
+    // "none" with a zero price is an operation that priced nothing (no model call): it adds 0 under
+    // any rate, so it must not turn a priced window into a mixed one.
+    const rate = usage.comparison_rate_version;
+    if (rate && !(rate === "none" && usage.comparison_micro_usd === 0)) rateVersions.add(rate);
   }
 
   // Charged = reconciled conservatively: spent at the reserved amount with the actual unknown. It is
@@ -116,7 +119,7 @@ export function aggregateUsage(
     .filter((r) => r.unit === "generation_tokens")
     .reduce((total, r) => total + r.amount, 0);
 
-  const priced = rateVersions.size === 1;
+  const priced = rateVersions.size <= 1;
   return {
     generation_input_tokens: generationIn,
     generation_output_tokens: generationOut,
@@ -127,7 +130,7 @@ export function aggregateUsage(
     unresolved_reservation: outstanding.some((r) => r.state === "unresolved"),
     // Two rate versions in one window cannot be added into one price.
     comparison_micro_usd: priced ? micro : null,
-    comparison_rate_version: priced ? [...rateVersions][0] : "mixed",
+    comparison_rate_version: priced ? ([...rateVersions][0] ?? "none") : "mixed",
   };
 }
 
