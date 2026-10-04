@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { readChatResult, readChatRun, readRun } from "./chatData";
+import { readChatResult, readChatRun, readRun, readSourceSelection } from "./chatData";
+
+it("accepts only a bounded gateway file selection", () => {
+  const sources = [
+    { id: "11111111-1111-4111-8111-111111111111", label: "MIX-01.csv", created_at: "2026-10-04T01:00:00Z" },
+    { id: "22222222-2222-4222-8222-222222222222", label: "MIX-01.csv", created_at: "2026-10-04T02:00:00Z" },
+  ];
+  expect(readSourceSelection({ selection_required: true, sources })).toEqual(sources);
+  expect(readSourceSelection({ selection_required: true, sources: [sources[0]] })).toBeNull();
+  expect(
+    readSourceSelection({ selection_required: true, sources: [{ ...sources[0], id: "bad" }, sources[1]] }),
+  ).toBeNull();
+});
 import { devCitation, devRun } from "./fixtures";
 
 describe("readRun", () => {

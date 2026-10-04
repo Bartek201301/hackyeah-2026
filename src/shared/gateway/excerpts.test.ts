@@ -5,7 +5,7 @@ import type { ActorContext, Excerpt } from "@/shared/contracts";
 import { sha256Hex } from "./checks";
 import { GatewayError } from "./envelope";
 import { readExcerpt, searchExcerpts } from "./excerpts";
-import type { GatewayDeps, PermittedExcerpt, RepositoryPort } from "./ports";
+import type { GatewayDeps, PermittedExcerpt, PermittedSourceMatch, RepositoryPort } from "./ports";
 
 const DEAL = "11111111-1111-4111-8111-111111111111";
 const OTHER_DEAL = "22222222-2222-4222-8222-222222222222";
@@ -45,19 +45,24 @@ type Opts = {
   controls: boolean;
   /** false = the write failed; a GatewayError = the RPC's own refusal. */
   audit: boolean | GatewayError;
+  sourceMatches: PermittedSourceMatch[];
 };
 
 type Recorded = Parameters<RepositoryPort["recordAccessDecision"]>[0];
 
 // TEST FAKE: unit tests only; the app never composes these.
 function harness(over: Partial<Opts> = {}) {
-  const o: Opts = { rows: [row()], controls: true, audit: true, ...over };
+  const o: Opts = { rows: [row()], controls: true, audit: true, sourceMatches: [], ...over };
   const searches: Parameters<RepositoryPort["searchPermittedExcerpts"]>[1][] = [];
   const reads: Parameters<RepositoryPort["readPermittedExcerpts"]>[] = [];
   const recorded: Recorded[] = [];
   const repository: Pick<
     RepositoryPort,
-    "loadActivePolicyAndFeed" | "searchPermittedExcerpts" | "readPermittedExcerpts" | "recordAccessDecision"
+    | "loadActivePolicyAndFeed"
+    | "searchPermittedExcerpts"
+    | "readPermittedExcerpts"
+    | "matchPermittedSources"
+    | "recordAccessDecision"
   > = {
     async loadActivePolicyAndFeed() {
       if (!o.controls) return null;
@@ -77,6 +82,9 @@ function harness(over: Partial<Opts> = {}) {
       reads.push(args);
       return o.rows;
     },
+    async matchPermittedSources() {
+      return o.sourceMatches;
+    },
     async recordAccessDecision(input) {
       recorded.push(input);
       if (o.audit instanceof GatewayError) throw o.audit;
@@ -89,6 +97,31 @@ function harness(over: Partial<Opts> = {}) {
 }
 
 describe("searchExcerpts", () => {
+  it("asks for a permitted duplicate filename without disclosing excerpt text", async () => {
+    const { deps, searches, recorded } = harness({
+      sourceMatches: [
+        { id: EX_ID, label: "MIX-01.csv", created_at: "2026-10-04T01:00:00Z" },
+        { id: ABSENT_ID, label: "MIX-01.csv", created_at: "2026-10-04T02:00:00Z" },
+      ],
+    });
+    const out = await searchExcerpts(deps, actor, { query: "Read MIX-01.csv" }, KEY);
+    expect(out.body).toMatchObject({ decision: "REVIEW", data: { selection_required: true } });
+    expect(searches).toHaveLength(0);
+    expect(recorded[0]?.event).toMatchObject({ stage: "source_selection", result_count: 2 });
+    expect(JSON.stringify(out.body)).not.toContain(row().text);
+  });
+
+  it("projects a candidate fact at read time and never returns its embedded secret", async () => {
+    const secret = "sk-demo-DO-NOT-EXPORT-ORCHID";
+    const { deps } = harness({
+      rows: [row({ status: "candidate", text: `Forecast is USD 164 million.\nCredential: ${secret}.` })],
+    });
+    const out = await readExcerpt(deps, actor, EX_ID);
+    expect(out.body.decision).toBe("ALLOW");
+    expect((out.body.data as Excerpt).text).toBe("Forecast is USD 164 million.");
+    expect(JSON.stringify(out.body)).not.toContain(secret);
+  });
+
   it("returns the projected excerpt and its citation for a permitted row", async () => {
     const { deps, searches, recorded } = harness();
     const { status, body } = await searchExcerpts(deps, actor, { query: QUERY }, KEY);
@@ -118,6 +151,7 @@ describe("searchExcerpts", () => {
       dealId: null,
       audience: "actor",
       limit: policyJson.execution.max_search_results,
+      sourceId: null,
     });
     // The trace and the versions are the audited ones, not invented here.
     expect(body.trace_id).toBe(TRACE);

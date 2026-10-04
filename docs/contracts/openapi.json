@@ -3498,6 +3498,29 @@
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
+                  "selection_required": { "type": "boolean", "const": true },
+                  "sources": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 6,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "label": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "created_at": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["id", "label", "created_at"]
+                    }
+                  }
+                },
+                "required": ["selection_required", "sources"]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
                   "answer": {
                     "type": "string",
                     "minLength": 1,
@@ -3835,6 +3858,10 @@
           "deal_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": ["query"]
@@ -3849,6 +3876,10 @@
             "maxLength": 4000
           },
           "deal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_id": {
             "type": "string",
             "format": "uuid"
           }

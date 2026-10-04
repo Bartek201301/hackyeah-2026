@@ -370,18 +370,18 @@ export async function executeImport(
         format: original.format,
         byte_count: original.byte_count,
       },
-      excerpts: outcomes
-        .filter((u) => u.decision !== "BLOCK")
-        .map((u) => ({
-          status: u.decision === "ALLOW" ? ("approved" as const) : ("candidate" as const),
-          text: u.text,
-          locator: u.locator,
-          source_date: u.row.source_date,
-          period: u.row.period,
-          unit: u.row.unit,
-          basis: u.row.basis,
-          fact_key: u.row.fact_key,
-        })),
+      // Every bounded unit stays private for request-time projection. A BLOCK is a candidate,
+      // never an approved excerpt; only an explicit REVIEW creates a human review request.
+      excerpts: outcomes.map((u) => ({
+        status: u.decision === "ALLOW" ? ("approved" as const) : ("candidate" as const),
+        text: u.text,
+        locator: u.locator,
+        source_date: u.row.source_date,
+        period: u.row.period,
+        unit: u.row.unit,
+        basis: u.row.basis,
+        fact_key: u.row.fact_key,
+      })),
       reviews: outcomes
         .filter((u) => u.decision === "REVIEW")
         .map((u) => ({ candidate_text: u.text, expires_at: expiresAt })),

@@ -14,6 +14,7 @@ import type {
   MetricsActivityRow,
   MetricsReservationRow,
   PermittedExcerpt,
+  PermittedSourceMatch,
   RepositoryPort,
   ReviewRow,
   RunRecord,
@@ -537,14 +538,29 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
     },
 
     // Permissions derived in SQL from trusted memberships; only the actor's identity is passed.
-    async searchPermittedExcerpts(actor, { query, dealId, audience, limit }) {
+    async searchPermittedExcerpts(actor, { query, dealId, audience, limit, sourceId }) {
       const rows = await data<PermittedExcerpt[] | null>(
-        db.rpc("search_permitted_excerpts", {
+        db.rpc("search_served_excerpts", {
           p_organisation_id: actor.organisation_id,
           p_actor_id: actor.actor_id,
           p_audience: audience,
           p_query: query,
           p_limit: limit,
+          p_deal_id: dealId,
+          p_source_id: sourceId ?? null,
+        }),
+      );
+      return rows ?? [];
+    },
+
+    async matchPermittedSources(actor, { name, sourceId, dealId, audience }) {
+      const rows = await data<PermittedSourceMatch[] | null>(
+        db.rpc("match_permitted_sources", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_audience: audience,
+          p_name: name,
+          p_source_id: sourceId,
           p_deal_id: dealId,
         }),
       );
@@ -553,7 +569,7 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
 
     async readPermittedExcerpts(actor, audience, ids) {
       const rows = await data<PermittedExcerpt[] | null>(
-        db.rpc("read_permitted_excerpts", {
+        db.rpc("read_served_excerpts", {
           p_organisation_id: actor.organisation_id,
           p_actor_id: actor.actor_id,
           p_audience: audience,

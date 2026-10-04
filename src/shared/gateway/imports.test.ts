@@ -180,6 +180,7 @@ function harness(over: Partial<Opts> = {}) {
     readMetricsRows: unused,
     exportActivity: unused,
     searchPermittedExcerpts: unused,
+    matchPermittedSources: unused,
     readPermittedExcerpts: unused,
     recordAccessDecision: unused,
     cancelRun: unused,
@@ -384,7 +385,7 @@ describe("executeImport", () => {
     noText([out.body, h.finals]);
   });
 
-  it("removes a signature-blocked unit without a Laya call: partial/REDACT with its locator", async () => {
+  it("keeps a signature-blocked unit private without a Laya call: partial/REDACT", async () => {
     const h = harness({ rows: [{ ...ROW, text: `${LINE_1}\n\n${INJECTION}` }] });
     const out = await h.execute();
     valid(out);
@@ -392,7 +393,10 @@ describe("executeImport", () => {
     expect(out.body).toMatchObject({ decision: "REDACT", reasons: ["import_signature:SIG-001"] });
     expect(h.assessed.map((a) => a.text)).toEqual([LINE_1]);
     expect(h.publications[0].document.status).toBe("partial");
-    expect(h.publications[0].excerpts.map((e) => e.locator)).toEqual(["row:1:line:1"]);
+    expect(h.publications[0].excerpts.map((e) => [e.locator, e.status])).toEqual([
+      ["row:1:line:1", "approved"],
+      ["row:1:line:3", "candidate"],
+    ]);
     expect(h.finals[0].event.findings).toEqual([
       {
         code: "SIG-001",
@@ -691,17 +695,21 @@ describe("executeImport (upload)", () => {
       format: "csv",
       byte_count: Buffer.byteLength(MIX_01),
     });
-    expect(pub.excerpts).toEqual([
-      {
-        status: "approved",
-        text: PIPELINE,
-        locator: "row:1:line:1",
-        source_date: "2026-09-30",
-        period: "2026-Q4",
-        unit: "USD million",
-        basis: "forecast",
-        fact_key: "sales_pipeline",
-      },
+    expect(pub.excerpts[0]).toEqual({
+      status: "approved",
+      text: PIPELINE,
+      locator: "row:1:line:1",
+      source_date: "2026-09-30",
+      period: "2026-Q4",
+      unit: "USD million",
+      basis: "forecast",
+      fact_key: "sales_pipeline",
+    });
+    expect(pub.excerpts.map((e) => e.status)).toEqual(["approved", "candidate", "candidate", "candidate"]);
+    expect(pub.excerpts.slice(1).map((e) => e.locator)).toEqual([
+      "row:1:line:2",
+      "row:1:line:3",
+      "row:1:line:4",
     ]);
     expect(h.calls("storeQuarantine")).toBe(0);
     expect(h.finals[0]).toMatchObject({ operation: "import_upload", run_state: "completed" });
@@ -725,7 +733,12 @@ describe("executeImport (upload)", () => {
     expect(out.body).toMatchObject({ decision: "REVIEW", data: { state: "review" } });
     const [pub] = h.publications;
     expect(pub.document.status).toBe("review");
-    expect(pub.excerpts.map((e) => [e.locator, e.status])).toEqual([["row:1:line:1", "candidate"]]);
+    expect(pub.excerpts.map((e) => [e.locator, e.status])).toEqual([
+      ["row:1:line:1", "candidate"],
+      ["row:1:line:2", "candidate"],
+      ["row:1:line:3", "candidate"],
+      ["row:1:line:4", "candidate"],
+    ]);
     expect(pub.reviews.map((r) => r.candidate_text)).toEqual([PIPELINE]);
   });
 
@@ -739,7 +752,7 @@ describe("executeImport (upload)", () => {
     expect(h.publications[0].reviews).toHaveLength(1);
   });
 
-  it("removes every line of a row holding a PEM block, key body included: BLOCK", async () => {
+  it("holds every line of a PEM row privately, key body included: BLOCK", async () => {
     const pem = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC\n-----END PRIVATE KEY-----";
     const csv = `text,source_date,period,unit,fact_key,basis\n"${pem}",2026-09-30,2026-Q4,USD million,key,actual\n`;
     const h = upload({ csv });
@@ -748,7 +761,7 @@ describe("executeImport (upload)", () => {
     expect(out.body).toMatchObject({ decision: "BLOCK", reasons: ["import_signature:PEM_KEY"] });
     expect(h.calls("assess")).toBe(0);
     expect(h.publications[0].document.status).toBe("blocked");
-    expect(h.publications[0].excerpts).toEqual([]);
+    expect(h.publications[0].excerpts.map((e) => e.status)).toEqual(["candidate", "candidate", "candidate"]);
     expect(h.finals[0].event.counts).toEqual({ units: 3, approved: 0, review: 0, removed: 3 });
     expect(JSON.stringify([out.body, h.finals])).not.toContain("MIIEv");
   });

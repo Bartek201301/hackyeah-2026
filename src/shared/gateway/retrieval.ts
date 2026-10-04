@@ -57,6 +57,38 @@ export function rewriteCitations(text: string, tags: readonly number[]) {
 const NUMERIC_CLAIM = /\b\d[\d.,]*\s*(?:(?:million|billion|thousand|percent)\b|%)|\bUSD\s*\d/i;
 export const hasNumericClaim = (text: string) => NUMERIC_CLAIM.test(text);
 
+/** A monetary claim must cite a supplied source containing the same figure and unit. */
+export function monetaryClaimsGrounded(text: string, sources: readonly PermittedExcerpt[]): boolean {
+  const money = /\b(?:(?:USD|EUR|PLN)\s*)?\d+(?:[.,]\d+)?\s*(?:million|billion|thousand)\b/gi;
+  const key = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/^(?:usd|eur|pln)\s*/, "");
+  for (const clause of text.split(/[;\n]|(?<=[.!?])\s+(?=[A-Z])/u)) {
+    const amounts = [...clause.matchAll(money)].map((match) => match[0]);
+    if (!amounts.length) continue;
+    const { tags, unknown } = parseCitations(clause, sources.length);
+    if (unknown || !tags.length) return false;
+    for (const amount of amounts) {
+      if (
+        !tags.some((tag) => {
+          const source = sources[tag - 1];
+          const sourceAmounts = [...source.text.matchAll(money)].map((match) => match[0]);
+          return sourceAmounts.some(
+            (candidate) =>
+              key(candidate) === key(amount) &&
+              (!/^(?:USD|EUR|PLN)\b/i.test(amount) ||
+                source.text.toLowerCase().includes(amount.slice(0, 3).toLowerCase())),
+          );
+        })
+      )
+        return false;
+    }
+  }
+  return true;
+}
+
 export const toCitation = (e: PermittedExcerpt): Citation => ({
   excerpt_id: e.id,
   excerpt_version: e.version,
