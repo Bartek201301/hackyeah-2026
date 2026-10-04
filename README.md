@@ -25,7 +25,7 @@ npm ci
 npm run check
 ```
 
-Expected: exit 0, **1044 tests in 72 files**, 25 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
+Expected: exit 0, **1045 tests in 72 files**, 25 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
 
 Just the control decisions, in under a second:
 
@@ -71,7 +71,7 @@ A system prompt is not an access boundary. Anyone who can phrase a sentence can 
 
 ## How one request is decided
 
-Ten ordered stages. Any stage can withhold, and a later stage cannot undo an earlier refusal.
+Nine ordered stages, in the order `src/shared/gateway/chat.ts` runs them. Any stage can withhold, and a later stage cannot undo an earlier refusal. Budget reservation is not one of the nine: every provider call is reserved before dispatch and settled after it, so the Laya call at stage 6 is already accounted for.
 
 | #   | Stage                                                                                                                   | Kind          | Implementation                                                                             |
 | --- | ----------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------ |
@@ -80,15 +80,14 @@ Ten ordered stages. Any stage can withhold, and a later stage cannot undo an ear
 | 3   | Closed-schema input validation, every unknown field rejected                                                            | deterministic | `docs/contracts/openapi.json`, Ajv                                                         |
 | 4   | Threat-feed signature match on normalised text                                                                          | deterministic | `src/shared/gateway/checks.ts`                                                             |
 | 5   | Secret and contact pattern match                                                                                        | deterministic | `src/shared/gateway/checks.ts`                                                             |
-| 6   | **Laya semantic assessment**, windowed to cover the whole text, coverage re-verified by the engine                      | AI            | `src/features/detection/providers/laya.ts`                                                 |
+| 6   | **Laya semantic assessment** of the input, one window, coverage re-verified by the engine                               | AI            | `src/features/detection/providers/laya.ts`, `src/features/detection/ports.ts`              |
 | 7   | Qwen contextual verification of the semantic REVIEW band only                                                           | AI            | `src/shared/gateway/chat-verification.ts`                                                  |
-| 8   | Atomic budget reservation in SQL before any provider call                                                               | deterministic | `supabase/migrations/20261003162224_operation_rpcs.sql`                                    |
-| 9   | Retrieval scoped by role, deal and classification, in SQL, before the model sees anything                               | deterministic | `src/shared/gateway/retrieval.ts`, `supabase/migrations/20261003223004_excerpt_access.sql` |
-| 10  | Answer buffered, citations validated and rewritten, output checked, audit written before disclosure                     | deterministic | `src/shared/gateway/chat.ts`, `src/shared/gateway/audit.ts`                                |
+| 8   | Retrieval scoped by role, deal and classification, in SQL, before the model sees anything                               | deterministic | `src/shared/gateway/retrieval.ts`, `supabase/migrations/20261003223004_excerpt_access.sql` |
+| 9   | Answer buffered, citations validated and rewritten, output checked, audit written before disclosure                     | deterministic | `src/shared/gateway/chat.ts`, `src/shared/gateway/audit.ts`                                |
 
 A write request runs the same stages. There is one chat input: a small deterministic router in the browser picks whether a message looks like a question or an instruction, purely so the user does not have to flip a toggle. It is not a boundary and it is commented as such in `src/features/workbench/lib/actFlow.ts`. Either path reaches the same engine, and an Act run that finds nothing to do falls back to answering. The model's plan is validated against a closed schema and then re-decided by role rules, so a router that guesses wrong costs a redundant check and never an unchecked write.
 
-Stage 9 is why the layer survives a jailbreak that stages 4 to 7 miss: the records an attacker is fishing for were filtered out in SQL before generation, so the model has nothing to leak. Stage 10 is why it survives a model that invents a citation: tags are validated against what was actually supplied and rewritten, so an invented one cannot reach the reader.
+Stage 8 is why the layer survives a jailbreak that stages 4 to 7 miss: the records an attacker is fishing for were filtered out in SQL before generation, so the model has nothing to leak. Stage 9 is why it survives a model that invents a citation: tags are validated against what was actually supplied and rewritten, so an invented one cannot reach the reader.
 
 ---
 
@@ -135,7 +134,9 @@ This is the part we would most like a judge to look at. Laya is a network servic
 - exceeds a 64 KB body ceiling, or carries any key the protocol does not name;
 - returns a score that is not a finite number in `[0, 1]`.
 
-Coverage is then recomputed rather than believed. `verifyCoverage` checks the returned window ranges against the text itself: `text_sha256` must match, windows must start at character 0, advance without a gap, stay within the per-window token budget, number no more than `max_windows`, and the last one must end at the final character. A response that claims `coverage_complete: true` while its ranges leave a gap is rejected. **The model's own self-report is not evidence that the model read the document.**
+Coverage is then recomputed rather than believed. `verifyCoverage` checks the returned ranges against the text itself: `text_sha256` must match, the first range must start at character 0, ranges must advance without a gap, each must stay within the per-window token budget, there must be no more than `max_windows` of them, and the last must end at the final character. A response that claims `coverage_complete: true` while its ranges leave a gap is rejected. **The model's own self-report is not evidence that the model read the document.**
+
+One honest scope note. The engine's coverage check and the policy's `window_tokens`, `overlap_tokens` and `max_windows` settings are written for multi-window scanning, but the adapter in this build emits exactly **one** window per assessed unit and refuses anything that does not fit it. Text longer than the window is a 503, not a partial assessment, and a long document is never silently half-read. Imports are assessed per line, so each line is its own single-window unit. Multi-window scanning of a long text is specified and verified but not shipped here, which is why PDF import is refused.
 
 Scores are signals, never permissions. A semantic ALLOW cannot grant access that role and deal scope deny, and a deterministic finding cannot be cleared by a semantic result.
 
@@ -317,11 +318,11 @@ From production, with trace ids recorded for each: a foreign run, trace and exce
 
 ### Verified commands
 
-Run on this branch merged with `origin/main` at `09541af` on 2026-10-04:
+Run on this branch merged with `origin/main` at `42a5324` on 2026-10-04:
 
 ```
 npm run check
-# tooling 25/25, vitest 1044/1044 in 72 files, production build, exit 0
+# tooling 25/25, vitest 1045/1045 in 72 files, production build, exit 0
 # also exit 0 from a fresh worktree with npm ci and no .env.local
 ```
 
@@ -391,7 +392,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1044 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
+`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1045 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
 
 To run the application, put the project's Supabase values in `.env.local`, copied from `.env.example`:
 
@@ -418,20 +419,37 @@ The quickest honest path for a reviewer is the hosted instance with a prepared a
 ## Architecture as built
 
 ```mermaid
-flowchart LR
-  W[Web workbench, dashboards, clients] --> H[Next.js Route Handlers, 24 paths]
-  H --> G[TypeScript gateway engine]
-  G --> D1[Deterministic: signatures, PII, scope, budgets, ceilings]
-  G --> A[Act mode: one JSON plan in, role rules decide]
-  G --> B[Authenticated HTTPS bridge on a Mac]
-  B --> L[Laya typed-decisions, pinned revision]
-  B --> O[Ollama qwen3:8b, pinned digest]
-  G --> P[Versioned policy and threat feed]
-  G --> S[(Supabase: records, reservations, audit, private buckets)]
-  D1 --> S
-  A --> S
-  P --> S
-  S --> V[Sanitised projections] --> W
+flowchart TB
+  A["Caller: the web app, or any client of the 24 OpenAPI paths"]
+  A --> R["Thin route handler: origin, actor, idempotency key, closed-schema body"]
+  R --> S1
+
+  subgraph E["Gateway engine: the only place a decision is made"]
+    direction TB
+    S1["1-3 Identity, role and deal from trusted server records"]
+    S2["4-5 Deterministic: feed signatures, secret and PII patterns"]
+    S3["6-7 Semantic: Laya scores, then Qwen for the REVIEW band only"]
+    S4["8 Retrieval scoped by role, deal and classification, in SQL"]
+    S5["9 Generate, validate and rewrite citations, check the output"]
+    S6["Audit committed before anything is disclosed"]
+    AC["Act path: one JSON plan, schema-validated, role rules decide"]
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
+    S3 --> AC --> S6
+  end
+
+  S3 --> M["Injected detection and generation ports"]
+  S5 --> M
+  M --> BR["Authenticated HTTPS bridge, or loopback on the Mac"]
+  BR --> LA["Laya typed-decisions, pinned revision"]
+  BR --> OL["Ollama qwen3:8b, pinned digest"]
+
+  DB[("One Supabase project: Postgres holds policy, feed, records, reservations and audit; two private buckets hold originals and exports")]
+  S6 --> DB
+  S4 --> DB
+  DB -->|"active policy and feed version"| S1
+  DB --> PR["Sanitised projections: own traces, admin aggregates"]
+  PR --> A
+  E -.->|"any required control unavailable"| F["503: nothing reserved, nothing disclosed"]
 ```
 
 Trust boundaries, in the order a request crosses them: browser to server (every body, upload, tool argument and model output untrusted); gateway to database (privileged credentials can bypass RLS, so server code checks organisation, actor, role and deal on every operation, and SQL functions enforce the atomic invariants); gateway to model bridge (server-only bearer token, fixed host and routes, bounded JSON, no caller-chosen model or path, and the bridge holds no database key); raw data to approved excerpt (provenance and immutable version retained, classification independent of processing status, semantic scores cannot change permissions); model output to user (citations validated against supplied context, output checked before exposure); logs to dashboards (safe reason codes and metrics only, never prompts, secrets, raw text or denied document titles).
@@ -451,7 +469,7 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 | Robustness of the solution and quality of guardrails |  30%   | Ten-stage ordered gate, deterministic and AI in series, neither able to approve alone; fail-closed on any missing control                                      | [Benchmark](docs/testing/benchmark/REPORT.md), [calibration](docs/testing/control-assessment/calibration/REPORT.md), [held-out](src/features/detection/J2-CALIBRATION.md) |
 | Architecture and performance efficiency              |  20%   | Six trust boundaries, atomic SQL accounting, single-forward-pass classifier, measured cold and warm latency with sample sizes                                  | [Architecture](docs/product/architecture.md), benchmark latency table                                                                                                     |
 | Security reporting                                   |  20%   | Audit before effect, per-stage trace detail with locators, CSV export, management metrics with labelled estimates and unresolved usage                         | `src/shared/gateway/audit.ts`, `src/shared/gateway/auditExport.ts`, `src/shared/gateway/metrics.ts`, `src/features/audit/`                                                |
-| Completeness of the self-testing suite               |  15%   | 1044 unit tests in 72 files with positive and negative cases, 25 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
+| Completeness of the self-testing suite               |  15%   | 1045 unit tests in 72 files with positive and negative cases, 25 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
 | Practical implementability and scalability           |  15%   | HTTP API with OpenAPI and a generated typed client, policy swappable without redeploy, model behind a port interface, documented recovery                      | [OpenAPI](docs/contracts/openapi.json), `src/shared/gateway/ports.ts`, [runbook](docs/demo/runbook.md)                                                                    |
 
 ### Formal requirements
