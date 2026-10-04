@@ -25,14 +25,14 @@ npm ci
 npm run check
 ```
 
-Expected: exit 0, **1028 tests in 72 files**, 25 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
+Expected: exit 0, **1044 tests in 72 files**, 25 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
 
 Just the control decisions, in under a second:
 
 ```
 npx vitest run src/shared/gateway/checks.test.ts src/shared/gateway/chat.test.ts \
                src/shared/gateway/client-rules.test.ts src/shared/gateway/client-act.test.ts
-# 120 tests in 4 files, 384 ms
+# 120 tests in 4 files, about 300 ms
 ```
 
 | Suite                       | Command                                                    | Needs                     | Proves                                                                                                                                                                                     |
@@ -85,6 +85,8 @@ Ten ordered stages. Any stage can withhold, and a later stage cannot undo an ear
 | 8   | Atomic budget reservation in SQL before any provider call                                                               | deterministic | `supabase/migrations/20261003162224_operation_rpcs.sql`                                    |
 | 9   | Retrieval scoped by role, deal and classification, in SQL, before the model sees anything                               | deterministic | `src/shared/gateway/retrieval.ts`, `supabase/migrations/20261003223004_excerpt_access.sql` |
 | 10  | Answer buffered, citations validated and rewritten, output checked, audit written before disclosure                     | deterministic | `src/shared/gateway/chat.ts`, `src/shared/gateway/audit.ts`                                |
+
+A write request runs the same stages. There is one chat input: a small deterministic router in the browser picks whether a message looks like a question or an instruction, purely so the user does not have to flip a toggle. It is not a boundary and it is commented as such in `src/features/workbench/lib/actFlow.ts`. Either path reaches the same engine, and an Act run that finds nothing to do falls back to answering. The model's plan is validated against a closed schema and then re-decided by role rules, so a router that guesses wrong costs a redundant check and never an unchecked write.
 
 Stage 9 is why the layer survives a jailbreak that stages 4 to 7 miss: the records an attacker is fishing for were filtered out in SQL before generation, so the model has nothing to leak. Stage 10 is why it survives a model that invents a citation: tags are validated against what was actually supplied and rewritten, so an invented one cannot reach the reader.
 
@@ -315,11 +317,11 @@ From production, with trace ids recorded for each: a foreign run, trace and exce
 
 ### Verified commands
 
-Run on this branch merged with `origin/main` at `bec195e` on 2026-10-04:
+Run on this branch merged with `origin/main` at `09541af` on 2026-10-04:
 
 ```
 npm run check
-# tooling 25/25, vitest 1028/1028 in 72 files, production build, exit 0
+# tooling 25/25, vitest 1044/1044 in 72 files, production build, exit 0
 # also exit 0 from a fresh worktree with npm ci and no .env.local
 ```
 
@@ -353,28 +355,28 @@ Each actor sees only their own traces; the organisation view is admin only, and 
 
 Nothing here is mocked for the demo. "Not in this build" means the route answers 503 or an explicit refusal, never a fabricated success.
 
-| Area                                                     | State             | Note                                                                                                                         |
-| -------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Gateway engine, policy v3, deterministic checks          | Working           | One engine behind every `/api/v1` route; 24 documented paths                                                                 |
-| Live Laya classifier, pinned revision                    | Working           | Real service behind an authenticated HTTPS bridge; never a stub                                                              |
-| Qwen contextual verification of the REVIEW band          | Working           | Bounded to balanced chat; cannot clear a deterministic finding                                                               |
-| Fail-closed on a missing control                         | Working           | 503 before any reservation; the easiest thing for a judge to test                                                            |
-| Role, deal and classification scoping                    | Working           | Enforced in server code and again in SQL; 59 database tests                                                                  |
-| Centralized versioned policy with live admin update      | Working           | `PUT /policy` with CAS, relationship validation and hard ceilings                                                            |
-| Atomic budgets, local and commercial units               | Working           | Concurrent reservations cannot overspend; unknown usage never zero                                                           |
-| CSV and allowlisted connector import, per-line redaction | Working           | Private quarantine, then approved excerpts, a REDACT partial, or a held candidate                                            |
-| Chat with validated and rewritten citations              | Working           | Conflicting figures stay explicit                                                                                            |
-| Audit, personal traces, admin dashboard, CSV export      | Working           | Protected text excluded from every projection                                                                                |
-| Client actions and Act mode                              | Working           | Model proposes one JSON plan; role rules decide. Verified live and in the browser                                            |
-| Public sanitised PDF export                              | Working           | Public-approved excerpts only, then an output check                                                                          |
-| Trace link for a client action                           | Partial           | Returned 503 during QA; fixed in `src/shared/gateway/audit.ts` with a regression test, not yet re-verified on the deployment |
-| Semantic gate against paraphrased attacks                | Partial           | 4 of 12 benchmark attacks auto-allowed; none leaked a value                                                                  |
-| Difficult-benign friction                                | Partial           | 6 of 12 held by citation validation when the corpus has no answer                                                            |
-| Review approval flow                                     | Partial           | A candidate is created and visible; approving it is not in this build                                                        |
-| Threat-feed push endpoint                                | Not in this build | `GET /feeds` reads the active feed; `POST`/`PUT` answer 503                                                                  |
-| PDF upload                                               | Not in this build | Refused with `UNSUPPORTED_FILE` and a message, never silently parsed                                                         |
-| MCP adapter for Claude Code or ChatGPT                   | Not in this build | Specified in the OpenAPI contract; no adapter exists in `src`                                                                |
-| High availability                                        | Not claimed       | Both models run on one Mac that must stay awake and connected                                                                |
+| Area                                                     | State             | Note                                                                                                                                                                                                                                |
+| -------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gateway engine, policy v3, deterministic checks          | Working           | One engine behind every `/api/v1` route; 24 documented paths                                                                                                                                                                        |
+| Live Laya classifier, pinned revision                    | Working           | Real service behind an authenticated HTTPS bridge; never a stub                                                                                                                                                                     |
+| Qwen contextual verification of the REVIEW band          | Working           | Bounded to balanced chat; cannot clear a deterministic finding                                                                                                                                                                      |
+| Fail-closed on a missing control                         | Working           | 503 before any reservation; the easiest thing for a judge to test                                                                                                                                                                   |
+| Role, deal and classification scoping                    | Working           | Enforced in server code and again in SQL; 59 database tests                                                                                                                                                                         |
+| Centralized versioned policy with live admin update      | Working           | `PUT /policy` with CAS, relationship validation and hard ceilings                                                                                                                                                                   |
+| Atomic budgets, local and commercial units               | Working           | Concurrent reservations cannot overspend; unknown usage never zero                                                                                                                                                                  |
+| CSV and allowlisted connector import, per-line redaction | Working           | Private quarantine, then approved excerpts, a REDACT partial, or a held candidate                                                                                                                                                   |
+| Chat with validated and rewritten citations              | Working           | Conflicting figures stay explicit                                                                                                                                                                                                   |
+| Audit, personal traces, admin dashboard, CSV export      | Working           | Protected text excluded from every projection                                                                                                                                                                                       |
+| Client actions and Act mode                              | Working           | One chat input. A client-side router picks Ask or Act for the user's convenience only, and the gateway applies the same rules on either path. The model proposes one JSON plan; role rules decide. Verified live and in the browser |
+| Public sanitised PDF export                              | Working           | Public-approved excerpts only, then an output check                                                                                                                                                                                 |
+| Trace link for a client action                           | Partial           | Returned 503 during QA; fixed in `src/shared/gateway/audit.ts` with a regression test, not yet re-verified on the deployment                                                                                                        |
+| Semantic gate against paraphrased attacks                | Partial           | 4 of 12 benchmark attacks auto-allowed; none leaked a value                                                                                                                                                                         |
+| Difficult-benign friction                                | Partial           | 6 of 12 held by citation validation when the corpus has no answer                                                                                                                                                                   |
+| Review approval flow                                     | Partial           | A candidate is created and visible; approving it is not in this build                                                                                                                                                               |
+| Threat-feed push endpoint                                | Not in this build | `GET /feeds` reads the active feed; `POST`/`PUT` answer 503                                                                                                                                                                         |
+| PDF upload                                               | Not in this build | Refused with `UNSUPPORTED_FILE` and a message, never silently parsed                                                                                                                                                                |
+| MCP adapter for Claude Code or ChatGPT                   | Not in this build | Specified in the OpenAPI contract; no adapter exists in `src`                                                                                                                                                                       |
+| High availability                                        | Not claimed       | Both models run on one Mac that must stay awake and connected                                                                                                                                                                       |
 
 ---
 
@@ -389,7 +391,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1028 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
+`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1044 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
 
 To run the application, put the project's Supabase values in `.env.local`, copied from `.env.example`:
 
@@ -449,7 +451,7 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 | Robustness of the solution and quality of guardrails |  30%   | Ten-stage ordered gate, deterministic and AI in series, neither able to approve alone; fail-closed on any missing control                                      | [Benchmark](docs/testing/benchmark/REPORT.md), [calibration](docs/testing/control-assessment/calibration/REPORT.md), [held-out](src/features/detection/J2-CALIBRATION.md) |
 | Architecture and performance efficiency              |  20%   | Six trust boundaries, atomic SQL accounting, single-forward-pass classifier, measured cold and warm latency with sample sizes                                  | [Architecture](docs/product/architecture.md), benchmark latency table                                                                                                     |
 | Security reporting                                   |  20%   | Audit before effect, per-stage trace detail with locators, CSV export, management metrics with labelled estimates and unresolved usage                         | `src/shared/gateway/audit.ts`, `src/shared/gateway/auditExport.ts`, `src/shared/gateway/metrics.ts`, `src/features/audit/`                                                |
-| Completeness of the self-testing suite               |  15%   | 1028 unit tests in 72 files with positive and negative cases, 25 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
+| Completeness of the self-testing suite               |  15%   | 1044 unit tests in 72 files with positive and negative cases, 25 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
 | Practical implementability and scalability           |  15%   | HTTP API with OpenAPI and a generated typed client, policy swappable without redeploy, model behind a port interface, documented recovery                      | [OpenAPI](docs/contracts/openapi.json), `src/shared/gateway/ports.ts`, [runbook](docs/demo/runbook.md)                                                                    |
 
 ### Formal requirements
