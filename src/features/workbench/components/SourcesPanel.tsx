@@ -11,10 +11,22 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import Link from "next/link";
+import { FileUp, Inbox, Upload } from "lucide-react";
 import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
 import type { ApiResponse, ImportSummary, Run, SourceSummary } from "@/shared/contracts";
-import { Badge, Button, Card, CardHeader, Field, Input, Select } from "@/shared/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  Input,
+  LoadingState,
+  Select,
+  ThinkingIndicator,
+} from "@/shared/ui";
 import { classifyResponse, classifyTerminalErrorCode, type GatewayOutcome } from "../lib/envelope";
 import {
   CLASSIFICATIONS,
@@ -28,7 +40,8 @@ import {
 import { classifyImportResponse, readImportRun } from "../lib/importRun";
 import { describeClassification, describeImportStatus, describeSourceKind } from "../lib/importStatus";
 import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
-import { POLL_INTERVAL_MS, shouldKeepPolling } from "../lib/runState";
+import { POLL_INTERVAL_MS, describeRun, shouldKeepPolling } from "../lib/runState";
+import { traceHref } from "../lib/trace";
 import { OutcomeNotice } from "./OutcomeNotice";
 
 const client = createGatewayClient();
@@ -201,8 +214,12 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
     };
   }, [run, apply]);
 
+  // The same rule as Ask: while the import runs, the indicator carries the gateway's own stage and
+  // the notice would only repeat it.
+  const working = run && shouldKeepPolling(run) ? describeRun(run) : null;
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <Card>
         <CardHeader
           title="Upload a file"
@@ -273,20 +290,33 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
         </div>
       </Card>
 
-      {uploadOutcome && <OutcomeNotice outcome={uploadOutcome} />}
+      {working ? (
+        <Card>
+          <ThinkingIndicator label={working.label} detail={run?.stage?.trim() || undefined} />
+        </Card>
+      ) : (
+        uploadOutcome && <OutcomeNotice outcome={uploadOutcome} />
+      )}
 
       <Card>
         <CardHeader title="Configured sources" />
         {sourcesOutcome ? (
           <OutcomeNotice outcome={sourcesOutcome} />
         ) : sources === null ? (
-          <p className="text-sm text-muted">Loading sources…</p>
+          <LoadingState label="Loading sources…" />
         ) : sources.length === 0 ? (
-          <p className="text-sm text-muted">No source is configured for this account.</p>
+          <EmptyState
+            icon={<FileUp className="size-5" aria-hidden />}
+            title="No source is configured"
+            description="Upload a CSV above, and the source it creates appears here."
+          />
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col divide-y divide-border">
             {sources.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center gap-2 text-sm text-fg">
+              <li
+                key={s.id}
+                className="flex flex-wrap items-center gap-2 py-2.5 text-sm text-fg first:pt-0 last:pb-0"
+              >
                 <span className="font-medium">{s.label}</span>
                 <Badge tone={describeClassification(s.classification).tone}>
                   {describeClassification(s.classification).label}
@@ -306,21 +336,36 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
         {importsOutcome ? (
           <OutcomeNotice outcome={importsOutcome} />
         ) : imports === null ? (
-          <p className="text-sm text-muted">Loading imports…</p>
+          <LoadingState label="Loading imports…" />
         ) : imports.length === 0 ? (
-          <p className="text-sm text-muted">This account has no imports yet.</p>
+          <EmptyState
+            icon={<Inbox className="size-5" aria-hidden />}
+            title="No import yet"
+            description="An upload appears here once the gateway has settled what, if anything, it published."
+          />
         ) : (
-          <ul className="flex flex-col gap-4">
+          <ul className="flex flex-col divide-y divide-border">
             {imports.map((i) => {
               const status = describeImportStatus(i.status);
               const classification = describeClassification(i.classification);
+              // ImportSummary carries no label, so the trace is what makes a row identifiable: it is
+              // the audited record of this very import, and the run id is its trace id.
+              const href = traceHref(i.run_id);
               return (
-                <li key={i.id} className="flex flex-col gap-1">
+                <li key={i.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
                   <span className="flex flex-wrap items-center gap-2">
                     <Badge tone={status.tone}>{status.label}</Badge>
                     <Badge tone={classification.tone}>{classification.label}</Badge>
                   </span>
                   <span className="text-sm text-muted">{status.detail}</span>
+                  {href && (
+                    <Link
+                      href={href}
+                      className="text-sm font-medium text-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
+                    >
+                      View the audited trace
+                    </Link>
+                  )}
                 </li>
               );
             })}
