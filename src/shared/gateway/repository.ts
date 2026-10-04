@@ -80,6 +80,19 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
   }
 
   return {
+    async updatePolicy({ actor, idempotencyKey, expectedVersion, policy, requestSha256, documentSha256 }) {
+      return data(
+        db.rpc("update_policy", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_idempotency_key: idempotencyKey,
+          p_expected_version: expectedVersion,
+          p_document: policy,
+          p_request_sha256: requestSha256,
+          p_document_sha256: documentSha256,
+        }),
+      );
+    },
     async loadActivePolicyAndFeed(organisationId) {
       const head = await data(
         db

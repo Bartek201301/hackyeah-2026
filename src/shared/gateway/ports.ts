@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   DetectionPort,
   GenerationPort,
+  GatewayPolicy,
   Run,
   Usage,
 } from "@/shared/contracts";
@@ -15,6 +16,14 @@ export type Controls = {
   policy_version: number;
   feed_version: number;
   feed_expires_at: string;
+};
+export type PolicyWrite = {
+  actor: ActorContext;
+  idempotencyKey: string;
+  expectedVersion: number;
+  policy: GatewayPolicy;
+  requestSha256: string;
+  documentSha256: string;
 };
 export type RunRecord = {
   id: string;
@@ -154,6 +163,10 @@ export type PermittedExcerpt = {
 /** Names follow protocols.md; startRun/readRun/claimRun are additions. Every method throws GatewayError
  *  carrying the RPC's ErrorCode, or STATE_UNAVAILABLE for anything else. */
 export interface RepositoryPort {
+  /** Active admin recheck, idempotency, immutable version, head CAS and audit in one transaction. */
+  updatePolicy(
+    input: PolicyWrite,
+  ): Promise<{ trace_id: string; policy_version: number; feed_version: number }>;
   loadActivePolicyAndFeed(organisationId: string): Promise<Controls | null>;
   startRun(input: {
     actor: ActorContext;
