@@ -236,7 +236,7 @@ export function ChatPanel() {
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-3xl flex-col",
+        "flex flex-col",
         // Empty: greeting and composer sit together in the middle, as an AI chat opens.
         asked ? "gap-6" : "min-h-[60vh] justify-center gap-8",
       )}
