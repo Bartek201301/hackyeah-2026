@@ -127,7 +127,7 @@ function ClientRow({ client, onDone }: { client: Client; onDone: () => void }) {
   };
 
   return (
-    <li className="flex flex-col gap-3 px-5 py-4">
+    <li className="flex flex-col gap-3 py-4 last:pb-0">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">
           <p className="font-medium text-fg break-words">{client.name}</p>
@@ -270,20 +270,19 @@ export function ClientsPanel() {
   return (
     <div className="flex flex-col gap-6">
       <AddClientForm onDone={() => void load()} />
-      <Card className="p-0">
-        <div className="px-5 pt-5">
-          <CardHeader
-            title="Client list"
-            actions={
-              <Button variant="ghost" size="sm" onClick={() => void load()}>
-                <RefreshCw className="size-4" aria-hidden />
-                Refresh
-              </Button>
-            }
-          />
-        </div>
+      {/* The Card's own padding is the only padding; rows and states sit flush inside it. */}
+      <Card>
+        <CardHeader
+          title="Client list"
+          actions={
+            <Button variant="ghost" size="sm" onClick={() => void load()}>
+              <RefreshCw className="size-4" aria-hidden />
+              Refresh
+            </Button>
+          }
+        />
         {failure ? (
-          <div className="flex flex-col gap-3 px-5 pb-5">
+          <div className="flex flex-col gap-3">
             <ErrorState
               title="The client list is not available"
               description="The gateway did not return the list."
@@ -293,13 +292,11 @@ export function ClientsPanel() {
         ) : items === null ? (
           <LoadingState label="Loading clients…" />
         ) : items.length === 0 ? (
-          <div className="px-5 pb-5">
-            <EmptyState title="No clients yet" description="Add the first client with the form above." />
-          </div>
+          <EmptyState title="No clients yet" description="Add the first client with the form above." />
         ) : (
           <>
             {!showsFees && (
-              <p className="px-5 pb-3 text-sm text-muted">Fees are visible to analysts and administrators.</p>
+              <p className="pb-3 text-sm text-muted">Fees are visible to analysts and administrators.</p>
             )}
             <ul className="flex flex-col divide-y divide-border border-t border-border">
               {items.map((c) => (
