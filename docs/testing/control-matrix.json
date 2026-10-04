@@ -431,6 +431,12 @@
       "note": "Email, +48 phone numbers, checksum-valid PL IBANs and PESELs (valid checksum and birth date) are detected. Phone numbers without +48, foreign IBANs, card numbers, names and addresses are not; a bare 9-digit run is never treated as a phone so revenue figures stay allowed."
     },
     {
+      "id": "N5",
+      "pdf_ref": "Budgets / resource governance",
+      "item": "Request-rate and concurrent-run limits",
+      "note": "requests_per_actor_minute and max_active_runs_* are validated policy fields but not enforced in this build; token, time and cost budgets are enforced atomically."
+    },
+    {
       "id": "M16",
       "pdf_ref": "Telemetry",
       "item": "Per-stage timing",
