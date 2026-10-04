@@ -204,6 +204,18 @@ function harness(over: Partial<Opts> = {}) {
       created.push({ actor_id: actor.actor_id, ...input });
       return o.dealInOrg ? SOURCE : null;
     },
+    async storeExport() {
+      throw new Error("not used");
+    },
+    async finalizeExport() {
+      throw new Error("not used");
+    },
+    async readExport() {
+      throw new Error("not used");
+    },
+    async readExportFile() {
+      throw new Error("not used");
+    },
     async loadUploadSource(actor, sourceId) {
       log.push("loadUploadSource");
       if (!o.uploadSource || actor.organisation_id !== ORG || sourceId !== SOURCE) return null;
@@ -512,14 +524,17 @@ describe("run dispatch", () => {
     expect(chat.status).toBe(404);
   });
 
-  it("never hands a chat run to the import engine, and 404s unbuilt kinds", async () => {
+  it("never hands a chat or export run to the import engine", async () => {
     for (const kind of ["chat", "export"] as const) {
       const h = harness({ run: { kind } });
       expect((await h.execute()).status).toBe(404);
       expect(h.calls("beginOperation")).toBe(0);
     }
+    // Dispatch sends an export run to the export engine (exports.test.ts), never to this one.
     const h = harness({ run: { kind: "export" } });
-    expect((await executeRun(h.deps, admin, RUN_ID, KEY, new AbortController().signal)).status).toBe(404);
+    await executeRun(h.deps, admin, RUN_ID, KEY, new AbortController().signal);
+    for (const call of ["loadDatasetBatch", "readQuarantine", "finalizeImport"])
+      expect(h.calls(call)).toBe(0);
   });
 
   it("reads a pending import run as 202 with the Run", async () => {

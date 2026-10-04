@@ -217,6 +217,18 @@ function harness(over: Partial<Opts> = {}) {
     async createUploadSource() {
       throw new Error("not used");
     },
+    async storeExport() {
+      throw new Error("not used");
+    },
+    async finalizeExport() {
+      throw new Error("not used");
+    },
+    async readExport() {
+      throw new Error("not used");
+    },
+    async readExportFile() {
+      throw new Error("not used");
+    },
     async loadUploadSource() {
       throw new Error("not used");
     },

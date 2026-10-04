@@ -144,6 +144,24 @@ export type ImportPublication = {
   }[];
   reviews: { candidate_text: string; expires_at: string }[];
 };
+/** finalize_export payload; organisation and actor come from the run, and SQL rechecks every version is
+ *  an approved public excerpt. */
+export type ExportPublication = {
+  id: string;
+  storage_key: string;
+  text_sha256: string;
+  expires_at: string;
+  excerpt_versions: { excerpt_id: string; version: number }[];
+};
+/** exports row as read for export_download; the owner filter is in the query. */
+export type ExportRow = {
+  id: string;
+  run_id: string;
+  storage_key: string;
+  expires_at: string;
+  status: "ready" | "revoked" | "expired";
+  excerpt_versions: ExportPublication["excerpt_versions"];
+};
 /** 'actor' = the actor's own scope; 'public' = public rows only (export, judge connection). */
 export type ExcerptAudience = "actor" | "public";
 /** search/read_permitted_excerpts row: approved and visible to the actor; never deal_id or other rows. */
@@ -249,6 +267,20 @@ export interface RepositoryPort {
     outcome: FinalOutcome;
     publication: ImportPublication;
   }): Promise<boolean>;
+  /** Private generated-exports bucket, server-generated key, never overwrites. */
+  storeExport(key: string, bytes: Uint8Array): Promise<void>;
+  /** finalize_run plus the exports row in one transaction; false/CONFLICT = nothing was inserted. */
+  finalizeExport(input: {
+    runId: string;
+    leaseToken: string;
+    operationId: string;
+    outcome: FinalOutcome;
+    publication: ExportPublication;
+  }): Promise<boolean>;
+  /** The actor's own export (organisation and actor in the query), or null. */
+  readExport(actor: ActorContext, id: string): Promise<ExportRow | null>;
+  /** The stored PDF; throws when it is missing. Server-side only, never a signed or public URL. */
+  readExportFile(key: string): Promise<Uint8Array>;
   /**
    * One page of an actor's own activity, newest first, at most `limit`. `after` is a trace id the
    * actor may see; null means the first page. Returns null when the cursor is not one of theirs,
