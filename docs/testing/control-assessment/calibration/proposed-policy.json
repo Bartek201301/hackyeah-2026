@@ -1,0 +1,81 @@
+{
+  "mode": "balanced",
+  "budgets": {
+    "period": "utc_day",
+    "org_generation_ms": 1800000,
+    "actor_generation_ms": 600000,
+    "org_semantic_tokens": 800000,
+    "actor_semantic_tokens": 200000,
+    "org_generation_tokens": 400000,
+    "actor_generation_tokens": 100000,
+    "max_active_runs_per_org": 4,
+    "org_commercial_micro_usd": 5000000,
+    "max_active_runs_per_actor": 2,
+    "requests_per_actor_minute": 20,
+    "actor_commercial_micro_usd": 1000000
+  },
+  "imports": {
+    "max_bytes": 2097152,
+    "max_csv_rows": 500,
+    "max_pdf_pages": 20,
+    "max_text_chars": 24000,
+    "allowed_formats": ["csv", "pdf"],
+    "connector_dataset": "demo_dataset_v1",
+    "max_processing_ms": 180000
+  },
+  "version": 3,
+  "semantic": {
+    "required": true,
+    "checkpoint": "typed-decisions",
+    "thresholds": {
+      "resource_abuse": {
+        "block": 0.65,
+        "review": 0.3
+      },
+      "sensitive_exposure": {
+        "block": 0.65,
+        "review": 0.3
+      },
+      "instruction_manipulation": {
+        "block": 0.7,
+        "review": 0.3
+      }
+    },
+    "timeout_ms": 10000,
+    "max_windows": 64,
+    "window_tokens": 700,
+    "context_tokens": 1024,
+    "overlap_tokens": 80,
+    "chat_verification": "qwen-context-v1"
+  },
+  "execution": {
+    "thinking": false,
+    "allowed_tools": ["search_excerpts", "read_excerpt"],
+    "context_tokens": 8192,
+    "max_elapsed_ms": 120000,
+    "max_tool_calls": 6,
+    "max_model_turns": 3,
+    "generation_model": "qwen3:8b",
+    "max_excerpt_chars": 1600,
+    "max_output_tokens": 768,
+    "max_search_results": 5,
+    "provider_timeout_ms": 60000,
+    "max_input_utf8_bytes": 6000,
+    "template_token_reserve": 1024,
+    "max_identical_tool_calls": 2
+  },
+  "retention": {
+    "raw_days": 30,
+    "audit_days": 90,
+    "review_days": 7,
+    "export_minutes": 30
+  },
+  "schema_version": 1,
+  "comparison_rate": {
+    "label": "Illustrative commercial equivalent; not an invoice",
+    "version": "illustrative-v1",
+    "currency": "USD",
+    "input_micro_usd_per_token": 1,
+    "output_micro_usd_per_token": 3
+  }
+}

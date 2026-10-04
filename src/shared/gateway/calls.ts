@@ -17,7 +17,15 @@ import verifier from "@/shared/contracts/security-verification.json";
 import { check } from "@/shared/contracts/validate";
 import { sha256Hex, utcDay, utf8Bytes, verifyCoverage } from "./checks";
 import { envelope, errorOutcome, GatewayError } from "./envelope";
-import type { BegunOperation, BudgetUnit, GatewayDeps, Outcome, RunRecord, StoredResult } from "./ports";
+import type {
+  BegunOperation,
+  BudgetUnit,
+  FinalOutcome,
+  GatewayDeps,
+  Outcome,
+  RunRecord,
+  StoredResult,
+} from "./ports";
 
 // Provider-call helpers shared by the run engines (chat, import, export): every provider call is
 // reserved before dispatch and settled after it, and nothing here decides or discloses.
@@ -67,8 +75,21 @@ export function stored(run: RunRecord): Outcome | null {
   return { status, body: envelope({ ...fields, trace_id: run.id, ...runVersions(run) }) };
 }
 
+/** A cancel_requested run still holds its execute's lease, so a lost lease leaves it unknown too. */
 export const leaseExpired = (run: RunRecord) =>
-  run.state === "running" && run.lease_expires_at !== null && Date.parse(run.lease_expires_at) < Date.now();
+  (run.state === "running" || run.state === "cancel_requested") &&
+  run.lease_expires_at !== null &&
+  Date.parse(run.lease_expires_at) < Date.now();
+
+/** Run and operation state of an error ending. A cancel always ends the run cancelled; once a provider
+ *  call started (or state failed mid-run) the operation's outcome is unknown. */
+export const errorStates = (
+  error: ErrorCode,
+  unknown: boolean,
+): [FinalOutcome["run_state"], FinalOutcome["operation_state"]] => {
+  if (error === "CANCELLED") return ["cancelled", unknown ? "unknown" : "completed"];
+  return unknown ? ["incomplete", "unknown"] : ["failed", "completed"];
+};
 
 export const unknownOutcome = (run: RunRecord) =>
   errorOutcome("INCOMPLETE", { trace_id: run.id, ...runVersions(run), message: UNKNOWN_OUTCOME });
@@ -175,6 +196,8 @@ const millis = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n
  */
 export function createCalls({
   deps,
+  actor,
+  runId,
   policy,
   op,
   usage,
@@ -183,6 +206,8 @@ export function createCalls({
   findings,
 }: {
   deps: GatewayDeps;
+  actor: ActorContext;
+  runId: string;
   policy: GatewayPolicy;
   op: BegunOperation;
   usage: Usage;
@@ -203,6 +228,10 @@ export function createCalls({
   ) => {
     // No new provider call after cancellation or the deadline.
     if (overall.aborted) throw new Stop({ error: "INCOMPLETE" });
+    // The owner's run_cancel lands between calls: one read before every reservation. A call already
+    // started is kept and settled as usual.
+    const now = await t.time("persistence_ms", () => repo.readRun(actor, runId));
+    if (now?.state === "cancel_requested") throw new Stop({ error: "CANCELLED" });
     open = true;
     try {
       await t.time("persistence_ms", () =>

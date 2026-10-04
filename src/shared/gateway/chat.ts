@@ -10,7 +10,7 @@ import type {
   GatewayPolicy,
 } from "@/shared/contracts";
 import { check } from "@/shared/contracts/validate";
-import { clock, createCalls, loadControls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
+import { clock, createCalls, errorStates, loadControls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
 import { decide, matchSensitive, matchSignatures, sha256Hex, utf8Bytes } from "./checks";
 import {
   chatAssessmentGate,
@@ -173,7 +173,7 @@ export async function executeAnswer(
   // Audited as IDs and a hash only: never the question or excerpt text.
   let retrieval = null as Retrieval | null;
   let stage = "input_signature";
-  const calls = createCalls({ deps, policy, op, usage, t, overall, findings });
+  const calls = createCalls({ deps, actor, runId: run.id, policy, op, usage, t, overall, findings });
   const signatures = async (text: string, at: "input_signature" | "output_signature") => {
     const found = await t.time("deterministic_ms", () => [
       ...matchSignatures(text, feed, at),
@@ -365,7 +365,7 @@ export async function executeAnswer(
       ...common,
       semantic: failedSemantic ? SEMANTIC_UNAVAILABLE : (semantic ?? undefined),
     });
-    states = calls.started || stateFailed ? ["incomplete", "unknown"] : ["failed", "completed"];
+    states = errorStates(end.error, calls.started || stateFailed);
   }
 
   const { status, body } = outcome;

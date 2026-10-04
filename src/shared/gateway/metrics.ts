@@ -103,7 +103,14 @@ export function aggregateUsage(
     if (usage.comparison_rate_version) rateVersions.add(usage.comparison_rate_version);
   }
 
-  // Outstanding means not yet reconciled: reserved or unresolved, never settled or released.
+  // Charged = reconciled conservatively: spent at the reserved amount with the actual unknown. It is
+  // never outstanding, and it makes the measured total of its unit unknown, never zero.
+  const charged = new Set(reservations.filter((r) => r.state === "charged").map((r) => r.unit));
+  if (charged.has("generation_tokens")) [generationIn, generationOut, micro] = [null, null, null];
+  if (charged.has("generation_ms")) generationMs = null;
+  if (charged.has("semantic_tokens")) semanticIn = null;
+
+  // Outstanding means not yet reconciled: reserved or unresolved, never settled, released or charged.
   const outstanding = reservations.filter((r) => r.state === "reserved" || r.state === "unresolved");
   const reserved = outstanding
     .filter((r) => r.unit === "generation_tokens")
