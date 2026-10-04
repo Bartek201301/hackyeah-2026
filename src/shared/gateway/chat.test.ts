@@ -71,6 +71,8 @@ type Opts = {
   excerpts: PermittedExcerpt[];
   /** IDs the access recheck still permits; null = every requested ID. */
   permitted: string[] | null;
+  /** Once this log entry exists, readRun shows the owner's cancel (state cancel_requested). */
+  cancelAfter: string | null;
 };
 
 // TEST FAKE: unit tests only; the app never composes these.
@@ -94,6 +96,7 @@ function harness(over: Partial<Opts> = {}) {
     controls: {},
     excerpts: [],
     permitted: null,
+    cancelAfter: null,
     ...over,
   };
   const log: string[] = [];
@@ -159,7 +162,8 @@ function harness(over: Partial<Opts> = {}) {
       };
     },
     async readRun(_actor, id) {
-      return id === run.id ? run : null;
+      if (id !== run.id) return null;
+      return o.cancelAfter && log.includes(o.cancelAfter) ? { ...run, state: "cancel_requested" } : run;
     },
     async claimRun() {
       log.push("claimRun");
@@ -246,6 +250,9 @@ function harness(over: Partial<Opts> = {}) {
       return o.excerpts.filter((e) => ids.includes(e.id) && (o.permitted ?? ids).includes(e.id));
     },
     async recordAccessDecision() {
+      throw new Error("not used");
+    },
+    async cancelRun() {
       throw new Error("not used");
     },
   };
@@ -818,6 +825,30 @@ describe("executeChat", () => {
     expect(out.body.error?.code).toBe("INCOMPLETE");
     expect([h.calls("reserve"), h.calls("assess")]).toEqual([0, 0]);
     expect(finalState(h)).toEqual(["failed", "completed"]);
+  });
+
+  it("a cancel before the input check: no reservation, 409 CANCELLED, run cancelled", async () => {
+    const h = harness({ cancelAfter: "claimRun" });
+    const out = await h.execute();
+    withheld(h, out);
+    expect(out.status).toBe(409);
+    expect(out.body.error?.code).toBe("CANCELLED");
+    expect([h.calls("reserve"), h.calls("assess")]).toEqual([0, 0]);
+    expect(finalState(h)).toEqual(["cancelled", "completed"]);
+    expect(h.finals[0].result).toMatchObject({ status: 409, error: { code: "CANCELLED" } });
+  });
+
+  it("a cancel between Laya and Ollama: no Ollama reservation, the Laya call kept and settled", async () => {
+    const h = harness({ cancelAfter: "assess" });
+    const out = await h.execute();
+    withheld(h, out);
+    expect(out.status).toBe(409);
+    expect(out.body.error?.code).toBe("CANCELLED");
+    expect(h.log.filter((l) => l.startsWith("reserve"))).toEqual(["reserve(laya)"]);
+    expect([h.calls("generate"), h.calls("finish")]).toEqual([0, 1]);
+    expect(out.body.usage.unresolved_reservation).toBe(false);
+    // A provider call started, so the execute operation's outcome is unknown.
+    expect(finalState(h)).toEqual(["cancelled", "unknown"]);
   });
 
   it("settles at zero and calls no provider when aborted during the reservation", async () => {

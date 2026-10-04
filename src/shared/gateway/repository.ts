@@ -242,10 +242,34 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
           .eq("trace_id", traceId)
           .eq("organisation_id", actor.organisation_id)
           .order("created_at")
+          // One transaction writes intent and decision with the same timestamp (cancel_run,
+          // record_access_decision); the enum's declaration order puts intent first.
+          .order("event_type")
           .order("id")
           .limit(201),
       );
       return { activity: row, events: events ?? [] };
+    },
+
+    async cancelRun({ actor, runId, idempotencyKey, requestSha256, result }) {
+      const run = await data(
+        db.rpc("cancel_run", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_run_id: runId,
+          p_idempotency_key: idempotencyKey,
+          p_request_sha256: requestSha256,
+          p_result: result,
+        }),
+      );
+      return {
+        kind: run.kind,
+        state: run.state,
+        stage: run.stage,
+        policy_version: run.policy_version,
+        feed_version: run.feed_version,
+        accepted: run.accepted === true,
+      };
     },
 
     async finalizeRun({ runId, leaseToken, operationId, outcome }) {

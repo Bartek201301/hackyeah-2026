@@ -127,8 +127,9 @@ A runnable [external push example](../contracts/examples/push-feed.mjs) is avail
 
 ## Recovery
 
-- **Mac/tunnel down:** fail closed. Restore service/tunnel, update fixed URL if changed, check revision and a genuine assessment, reconcile incomplete calls, retry only with original idempotency key. Do not enable a fake Laya mode.
-- **Model timeout:** preserve reservation until bridge status proves usage or non-start; stop further run actions. UI explains incomplete operation.
+- **Mac/tunnel down:** fail closed. Restore service/tunnel, update fixed URL if changed, check revision and a genuine assessment, retry only with original idempotency key. Do not enable a fake Laya mode. Then charge each unresolved call (see below).
+- **Model timeout:** the reservation stays unresolved; stop further run actions. UI explains incomplete operation.
+- **Reconcile an unresolved call:** `node --env-file-if-exists=.env.local scripts/reconcile.mjs <call_id> --reason "<10-200 chars>"` (integrator, as the fixture admin; prints only `charged: n`). Charge conservatively: the full reserved amount becomes spent and the actual stays unknown (`charged`). No refund without evidence: there is no bridge ledger, so nothing proves a call never started.
 - **Database/audit down:** protected calls stop. Restore access, inspect incomplete operations; do not bypass persistence.
 - **Bad policy/feed update:** reject before activation; old valid head unchanged. An expired feed still needs an authenticated new valid version.
 - **Code regression:** new branch from origin/main, reviewed revert of exact merge commit; no blind HEAD revert. Database repair is additive and separately reviewed.

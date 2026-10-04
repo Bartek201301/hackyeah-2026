@@ -225,6 +225,27 @@ describe("the usage totals", () => {
     expect(total.generation_input_tokens).toBe(1200);
   });
 
+  it("treats a charged reservation as spent with an unknown actual: not outstanding, not zero", () => {
+    const total = aggregateUsage(
+      [row()],
+      [
+        { unit: "semantic_tokens", amount: 65536, state: "charged" },
+        { unit: "generation_tokens", amount: 4096, state: "charged" },
+      ],
+    );
+    // Not outstanding.
+    expect(total.reserved_generation_tokens).toBe(0);
+    expect(total.unresolved_reservation).toBe(false);
+    // Not zero and not the measured figure alone: the actual is unknown.
+    expect(total.semantic_input_tokens).toBeNull();
+    expect(total.generation_input_tokens).toBeNull();
+    expect(total.generation_output_tokens).toBeNull();
+    expect(total.comparison_micro_usd).toBeNull();
+    // A unit with no charged reservation stays measured.
+    expect(total.generation_ms).toBe(900);
+    expect(total.semantic_ms).toBe(112);
+  });
+
   it("reports no outstanding reservation when every one is reconciled", () => {
     const total = aggregateUsage([row()], [{ unit: "generation_tokens", amount: 4096, state: "settled" }]);
     expect(total.reserved_generation_tokens).toBe(0);

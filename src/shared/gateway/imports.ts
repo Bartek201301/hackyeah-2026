@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type { ActorContext, Assessment, ConnectorImport, ErrorCode, Finding } from "@/shared/contracts";
-import { clock, createCalls, loadControls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
+import { clock, createCalls, errorStates, loadControls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
 import { decide, matchSensitive, matchSignatures, sha256Hex } from "./checks";
 import { FIELDS, parseCsv, validRow, type NumberedRow, type Row } from "./csv";
 import {
@@ -220,7 +220,7 @@ export async function executeImport(
   const overall = AbortSignal.any([signal, AbortSignal.timeout(policy.execution.max_elapsed_ms)]);
   const usage = notExecutedUsage(policy.comparison_rate.version);
   const findings: Finding[] = [];
-  const calls = createCalls({ deps, policy, op, usage, t, overall, findings });
+  const calls = createCalls({ deps, actor, runId: run.id, policy, op, usage, t, overall, findings });
   const outcomes: (Unit & Verdict)[] = [];
   let worst: Assessment | null = null;
   let publication: ImportPublication | null = null;
@@ -435,7 +435,7 @@ export async function executeImport(
       message: end.message,
       semantic: end.error === "SEMANTIC_UNAVAILABLE" ? SEMANTIC_UNAVAILABLE : (worst ?? undefined),
     });
-    states = calls.started || stateFailed ? ["incomplete", "unknown"] : ["failed", "completed"];
+    states = errorStates(end.error, calls.started || stateFailed);
   }
 
   const counts = {

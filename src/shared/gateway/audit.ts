@@ -75,6 +75,9 @@ export function toAuditProjection(activity: ActivityRow, events: EventRow[]): Au
           stage: `${providers.get(payload.call_id) ?? invalid()}:settled`,
           usage: completionUsage(rate, units(payload.usage)),
         };
+      // reconcile_reservation: only the action is projected, never the admin's reason text.
+      case "configuration":
+        return { ...base, stage: payload.action as string, usage: notExecutedUsage(rate) };
       case "decision":
       case "incomplete":
         return {
