@@ -8,6 +8,8 @@ Calm, neutral, light-only system inspired by familiar AI chat products: a white 
 
 Token contrast (WCAG 2.x, computed from the oklch values in `globals.css`): `fg` on `surface`/`bg` 17.9/17.2; `muted` on `surface`/`bg`/`surface-muted` 6.0/5.8/5.5; `on-brand` on `brand` 17.9; `fg` on `brand-soft` 16.0; `on-brand` on `danger` 5.4; `danger` on `surface`/`danger-soft` 5.4/4.9; `success` on `surface`/`success-soft` 5.6/5.2; `fg` on `warning-soft` 16.3; `warning` on `surface` 3.2 (non-text only); `border-strong` on `surface` 3.1. Do not use `warning` as text colour.
 
+Motion is purposeful and restrained. UI transitions run 150–300 ms; decorative loops (the login gateway flow, the thinking shimmer) are slow and low-contrast, never on text the user must read, and never show numbers or claim a measurement. Decorative animation is `aria-hidden` with no focusable content. Every animation has a static `prefers-reduced-motion` frame, pointer-following is mouse-only and paused off-screen, and nothing flashes. Decision colours in motion follow the same colour-plus-meaning rule.
+
 Use `PageHeader` on each page, `Card`/`CardHeader` for sections, `StatCard` for measured totals, `Badge` for status, `Notice` for errors, `EmptyState`, `LoadingState`/`Skeleton`, and labelled `Field` controls with `Button loading`. Request missing shared primitives from the integrator. Use lucide-react icons with text labels where meaning is not obvious.
 
 ## Screens and information

@@ -410,6 +410,7 @@ export interface components {
         end_char: number;
         input_tokens: number;
       }[];
+      chat_checks?: components["schemas"]["ChatCheck"][];
     };
     Run: {
       /** Format: uuid */
@@ -644,6 +645,31 @@ export interface components {
       /** Format: uuid */
       context_trace_id: string | null;
     };
+    SecurityVerdict: {
+      instruction_manipulation: boolean;
+      sensitive_exposure: boolean;
+      resource_abuse: boolean;
+      uncertain: boolean;
+    };
+    ChatCheck: {
+      /** @enum {unknown} */
+      operation: "chat_input" | "chat_output";
+      laya_scores: {
+        instruction_manipulation: number | null;
+        sensitive_exposure: number | null;
+        resource_abuse: number | null;
+      };
+      text_sha256: string;
+      verification: null | {
+        /** @constant */
+        protocol: "qwen-context-v1";
+        model_digest: string;
+        verdict: components["schemas"]["SecurityVerdict"];
+        input_tokens: number | null;
+        output_tokens: number | null;
+        duration_ms: number | null;
+      };
+    };
     /** GatewayPolicy */
     "policy.schema": {
       /** @constant */
@@ -686,6 +712,11 @@ export interface components {
             block: number;
           };
         };
+        /**
+         * @description Optional bounded Qwen verification for balanced-mode chat only; semantic protocol v2. Laya scores at or above 0.7 and deterministic denials remain withholding.
+         * @constant
+         */
+        chat_verification?: "qwen-context-v1";
       };
       execution: {
         /** @constant */

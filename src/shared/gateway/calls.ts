@@ -13,10 +13,19 @@ import type {
   Usage,
 } from "@/shared/contracts";
 import manifest from "@/shared/contracts/runtime-manifest.json";
+import verifier from "@/shared/contracts/security-verification.json";
 import { check } from "@/shared/contracts/validate";
 import { sha256Hex, utcDay, utf8Bytes, verifyCoverage } from "./checks";
 import { envelope, errorOutcome, GatewayError } from "./envelope";
-import type { BegunOperation, BudgetUnit, GatewayDeps, Outcome, RunRecord, StoredResult } from "./ports";
+import type {
+  BegunOperation,
+  BudgetUnit,
+  FinalOutcome,
+  GatewayDeps,
+  Outcome,
+  RunRecord,
+  StoredResult,
+} from "./ports";
 
 // Provider-call helpers shared by the run engines (chat, import, export): every provider call is
 // reserved before dispatch and settled after it, and nothing here decides or discloses.
@@ -66,8 +75,21 @@ export function stored(run: RunRecord): Outcome | null {
   return { status, body: envelope({ ...fields, trace_id: run.id, ...runVersions(run) }) };
 }
 
+/** A cancel_requested run still holds its execute's lease, so a lost lease leaves it unknown too. */
 export const leaseExpired = (run: RunRecord) =>
-  run.state === "running" && run.lease_expires_at !== null && Date.parse(run.lease_expires_at) < Date.now();
+  (run.state === "running" || run.state === "cancel_requested") &&
+  run.lease_expires_at !== null &&
+  Date.parse(run.lease_expires_at) < Date.now();
+
+/** Run and operation state of an error ending. A cancel always ends the run cancelled; once a provider
+ *  call started (or state failed mid-run) the operation's outcome is unknown. */
+export const errorStates = (
+  error: ErrorCode,
+  unknown: boolean,
+): [FinalOutcome["run_state"], FinalOutcome["operation_state"]] => {
+  if (error === "CANCELLED") return ["cancelled", unknown ? "unknown" : "completed"];
+  return unknown ? ["incomplete", "unknown"] : ["failed", "completed"];
+};
 
 export const unknownOutcome = (run: RunRecord) =>
   errorOutcome("INCOMPLETE", { trace_id: run.id, ...runVersions(run), message: UNKNOWN_OUTCOME });
@@ -174,6 +196,8 @@ const millis = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n
  */
 export function createCalls({
   deps,
+  actor,
+  runId,
   policy,
   op,
   usage,
@@ -182,6 +206,8 @@ export function createCalls({
   findings,
 }: {
   deps: GatewayDeps;
+  actor: ActorContext;
+  runId: string;
   policy: GatewayPolicy;
   op: BegunOperation;
   usage: Usage;
@@ -193,6 +219,7 @@ export function createCalls({
   let semantic: Assessment | null = null;
   let started = false;
   let open = false;
+  let modelTurns = 0;
 
   const reserve = async (
     callId: string,
@@ -201,6 +228,10 @@ export function createCalls({
   ) => {
     // No new provider call after cancellation or the deadline.
     if (overall.aborted) throw new Stop({ error: "INCOMPLETE" });
+    // The owner's run_cancel lands between calls: one read before every reservation. A call already
+    // started is kept and settled as usual.
+    const now = await t.time("persistence_ms", () => repo.readRun(actor, runId));
+    if (now?.state === "cancel_requested") throw new Stop({ error: "CANCELLED" });
     open = true;
     try {
       await t.time("persistence_ms", () =>
@@ -279,11 +310,23 @@ export function createCalls({
     return { ...result, findings: found };
   };
 
-  const generate = async (messages: readonly ModelMessage[]) => {
+  const generate = async (messages: readonly ModelMessage[], purpose?: "security_verification_v1") => {
     const generation: GenerationPort | null = deps.generation;
     if (!generation) throw new Stop({ error: "MODEL_UNAVAILABLE" });
     const callId = randomUUID();
-    const { execution: ex, budgets } = policy;
+    const { budgets } = policy;
+    const ex = {
+      ...policy.execution,
+      ...(purpose ? { max_output_tokens: Math.min(128, policy.execution.max_output_tokens) } : {}),
+    };
+    if (modelTurns >= ex.max_model_turns) throw new Stop({ error: "INCOMPLETE" });
+    // Reject an overlong verifier envelope before reservation/dispatch; never silently truncate it
+    // or report the definitely-not-started call as unknown provider consumption.
+    if (
+      purpose &&
+      utf8Bytes(JSON.stringify({ messages, tools: [], format: verifier.schema })) > ex.max_input_utf8_bytes
+    )
+      throw new Stop({ error: "INCOMPLETE" });
     const tokens =
       messages.reduce((n, m) => n + utf8Bytes(m.content), 0) +
       ex.template_token_reserve +
@@ -302,13 +345,14 @@ export function createCalls({
         org_limit: budgets.org_generation_ms,
       },
     ]);
-    usage.reserved_generation_tokens = tokens;
+    usage.reserved_generation_tokens += tokens;
+    modelTurns += 1;
     started = true;
     let g: Awaited<ReturnType<GenerationPort["generate"]>>;
     try {
       g = await t.time("provider_ms", () =>
         generation.generate(
-          { call_id: callId, messages, tools: [], limits: ex },
+          { call_id: callId, messages, tools: [], limits: ex, ...(purpose ? { purpose } : {}) },
           AbortSignal.any([overall, AbortSignal.timeout(ex.provider_timeout_ms)]),
         ),
       );
@@ -328,9 +372,15 @@ export function createCalls({
     const outTokens = count(g.output_tokens);
     const ms = millis(g.duration_ms);
     Object.assign(usage, {
-      generation_input_tokens: inTokens,
-      generation_output_tokens: outTokens,
-      generation_ms: ms,
+      generation_input_tokens:
+        inTokens === null || usage.generation_input_tokens === null
+          ? null
+          : usage.generation_input_tokens + inTokens,
+      generation_output_tokens:
+        outTokens === null || usage.generation_output_tokens === null
+          ? null
+          : usage.generation_output_tokens + outTokens,
+      generation_ms: ms === null || usage.generation_ms === null ? null : usage.generation_ms + ms,
     });
     await finish(callId, [
       {
@@ -341,6 +391,7 @@ export function createCalls({
     ]);
     if (manifest.ollama_model_digest && g.model_digest !== manifest.ollama_model_digest)
       throw new Stop({ error: "MODEL_UNAVAILABLE" });
+    if (overall.aborted) throw new Stop({ error: "INCOMPLETE" });
     return g;
   };
 

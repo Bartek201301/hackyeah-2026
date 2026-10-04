@@ -614,3 +614,158 @@ listening (11434, 8787, 8080 all closed), so `createDetectionPort` returns null 
 every chat ends in `SEMANTIC_UNAVAILABLE`. MIX-01 should settle as **REDACT** (one clean fact line
 against a contact, a credential and an injection), but that needs either the key locally or a
 deployed environment with the bridge up. Covered by unit and panel tests meanwhile.
+
+---
+
+# Run 6 — the Ask layout on production, as the analyst
+
+| Target | <https://hackyeah-2026.vercel.app>, main `6dbb7e5` (PR #84 and #85 merged) |
+| ------ | -------------------------------------------------------------------------- |
+| Who    | Analyst, signed in by Maciej; the browser never saw a credential from me   |
+| Widths | 1440 px, then **375 px** through the DevTools device toolbar               |
+
+## What passed
+
+The Ask screen opens as a conversation: the greeting, three starter questions from `scenarios.md`,
+and the composer, with the sidebar marking **Ask** and **no in-page nav** — #84 landed as intended.
+A starter chip fills the composer with the exact scenario question and sends nothing by itself.
+
+Sending cleared the composer and left the question on screen as its own turn, with the outcome under
+it and the composer still reachable below. At **375 px** the chips stack full width, the sidebar
+becomes the hamburger drawer and `scrollWidth === clientWidth` — **no horizontal overflow**, which
+closes the phone-width gap that runs 1–5 left open. Chrome on macOS will not make a window narrower
+than ~500 px, so this needed the device toolbar; a `resize_window` to 375 silently gives a 500 px
+viewport and proves nothing.
+
+## The defect this run found
+
+An in-flight run said **"Queued — queued" twice in a row**: the panel's own progress line and the
+outcome notice both render the same classified progress. Sources and Public summary said it three
+times — badge, paragraph, notice. Fixed in PR #89 by keeping only the notice, which also carries the
+stage's meaning and the trace link and is already a live region. A test pins the stage to exactly one
+occurrence.
+
+## The S01 question settled REVIEW, not ALLOW
+
+| Question | "Brief me on AsterCloud revenue, forecast and bid ceiling. Cite sources." (the S01 starter) |
+| -------- | ------------------------------------------------------------------------------------------- |
+| Outcome  | **Held for review** — "An administrator must review this before it can be released."        |
+| Reason   | `semantic:sensitive_exposure`                                                               |
+| Trace    | `82709cc7-6f48-4b01-8a09-113f2174fbb8`                                                      |
+
+No answer and no citations were released, which is the correct fail-closed behaviour for a REVIEW and
+renders exactly as designed. But scenarios.md expects S01 to be the ALLOW with citations, so **the
+primary demo question currently ends in the review state**. Not a workbench defect: the screen
+reported what the gateway decided. PR #83 ("verify moderate chat risk with bounded Qwen checks") looks
+like the fix; Bartosz's call.
+
+## Not covered by this run
+
+The admin **Review** queue (live since #85) and the production MIX-01 upload, which is held until
+Bartosz says P05 is finished. The analyst's own source list was not re-checked here, though an admin
+read earlier in the session returned **12 sources**, so the corpus is in.
+
+---
+
+# Run 7 — Sources and Public summary, preview build, as the analyst
+
+| Target | PR #90 preview, `f980307` then the alignment fix                                            |
+| ------ | ------------------------------------------------------------------------------------------- |
+| Who    | Analyst                                                                                     |
+| Width  | 1440 px (phone width not re-checked: verified once on Ask, and the judged demo is a laptop) |
+
+## Passed
+
+Both screens sit in the same reading column as Ask, with the page title on the same axis as the card
+under it. Configured sources renders as separated rows; the Imports row shows
+`Held for review · Restricted · "Separation was uncertain, so an administrator must review the
+candidate"` with a working **View the audited trace** link — before this it was an anonymous pair of
+badges, because `ImportSummary` carries no label.
+
+Keyboard: tab order through Sources is file → classification → deal → Upload file → trace link, and
+the Upload button takes a clearly visible focus ring. Public summary is topic → deal → Create summary.
+
+## The defect this run found
+
+The centred column was added to each panel, so the `PageHeader` stayed at the far-left edge of the
+content area while the card sat in the middle — on both screens. Fixed by giving the title and the
+panel one column in `WorkbenchPage` instead of each panel centring itself, and re-verified on the
+rebuilt preview.
+
+## Still unverified
+
+The `ThinkingIndicator` in a live run. It merged (#86) after run 6, and seeing it needs another
+gateway run, which is a write to the shared project during P05/P09. Covered by its own tests and by
+the panel test that pins the stage to one occurrence and asserts the server's stage string.
+
+## Visible to a judge, not ours to delete
+
+`MIX-01.csv` appears **twice** in the analyst's Configured sources, and `audit-own-2026-10-03.csv ·
+Public · Upload` is still listed — an audit export that was uploaded back in as a source. Both are on
+the pre-rehearsal cleanup list. The deal selector still shows a raw UUID rather than a deal name (B6:
+no server-side deal-label projection), on both Sources and Public summary.
+
+---
+
+# Run 8 — the authorised S05 upload on production
+
+| Target  | <https://hackyeah-2026.vercel.app>, main `e8bc364` (#89 and #90 live) |
+| ------- | --------------------------------------------------------------------- |
+| Who     | Analyst, ASTER deal `…0101`, classification **restricted**            |
+| File    | `docs/demo/uploads/MIX-01.csv`                                        |
+| Trace   | `c1964fad-2944-40c5-ba5c-1e2494482086`                                |
+| Outcome | **Held for review** — nothing published                               |
+
+Authorised by Bartosz after P09's live S05 run. One upload, as agreed.
+
+## What the screen showed
+
+The stage line ran first — **"Running checks"** under the pulsing dot, which is the shared
+`ThinkingIndicator` fed by the polled run, and the first live confirmation of it. Then:
+
+> **Held for review** — "Separation was uncertain, so an administrator must review the candidate."
+> Reasons: `semantic:sensitive_exposure` `import_signature:CONTACT_EMAIL`
+> `import_signature:SECRET_TOKEN` `import_signature:SIG-001` `import_signature:SIG-002`
+> **View the audited trace**
+
+Both lists refreshed by themselves: `MIX-01.csv · Restricted · Upload` joined Configured sources, and
+a second `Held for review · Restricted` row joined Imports, each row linking to its own trace. The
+outcome notice and the new import row carry the **same** trace id, which is what makes the row
+identifiable at all.
+
+**No value from any removed line appears anywhere on the screen** — no address, no token, no
+injected instruction, and not the 176 figure. That was the thing to check, and it holds.
+
+## The count Bartosz asked for is not on screen, and cannot be
+
+The brief was "held for review, the removed-line count, no values". The first and third are there;
+the count is not, and no workbench change can add it: `executeImport` puts `counts`
+(`units / approved / review / removed`) into the **audit event only**, never into the response
+envelope. The envelope carries `decision` and `reasons`, and the reasons are bare codes with no
+locators — four codes here, but only **three** lines were removed, because `row:1:line:4` tripped two
+of them. Counting reason codes would therefore print the wrong number.
+
+The trace page does carry the evidence, per line, codes and locators only:
+
+| Finding       | Category         | Locator        |
+| ------------- | ---------------- | -------------- |
+| CONTACT_EMAIL | personal         | `row:1:line:2` |
+| SECRET_TOKEN  | secret           | `row:1:line:3` |
+| SIG-001       | prompt_injection | `row:1:line:4` |
+| SIG-002       | exfiltration     | `row:1:line:4` |
+
+Three distinct lines, which matches P09's "3 unsafe lines removed". Policy version 3, feed version 1,
+Laya 217 tokens / 325 ms, assessment complete with sensitive exposure 0.365.
+
+**For the demo as it stands:** say "three lines were removed — their locators are in the audit
+record", and click through to the trace. It is a stronger story than a number on the upload screen
+anyway, because the trace shows _which_ lines and _why_. If someone wants the count on screen before
+the freeze, it is an audit-feature change (render the `counts` the event already stores), not a
+workbench one.
+
+## Housekeeping, now worse
+
+`MIX-01.csv` appears **three** times in Configured sources and Imports has **two** `Held for review`
+rows, because this run re-imported a file P09 had already imported. That was expected and authorised;
+it is on the cleanup list. The rehearsal checklist in the judge script has been corrected to say
+MIX-01 is already imported, so nobody plans a live upload assuming a clean slate.

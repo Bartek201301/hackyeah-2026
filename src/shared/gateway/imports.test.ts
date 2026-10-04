@@ -76,6 +76,8 @@ type Opts = {
   csv: string;
   uploadSource: Record<string, unknown> | null;
   dealInOrg: boolean;
+  /** Once this log entry exists, readRun shows the owner's cancel (state cancel_requested). */
+  cancelAfter: string | null;
 };
 
 // TEST FAKE: unit tests only; the app never composes these.
@@ -93,6 +95,7 @@ function harness(over: Partial<Opts> = {}) {
     csv: MIX_01,
     uploadSource: {},
     dealInOrg: true,
+    cancelAfter: null,
     ...over,
   };
   const log: string[] = [];
@@ -119,6 +122,9 @@ function harness(over: Partial<Opts> = {}) {
   };
 
   const repository: RepositoryPort = {
+    async updatePolicy() {
+      throw new Error("not used");
+    },
     async loadActivePolicyAndFeed() {
       return {
         policy: structuredClone(policyJson),
@@ -146,7 +152,8 @@ function harness(over: Partial<Opts> = {}) {
       return { operation_id: OP_ID, state: "intent", replay: false, policy_version: 1, feed_version: 1 };
     },
     async readRun(_actor, id) {
-      return id === run.id ? run : null;
+      if (id !== run.id) return null;
+      return o.cancelAfter && log.includes(o.cancelAfter) ? { ...run, state: "cancel_requested" } : run;
     },
     async claimRun() {
       log.push("claimRun");
@@ -167,12 +174,15 @@ function harness(over: Partial<Opts> = {}) {
     },
     listSources: unused,
     listImports: unused,
+    listReviews: unused,
+    readReview: unused,
     listActivity: unused,
     readMetricsRows: unused,
     exportActivity: unused,
     searchPermittedExcerpts: unused,
     readPermittedExcerpts: unused,
     recordAccessDecision: unused,
+    cancelRun: unused,
     async loadDatasetBatch(actor, sourceId, batchId, limit) {
       log.push("loadDatasetBatch");
       if (!o.batch || actor.organisation_id !== ORG || sourceId !== SOURCE || batchId !== BATCH) return null;
@@ -198,6 +208,18 @@ function harness(over: Partial<Opts> = {}) {
       log.push("createUploadSource");
       created.push({ actor_id: actor.actor_id, ...input });
       return o.dealInOrg ? SOURCE : null;
+    },
+    async storeExport() {
+      throw new Error("not used");
+    },
+    async finalizeExport() {
+      throw new Error("not used");
+    },
+    async readExport() {
+      throw new Error("not used");
+    },
+    async readExportFile() {
+      throw new Error("not used");
     },
     async loadUploadSource(actor, sourceId) {
       log.push("loadUploadSource");
@@ -435,6 +457,16 @@ describe("executeImport", () => {
     expect([h.finals[0].run_state, h.finals[0].operation_state]).toEqual(["incomplete", "unknown"]);
   });
 
+  it("a cancel before the first Laya call: 409 CANCELLED, no reservation, nothing published", async () => {
+    const h = harness({ cancelAfter: "claimRun" });
+    const out = await h.execute();
+    valid(out);
+    expect(out.status).toBe(409);
+    expect(out.body).toMatchObject({ error: { code: "CANCELLED" }, data: null });
+    expect(h.calls("reserve") + h.calls("finalizeImport")).toBe(0);
+    expect([h.finals[0].run_state, h.finals[0].operation_state]).toEqual(["cancelled", "completed"]);
+  });
+
   it("without a composed detection adapter: 503 before any reservation, failed, nothing published", async () => {
     const h = harness({ detection: false });
     const out = await h.execute();
@@ -507,14 +539,17 @@ describe("run dispatch", () => {
     expect(chat.status).toBe(404);
   });
 
-  it("never hands a chat run to the import engine, and 404s unbuilt kinds", async () => {
+  it("never hands a chat or export run to the import engine", async () => {
     for (const kind of ["chat", "export"] as const) {
       const h = harness({ run: { kind } });
       expect((await h.execute()).status).toBe(404);
       expect(h.calls("beginOperation")).toBe(0);
     }
+    // Dispatch sends an export run to the export engine (exports.test.ts), never to this one.
     const h = harness({ run: { kind: "export" } });
-    expect((await executeRun(h.deps, admin, RUN_ID, KEY, new AbortController().signal)).status).toBe(404);
+    await executeRun(h.deps, admin, RUN_ID, KEY, new AbortController().signal);
+    for (const call of ["loadDatasetBatch", "readQuarantine", "finalizeImport"])
+      expect(h.calls(call)).toBe(0);
   });
 
   it("reads a pending import run as 202 with the Run", async () => {

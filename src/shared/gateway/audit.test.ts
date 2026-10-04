@@ -182,6 +182,36 @@ describe("readAudit", () => {
     }
   });
 
+  it("projects a reconcile charge by its action only, never the admin's reason", async () => {
+    const REASON = "G2 S11 outage drill: Laya stopped; usage unknown";
+    const charged: EventRow = {
+      event_type: "configuration",
+      payload: {
+        action: "reconcile_charge",
+        call_id: LAYA_1,
+        units: [{ unit: "semantic_tokens", amount: 65536 }],
+        reason_code: "reconcile:charged_conservatively",
+        reason: REASON,
+      },
+      created_at: at(9),
+    };
+    const unresolved = [{ unit: "semantic_tokens", reserved: 65536, actual: null, state: "unresolved" }];
+    const { status, body } = await read(activity("BLOCK", "incomplete"), [
+      ...allowEvents.slice(0, 3),
+      settled(LAYA_1, unresolved, 4),
+      charged,
+    ]);
+    expect(status).toBe(200);
+    expect(check("Response", body).ok).toBe(true);
+    expect(
+      items(body)[0]
+        .events.map((e) => e.stage)
+        .slice(-2),
+    ).toEqual(["laya:settled", "reconcile_charge"]);
+    const json = JSON.stringify(body);
+    for (const leak of [REASON, "reason_code", LAYA_1]) expect(json).not.toContain(leak);
+  });
+
   it("refuses a trace above the event cap instead of truncating it", async () => {
     const many = Array.from({ length: 201 }, (_, i) => intent("run_execute", i % 60));
     const { status, body } = await read(activity("ALLOW", "completed"), many);

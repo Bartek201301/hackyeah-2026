@@ -62,6 +62,8 @@ Bridge binds loopback (implementation default port 8787); only its authenticated
 
 ## G2 runtime on the Mac
 
+For stopped-service, authentication or model-pin failures, run `node scripts/model-doctor.mjs` from the project directory (or pass the private environment file path). It prints no credentials and distinguishes Laya on port 8000 from Ollama on port 11434. An already-running Ollama needs no second `ollama serve`. Public Laya `status: ok` alone is not authenticated readiness. Classifier accuracy and the optional contextual verification policy are covered in the [control assessment report](../testing/control-assessment/REPORT.md).
+
 G2 runs the app, Laya and Ollama on Julian's Mac. `createDetectionPort()` and `createGenerationPort()` call fixed loopback endpoints (Laya `127.0.0.1:8000`, Ollama `127.0.0.1:11434`) and read only `LAYA_API_KEY` from the server process environment. Without it both return `null` and the gateway answers 503 `SEMANTIC_UNAVAILABLE` before any reservation; never a fake. Durable reservation, usage and audit stay in the gateway's Postgres records; there is no Python ledger. The engine enforces the revisions in `src/shared/contracts/runtime-manifest.json`; any other value is a 503.
 
 The Mac's `.env.local` holds `LAYA_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`. Bartosz types the Supabase values in person; never in chat, never committed, never printed. No model variable is `NEXT_PUBLIC_`.
@@ -125,8 +127,9 @@ A runnable [external push example](../contracts/examples/push-feed.mjs) is avail
 
 ## Recovery
 
-- **Mac/tunnel down:** fail closed. Restore service/tunnel, update fixed URL if changed, check revision and a genuine assessment, reconcile incomplete calls, retry only with original idempotency key. Do not enable a fake Laya mode.
-- **Model timeout:** preserve reservation until bridge status proves usage or non-start; stop further run actions. UI explains incomplete operation.
+- **Mac/tunnel down:** fail closed. Restore service/tunnel, update fixed URL if changed, check revision and a genuine assessment, retry only with original idempotency key. Do not enable a fake Laya mode. Then charge each unresolved call (see below).
+- **Model timeout:** the reservation stays unresolved; stop further run actions. UI explains incomplete operation.
+- **Reconcile an unresolved call:** `node --env-file-if-exists=.env.local scripts/reconcile.mjs <call_id> --reason "<10-200 chars>"` (integrator, as the fixture admin; prints only `charged: n`). Charge conservatively: the full reserved amount becomes spent and the actual stays unknown (`charged`). No refund without evidence: there is no bridge ledger, so nothing proves a call never started.
 - **Database/audit down:** protected calls stop. Restore access, inspect incomplete operations; do not bypass persistence.
 - **Bad policy/feed update:** reject before activation; old valid head unchanged. An expired feed still needs an authenticated new valid version.
 - **Code regression:** new branch from origin/main, reviewed revert of exact merge commit; no blind HEAD revert. Database repair is additive and separately reviewed.

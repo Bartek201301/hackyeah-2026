@@ -40,6 +40,7 @@
   },
   "devDependencies": {
     "@colbymchenry/codegraph": "1.6.2",
+    "@electric-sql/pglite": "0.5.8",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",

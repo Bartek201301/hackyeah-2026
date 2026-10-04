@@ -65,20 +65,33 @@ reviewer who owns them and for the admin as oversight, while the employee's pane
 has no imports yet." The rows render as **"Held for review · Restricted · Separation was uncertain,
 so an administrator must review the candidate."** If a judge asks why a restricted document is not
 public, the answer is on screen: _processing status and classification are separate — an approved
-document is not necessarily public._ Until P05 imports the corpus, `review` is the only status this
-screen has ever shown on production; do not promise an `approved` import.
+document is not necessarily public._ Each row links to its own audited trace, which is what identifies it: the
+contract's import summary carries no file name.
+
+Counts moved when P05 imported the corpus and P09 ran S05 — the analyst's list now also carries the
+uploaded CSVs. Read the list on screen; do not quote the table above as a live count. Two rows are
+housekeeping, not product: `MIX-01.csv` appears twice, and `audit-own-2026-10-03.csv · Public` is an
+audit export that was uploaded back in as a source. If a judge asks, say plainly that they are
+rehearsal leftovers.
 
 **The fail-closed state**, which remains a good story on its own: _"every protected operation
 withholds its result until identity, policy, content and budget have all been checked, and when a
 required service is unavailable it refuses rather than guesses."_
 
-**Not demonstrable yet:** any `ALLOW`, citations, the S01/S02 contrast, server stage text and
-cancellation. Two separate reasons, and both must clear: `LAYA_API_KEY` is absent from production by
-design, so the assessment cannot run there; and `documents`/`excerpts` are still empty until the
-import pipeline lands, so there is nothing to cite even where the models do run. Do not promise an
-allowed answer in the opening. On production a benign question is withheld as **"Service
-unavailable — The required content assessment is unavailable, so the result is withheld."** — quote
-that sentence rather than paraphrasing it; the withholding _is_ the guarantee.
+**Both reasons that blocked an `ALLOW` have cleared.** The model bridge is wired on production and
+P05 imported the corpus, so there is something to cite and something to assess with. Under **policy
+v2** S01 answers with citations (P09's live run). Two honest caveats remain for whoever speaks:
+
+- The `ALLOW` is **policy v2 and later**. Under v1 the same question settled **"Held for review —
+  semantic:sensitive_exposure"** (trace `82709cc7-6f48-4b01-8a09-113f2174fbb8`, run 6). If the policy
+  version on screen is not v2, expect the review state and say so rather than retrying.
+- A REVIEW is **not a failure to hide**. "Separation was uncertain, so an administrator must review
+  the candidate" is the system working; scenarios.md says an honest REVIEW is a valid outcome.
+
+**The fail-closed state is still the story to fall back on**, and it is worth rehearsing because any
+service can drop mid-demo: a withheld operation reads **"Service unavailable — The required content
+assessment is unavailable, so the result is withheld."** Quote that sentence rather than paraphrasing
+it; the withholding _is_ the guarantee.
 
 ### Injection demo — use the literal text, and say what the layer is
 
@@ -101,9 +114,13 @@ the honest line is the one below — never let the deterministic block imply par
 
 Ask: _"Brief me on AsterCloud revenue, forecast and bid ceiling. Cite sources."_
 
-Say, while the progress stages show: "The gateway is checking identity, data scope, tools and budget
+Say, while the stage line runs: "The gateway is checking identity, data scope, tools and budget
 before anything is released. Nothing streams — the answer is buffered until its own output has been
 checked."
+
+The line under the pulsing dot is the **server's own stage**, polled from `GET /runs/{id}` — "Running
+checks", then the gateway's stage name. It is never an invented thought and never a preview of the
+answer. If a judge asks what the screen is doing, that line is the answer.
 
 Point at, in this order:
 
@@ -203,8 +220,10 @@ Follow the runbook's troubleshooting table. My additions for these screens:
 
 - [ ] Four profiles signed in and labelled before judges arrive.
 - [ ] S01 and S02 run back to back; screenshots of both kept side by side.
-- [ ] MIX-01 ready to upload, not already imported.
+- [ ] MIX-01 ready to upload. **It has already been imported once** (P09's S05 run and the UI check),
+      so a live upload creates a second source row and a second import. Decide beforehand whether to
+      upload live or to point at the existing import instead.
 - [ ] One allowed and one blocked real trace preserved.
-- [ ] [03-browser-qa.md](03-browser-qa.md) completed at 375 px and 1440 px.
+- [ ] [03-browser-qa.md](03-browser-qa.md) completed at 1440 px; 375 px verified once on Ask (run 6).
 - [ ] Spoken walkthrough timed at least twice — the cut is the policy step, never S01/S02.
 - [ ] Decided, with the team, what to say about Review and Export if they remain unbuilt.

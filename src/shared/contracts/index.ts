@@ -12,6 +12,8 @@ export type Citation = Schemas["Citation"];
 export type Excerpt = Schemas["Excerpt"];
 export type Finding = Schemas["Finding"];
 export type Assessment = Schemas["Assessment"];
+export type SecurityVerdict = Schemas["SecurityVerdict"];
+export type ChatCheck = Schemas["ChatCheck"];
 export type Run = Schemas["Run"];
 export type Review = Schemas["Review"];
 export type ApiResponse = Schemas["Response"];
@@ -103,6 +105,8 @@ export interface GenerationPort {
       messages: readonly ModelMessage[];
       tools: readonly RegisteredTool[];
       limits: GatewayPolicy["execution"];
+      /** Fixed internal rubric/schema; never taken from a public request. */
+      purpose?: "security_verification_v1";
     },
     signal: AbortSignal,
   ): Promise<GenerationResult>;
