@@ -627,6 +627,17 @@ describe("startUpload", () => {
     expect(h.calls("createUploadSource") + h.calls("storeQuarantine")).toBe(0);
   });
 
+  it("refuses pickle bytes named .csv with 415 UNSUPPORTED_FILE before storing anything", async () => {
+    const h = harness();
+    const pickle = new File([new Uint8Array([0x80, 0x04, 0x95, 0x0b, 0x00, 0x2e])], "MIX-01.csv", {
+      type: "text/csv",
+    });
+    const out = await h.upload(form({ classification: "restricted", deal_id: DEAL }, pickle));
+    valid(out);
+    expect([out.status, out.body.error?.code]).toEqual([415, "UNSUPPORTED_FILE"]);
+    expect(h.calls("createUploadSource") + h.calls("storeQuarantine")).toBe(0);
+  });
+
   it("refuses non-UTF-8, a NUL byte, an empty file and PDF metadata fields sent with a CSV", async () => {
     const h = harness();
     const base = { classification: "restricted", deal_id: DEAL };

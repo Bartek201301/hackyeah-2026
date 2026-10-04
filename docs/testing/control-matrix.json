@@ -1,0 +1,432 @@
+{
+  "description": "Brief controls (Goldman Sachs 'AI Control Layer') mapped to existing vitest tests by full name. Run: npm run test:controls.",
+  "rows": [
+    {
+      "id": "M1",
+      "pdf_ref": "Policy management",
+      "control": "Central policy; a new version applies to the next request; strict turns the review band into BLOCK",
+      "allow": [
+        {
+          "file": "src/shared/gateway/policy-update.test.ts",
+          "test": "policy update activates a validated new version with trusted identity and content hashes"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "decide maps the review band to BLOCK only in strict mode"
+        },
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 17. a version mismatch is unavailable before any claim"
+        },
+        {
+          "file": "src/shared/gateway/policy-update.test.ts",
+          "test": "policy update rejects analyst before persistence"
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "pdf_ref": "Data ingestion: block vs redact",
+      "control": "Import blocks or redacts unsafe units and publishes only clean facts",
+      "allow": [
+        {
+          "file": "src/shared/gateway/imports.test.ts",
+          "test": "executeImport publishes an all-clean batch as approved/ALLOW, one Laya call per non-blank line"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/imports.test.ts",
+          "test": "executeImport removes a signature-blocked unit without a Laya call: partial/REDACT with its locator"
+        },
+        {
+          "file": "src/shared/gateway/imports.test.ts",
+          "test": "executeImport (upload) MIX-01: removes the contact, credential and injected lines and publishes the fact: partial/REDACT"
+        },
+        {
+          "file": "src/shared/gateway/imports.test.ts",
+          "test": "executeImport (upload) removes every line of a row holding a PEM block, key body included: BLOCK"
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "pdf_ref": "Threat feed / signatures",
+      "control": "Feed signatures match after NFKC, zero-width removal and on subdomains",
+      "allow": [
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSignatures needs a dot boundary for domains"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSignatures matches SIG-001 after NFKC and case folding"
+        },
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSignatures is not evaded by extra whitespace or zero-width characters"
+        },
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSignatures matches SIG-002 on a subdomain inside a URL"
+        },
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 2. a signature BLOCK calls no provider and reserves nothing"
+        }
+      ]
+    },
+    {
+      "id": "M4",
+      "pdf_ref": "Output: secrets / PII",
+      "control": "Secrets and contact data in model output are blocked; the value never leaves",
+      "allow": [
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSensitive finds nothing in a benign sentence or a word that only contains a prefix"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 11c. a credential in the answer is a BLOCK at output_signature; the token never leaves"
+        },
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSensitive finds keys, token prefixes and emails with category and code, never the value"
+        },
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSensitive covers each conventional prefix and survives a zero-width split"
+        }
+      ]
+    },
+    {
+      "id": "M5",
+      "pdf_ref": "Authentication / access control",
+      "control": "Origin check, 401 without session, strict body, identical 404 for unauthorised ids",
+      "allow": [
+        {
+          "file": "src/shared/gateway/http.test.ts",
+          "test": "handle runs with the parsed body and key, with no-store"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/http.test.ts",
+          "test": "handle rejects a foreign or missing Origin before identity"
+        },
+        {
+          "file": "src/shared/gateway/http.test.ts",
+          "test": "handle maps no session to 401 and an identity outage to 503, never ALLOW"
+        },
+        {
+          "file": "src/shared/gateway/http.test.ts",
+          "test": "handle validates key, content type, size and strict body before running"
+        },
+        {
+          "file": "src/shared/gateway/excerpts.test.ts",
+          "test": "readExcerpt answers an id outside the actor's permissions exactly as an id that does not exist"
+        }
+      ]
+    },
+    {
+      "id": "M6",
+      "pdf_ref": "Semantic risk assessment",
+      "control": "Laya bands: ALLOW below review, REVIEW band (Qwen verification), BLOCK above; policy BLOCK is final",
+      "allow": [
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 1. ALLOW runs the full sequence and releases only after finalize"
+        },
+        {
+          "file": "src/shared/gateway/chat-verification.test.ts",
+          "test": "sends only the policy REVIEW band to the verifier, and passes ALLOW through"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 4. the review band holds in balanced mode and blocks in strict mode"
+        },
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 3. a semantic BLOCK on the input never generates"
+        },
+        {
+          "file": "src/shared/gateway/chat-verification.test.ts",
+          "test": "keeps a policy BLOCK final below the verification ceiling (no verifier call)"
+        },
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat verification cannot clear a policy-block denial"
+        }
+      ]
+    },
+    {
+      "id": "M7",
+      "pdf_ref": "Budgets / cost control",
+      "control": "Reserve before the provider call; an exhausted budget blocks first; unknown usage is not zero",
+      "allow": [
+        {
+          "file": "src/shared/gateway/standalone-check.test.ts",
+          "test": "standalone guard assessment records intent and reserves before live assessment, then persists before allow"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 13. an exhausted budget blocks before any provider call"
+        },
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 6. a detection failure leaves the reservation unresolved"
+        },
+        {
+          "file": "src/shared/gateway/metrics.test.ts",
+          "test": "the usage totals lets one unknown make the total unknown, rather than understating it"
+        }
+      ]
+    },
+    {
+      "id": "M8",
+      "pdf_ref": "Model supply chain",
+      "control": "Pinned Laya revision and Qwen digest; a mismatch withholds",
+      "allow": [
+        {
+          "file": "src/features/detection/ports.test.ts",
+          "test": "G2 detection factory returns schema-valid single-window metadata and genuine aggregate usage"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 12. a wrong Laya revision or Qwen digest is unavailable"
+        },
+        {
+          "file": "src/features/detection/ports.test.ts",
+          "test": "G2 detection factory wrong revision blocks inference; revision drift retains consumed usage"
+        },
+        {
+          "file": "src/features/detection/ports.test.ts",
+          "test": "G2 generation factory rejects malformed output and wrong digest safely"
+        }
+      ]
+    },
+    {
+      "id": "M9",
+      "pdf_ref": "File handling",
+      "control": "File type decided by content: CSV accepted; PDF and binary (pickle) refused with 415",
+      "allow": [
+        {
+          "file": "src/shared/gateway/imports.test.ts",
+          "test": "startUpload creates an unverified source, quarantines the raw bytes, then a pending run: 202"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/imports.test.ts",
+          "test": "startUpload refuses a PDF by its magic bytes with an honest 415, whatever its name"
+        },
+        {
+          "file": "src/shared/gateway/imports.test.ts",
+          "test": "startUpload refuses pickle bytes named .csv with 415 UNSUPPORTED_FILE before storing anything"
+        }
+      ]
+    },
+    {
+      "id": "M10",
+      "pdf_ref": "Tool use",
+      "control": "No code-execution tools: model tool calls refused; shell, hidden paths and traversal denied",
+      "allow": [
+        {
+          "file": "src/app/api/v1/guard/check/route.test.ts",
+          "test": "accepts a bounded prompt from a hook-scoped bearer and returns the gateway envelope"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 10. a proposed tool call is refused"
+        },
+        {
+          "file": "src/shared/gateway/guard-request.test.ts",
+          "test": "strict guard inputs allows small source edits but denies shell, hidden paths, traversal and protected config"
+        },
+        {
+          "file": "src/app/api/v1/guard/check/route.test.ts",
+          "test": "marks shell execution as a deterministic denial and sends no shell command to the model"
+        }
+      ]
+    },
+    {
+      "id": "M11",
+      "pdf_ref": "Coding agent guard",
+      "control": "Agent cannot modify dependency manifests/config",
+      "allow": [
+        {
+          "file": "src/shared/gateway/guard-request.test.ts",
+          "test": "strict guard inputs allows small source edits but denies shell, hidden paths, traversal and protected config"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/guard-request.test.ts",
+          "test": "strict guard inputs allows small source edits but denies shell, hidden paths, traversal and protected config"
+        },
+        {
+          "file": "src/shared/gateway/guard-request.test.ts",
+          "test": "strict guard inputs rejects caller identity, unknown fields and oversized edits"
+        }
+      ]
+    },
+    {
+      "id": "M12",
+      "pdf_ref": "MCP / integrations",
+      "control": "MCP exposes public data only, behind a scoped bearer token",
+      "allow": [
+        {
+          "file": "src/app/api/mcp/route.test.ts",
+          "test": "InterLock MCP route using the official SDK client discovers only the two fixed tools and calls both through a public credential"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/app/api/mcp/route.test.ts",
+          "test": "InterLock MCP route using the official SDK client requires bearer identity before discovery and rejects foreign origins"
+        },
+        {
+          "file": "src/app/api/mcp/route.test.ts",
+          "test": "InterLock MCP route using the official SDK client never emits a public excerpt when its output assessment refuses it"
+        },
+        {
+          "file": "src/shared/auth/integration-token.test.ts",
+          "test": "integration bearer identity rejects malformed, missing, wrong-scope, revoked, expired and inactive credentials"
+        }
+      ]
+    },
+    {
+      "id": "M13",
+      "pdf_ref": "Agent actions",
+      "control": "Client actions: role limits, delete held for approval, injection in action fields blocked",
+      "allow": [
+        {
+          "file": "src/shared/gateway/client-act.test.ts",
+          "test": "Act mode happy path: an analyst's create is ALLOW, written once under the run id"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/client-act.test.ts",
+          "test": "Act mode an employee's create is BLOCK from the role rules, with the refusal's trace"
+        },
+        {
+          "file": "src/shared/gateway/client-act.test.ts",
+          "test": "Act mode an admin's delete is REVIEW and never deletes"
+        },
+        {
+          "file": "src/shared/gateway/client-act.test.ts",
+          "test": "Act mode an analyst's +30% fee change is REVIEW, held by clients.ts, nothing written"
+        },
+        {
+          "file": "src/shared/gateway/clients.test.ts",
+          "test": "client_create blocks an injection or a contact in any text field with its reason code and writes nothing"
+        }
+      ]
+    },
+    {
+      "id": "M14",
+      "pdf_ref": "Fail-closed",
+      "control": "A missing or failing required component answers 503 with no reservation",
+      "allow": [
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 1. ALLOW runs the full sequence and releases only after finalize"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 7. a missing detection adapter is 503 with no reservation"
+        },
+        {
+          "file": "src/shared/gateway/chat.test.ts",
+          "test": "executeChat 7b. a missing generation adapter is 503 with no reservation"
+        },
+        {
+          "file": "src/shared/gateway/imports.test.ts",
+          "test": "executeImport without a composed detection adapter: 503 before any reservation, failed, nothing published"
+        },
+        {
+          "file": "src/shared/gateway/unavailable.test.ts",
+          "test": "unavailableResponse returns a valid 503 envelope with no decision"
+        }
+      ]
+    },
+    {
+      "id": "M15",
+      "pdf_ref": "Reporting / audit",
+      "control": "Audit export capped and scoped; blocked, loop and review counters kept separate",
+      "allow": [
+        {
+          "file": "src/shared/gateway/auditExport.test.ts",
+          "test": "exportAudit answers CSV with a trace id, own scope and the current UTC day by default"
+        },
+        {
+          "file": "src/shared/gateway/metrics.test.ts",
+          "test": "the counters keeps blocked attempts, loop stops and review cases apart"
+        }
+      ],
+      "block": [
+        {
+          "file": "src/shared/gateway/auditExport.test.ts",
+          "test": "exportAudit exports exactly the cap and refuses one more with a narrowing instruction"
+        },
+        {
+          "file": "src/shared/gateway/auditExport.test.ts",
+          "test": "exportAudit gives an admin the organisation, and refuses it to anyone else"
+        },
+        {
+          "file": "src/shared/gateway/metrics.test.ts",
+          "test": "the response refuses a window larger than one read can total"
+        }
+      ]
+    }
+  ],
+  "not_implemented": [
+    {
+      "id": "N1",
+      "pdf_ref": "Output redaction",
+      "item": "Redaction inside chat answers",
+      "note": "Unsafe chat output is withheld (BLOCK/REVIEW), never partially redacted; redaction exists only on import."
+    },
+    {
+      "id": "N2",
+      "pdf_ref": "Model governance",
+      "item": "Model allowlist",
+      "note": "The generation model is a pinned constant, not a configurable allowlist."
+    },
+    {
+      "id": "N3",
+      "pdf_ref": "Threat feed",
+      "item": "External feed push",
+      "note": "POST/PUT /feeds answers 503; the feed is read-only in this build."
+    },
+    {
+      "id": "N4",
+      "pdf_ref": "PII detection",
+      "item": "PII beyond email",
+      "note": "Phone, IBAN, PESEL and card numbers are not detected; only email contact data is."
+    },
+    {
+      "id": "M16",
+      "pdf_ref": "Telemetry",
+      "item": "Per-stage timing",
+      "note": "Per-stage timing not asserted by a test; the audit test asserts the stage sequence and only the generation call's duration."
+    }
+  ]
+}
