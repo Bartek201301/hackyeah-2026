@@ -153,9 +153,9 @@ export function FeedPanel() {
       <Card>
         <CardHeader
           title="Push a new version"
-          description="Administrators only. The gateway validates the document and refuses it if the expected version is not the current head."
+          description="Read-only in this build: feed updates are not accepted yet. The installed feed above is enforced on every request."
         />
-        <div className="flex flex-col gap-4">
+        <fieldset disabled className="flex min-w-0 flex-col gap-4">
           <Field label="Source" error={errors.source}>
             <Input
               value={draft.source}
@@ -296,7 +296,7 @@ export function FeedPanel() {
               </Button>
             </div>
           </div>
-        </div>
+        </fieldset>
       </Card>
 
       {pushOutcome && <OutcomeNotice outcome={pushOutcome} />}
