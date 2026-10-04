@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ErrorCode } from "@/shared/contracts";
 import { createSupabaseAdmin } from "@/shared/supabase/admin";
 import { GatewayError, STATUS } from "./envelope";
+import type { ClientRow } from "./client-rules";
 import type {
   ActivityRow,
   DatasetBatch,
@@ -44,6 +45,9 @@ async function data<T>(query: PromiseLike<{ data: T; error: { message: string } 
 
 /** Every column of a ReviewRow; candidate_text is private review content, admin-only. */
 const REVIEW_COLUMNS = "id, version, candidate_text, classification, status, document_id";
+
+/** Every editor column of a client; visibleClient narrows it per role before release. */
+const CLIENT_COLUMNS = "id, name, sector, notes, annual_fee_usd, status, version, created_at";
 
 const RUN_COLUMNS =
   "id, kind, state, stage, policy_version, feed_version, input_private, result_private, lease_expires_at";
@@ -671,6 +675,79 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
           .maybeSingle(),
       );
       return row ?? null;
+    },
+
+    async listClients(organisationId, limit) {
+      const rows = await data<ClientRow[] | null>(
+        db
+          .from("clients")
+          .select(CLIENT_COLUMNS)
+          // Filtered here because the admin client bypasses RLS.
+          .eq("organisation_id", organisationId)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(limit),
+      );
+      return rows ?? [];
+    },
+
+    async readClient(organisationId, id) {
+      // Another organisation's id is absent here, so it is the same 404 as one that never existed.
+      const row = await data<ClientRow | null>(
+        db
+          .from("clients")
+          .select(CLIENT_COLUMNS)
+          .eq("organisation_id", organisationId)
+          .eq("id", id)
+          .maybeSingle(),
+      );
+      return row ?? null;
+    },
+
+    createClient({ actor, idempotencyKey, requestSha256, client }) {
+      return data(
+        db.rpc("create_client", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_idempotency_key: idempotencyKey,
+          p_request_sha256: requestSha256,
+          p_client: client,
+        }),
+      );
+    },
+
+    async recordClientReview({ actor, operation, idempotencyKey, requestSha256, reasons, clientId, fields }) {
+      const result = await data(
+        db.rpc("record_client_review", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_operation: operation,
+          p_idempotency_key: idempotencyKey,
+          p_request_sha256: requestSha256,
+          p_reasons: reasons,
+          p_client_id: clientId,
+          p_fields: fields,
+        }),
+      );
+      return {
+        trace_id: result.trace_id,
+        policy_version: result.policy_version,
+        feed_version: result.feed_version,
+      };
+    },
+
+    updateClient({ actor, idempotencyKey, requestSha256, clientId, expectedVersion, changes }) {
+      return data(
+        db.rpc("update_client", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_idempotency_key: idempotencyKey,
+          p_request_sha256: requestSha256,
+          p_client_id: clientId,
+          p_expected_version: expectedVersion,
+          p_changes: changes,
+        }),
+      );
     },
   };
 }

@@ -174,6 +174,13 @@ describe("classifyExportResponse", () => {
       envelope({ decision: "ALLOW", data: ready as unknown as Data }),
     );
     expect(released.outcome.showsResult).toBe(true);
+    // A file, not an answer: the chat classifier's "Answer ready … this answer" headline sat above
+    // a card announcing the same summary, and read as two separate events.
+    expect(released.outcome.title).toBe("Summary released");
+    expect(released.outcome.detail).not.toMatch(/answer/i);
+    // And it claims nothing about what the summary covers: the response carries only the path and
+    // the expiry, so a summary that cites nothing looks exactly like a full one from here.
+    expect(released.outcome.detail).not.toMatch(/citation|source/i);
   });
 
   it("puts a terminal error code ahead of a live-looking run", () => {

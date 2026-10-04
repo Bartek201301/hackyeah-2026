@@ -260,7 +260,7 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
         <Card>
           <CardHeader
             title="Summary ready"
-            description="The checked summary and its citations are inside the PDF. Nothing is previewed here, because only the file the gateway scanned may be shown."
+            description="The checked summary is inside the PDF, with whatever sources it cites. Nothing is previewed here, because only the file the gateway scanned may be shown."
             actions={expired ? <Badge tone="danger">Expired</Badge> : <Badge tone="success">Available</Badge>}
           />
           <div className="flex flex-col gap-3">
@@ -274,6 +274,14 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
                 <p className="text-sm text-muted">
                   Expires at <time dateTime={expiryIso}>{expiry}</time>. The download checks your account
                   again before it sends the file.
+                </p>
+                {/* A topic the public sources do not cover still passes every check: the summary
+                    honestly says there is nothing to report and cites nothing. The response carries
+                    only the path and the expiry, so this screen cannot tell that apart from a full
+                    summary — and this file is meant to leave the company. */}
+                <p className="text-sm text-muted">
+                  A released summary is not a promise of coverage. If the public sources say nothing about the
+                  topic, the summary says so and cites nothing — open the file before you share it.
                 </p>
                 <div>
                   {/* An anchor, not a Button: the shared Button renders a <button> and this is a

@@ -172,5 +172,29 @@ export function classifyExportResponse(status: number, body: ApiResponse | null)
     }
   }
 
-  return { outcome: classifyResponse(status, body), run: null };
+  const generic = classifyResponse(status, body);
+  /*
+   * A released export is a file, not an answer.
+   *
+   * The generic classifier speaks for chat ("Answer ready — the gateway checked this answer before
+   * releasing it"), and the card below already announces the summary, so the two headings read as
+   * two separate events. This keeps the trace link and the decision, and says only what the notice
+   * is for: the checks passed, and the file is below.
+   *
+   * It deliberately promises nothing about coverage. A topic the public sources do not cover
+   * produces a checked summary that says so, with no citations, and the response carries neither
+   * the citation count nor the text, so this screen cannot tell the two apart. The card says that
+   * out loud instead of implying every released summary cites something.
+   */
+  if (generic.kind === "result" && generic.decision === "ALLOW") {
+    return {
+      outcome: {
+        ...generic,
+        title: "Summary released",
+        detail: "The gateway checked the summary before storing it. The file itself is below.",
+      },
+      run: null,
+    };
+  }
+  return { outcome: generic, run: null };
 }

@@ -19,6 +19,7 @@ export type Review = Schemas["Review"];
 export type ApiResponse = Schemas["Response"];
 export type AuditProjection = Schemas["AuditProjection"];
 export type SearchRequest = Schemas["SearchRequest"];
+export type ActionRequest = Schemas["ActionRequest"];
 export type ChatRequest = Schemas["ChatRequest"];
 export type ExportRequest = Schemas["ExportRequest"];
 export type ReviewRequest = Schemas["ReviewRequest"];
@@ -29,6 +30,9 @@ export type ConnectorImport = Schemas["ConnectorImport"];
 export type SourceSummary = Schemas["SourceSummary"];
 export type ImportSummary = Schemas["ImportSummary"];
 export type Metrics = Schemas["Metrics"];
+export type Client = Schemas["Client"];
+export type ClientCreate = Schemas["ClientCreate"];
+export type ClientUpdate = Schemas["ClientUpdate"];
 
 export type GatewayPolicy = PolicyUpdate["policy"];
 export type ThreatFeed = FeedUpdate["feed"];

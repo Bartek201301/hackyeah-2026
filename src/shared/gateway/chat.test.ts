@@ -209,6 +209,21 @@ function harness(over: Partial<Opts> = {}) {
     async readReview() {
       throw new Error("not used");
     },
+    async listClients() {
+      throw new Error("not used");
+    },
+    async readClient() {
+      throw new Error("not used");
+    },
+    async createClient() {
+      throw new Error("not used");
+    },
+    async updateClient() {
+      throw new Error("not used");
+    },
+    async recordClientReview() {
+      throw new Error("not used");
+    },
     async loadDatasetBatch() {
       throw new Error("not used");
     },
