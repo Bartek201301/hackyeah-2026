@@ -4,6 +4,7 @@ import {
   MAX_TOPIC,
   classifyExportResponse,
   expiryInstant,
+  expiryLabel,
   hasExpired,
   isGatewayDownloadPath,
   readExportReady,
@@ -93,6 +94,16 @@ describe("expiry", () => {
   it("prints the UTC instant", () => {
     expect(expiryInstant("2026-10-04T09:00:00Z")).toBe("2026-10-04T09:00:00.000Z");
     expect(expiryInstant("nonsense")).toBeNull();
+  });
+
+  it("labels the expiry for a reader, with the zone it is in", () => {
+    // Fixed zone so the assertion is the same on every machine; the app passes none and uses the
+    // reader's own. The zone must be there: a bare local time is a deadline read in the wrong zone.
+    expect(expiryLabel("2026-10-04T09:00:00Z", "UTC")).toBe("4 Oct 2026, 09:00 UTC");
+    // The same instant, somewhere else: different clock time, and the label says which.
+    expect(expiryLabel("2026-10-04T09:00:00Z", "Europe/Warsaw")).toContain("11:00");
+    expect(expiryLabel("2026-10-04T09:00:00Z", "Europe/Warsaw")).not.toContain("UTC");
+    expect(expiryLabel("nonsense")).toBeNull();
   });
 
   it("treats a passed expiry as expired", () => {
