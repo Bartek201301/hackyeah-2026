@@ -34,6 +34,23 @@ InterLock is the gateway; the fictional AsterCloud company chat is its reference
 
 **Known rehearsal leftovers** (not cleaned; no deletes on the shared database): MIX-01 appears three times in Sources, audit CSV exports uploaded as sources (`audit-own-2026-10-03.csv` Public and Internal, `audit-own-2026-10-04.csv` Public and Internal), and `db_test` BOREAL documents from database tests.
 
+## Client actions (90 s)
+
+Story: the agent can work on client data, but the gateway decides who sees which fields, whether a financial change needs a second person, and that destructive actions never run unattended.
+
+Open `/clients` in the matching browser profile. Use a client the analyst created for the demo, never a real company.
+
+| Step | Who      | Action                 | Point at                                                                                                        |
+| ---- | -------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 1    | Analyst  | Change fee +10%, Save  | Green ALLOW "Saved"; the list refreshes with the new fee. The analyst limit is 20%.                             |
+| 2    | Analyst  | Change fee +30%, Save  | REVIEW "Held for approval", reason `action:change_exceeds_role_limit`; the fee is unchanged after Refresh.      |
+| 3    | Admin    | Change fee +200%, Save | REVIEW with the same reason: the admin limit is 50%, so even an admin needs a second person.                    |
+| 4    | Employee | Delete                 | BLOCK `action:role_not_permitted`. The employee sees no fee column. Every control is shown; the server decides. |
+
+At each step point at the decision badge and reason code, then at the same row in Activity (decision, reasons, time). Admin Delete is REVIEW `action:destructive_requires_approval`: nothing is deleted and the client stays listed.
+
+**Known gap:** "View the audited trace" for a client action currently opens "Reporting state is unavailable" (the trace read returns 503 `STATE_UNAVAILABLE`; see open findings in [release evidence](../testing/release-evidence.md)). Until it is fixed, show the Activity row instead and say so.
+
 ## Evidence pack
 
 The dated report ([release evidence](../testing/release-evidence.md)) contains commit/deployment, policy/feed/model/protocol versions, command exit codes, test counts, semantic FP/misses with denominators, representative trace IDs, safe screenshots and the public PDF check with independent text extraction. No passwords, raw malicious originals, tokens or real personal data. Pitch placeholders remain unmeasured until replaced from this report.
