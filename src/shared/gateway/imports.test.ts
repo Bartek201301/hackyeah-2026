@@ -122,6 +122,12 @@ function harness(over: Partial<Opts> = {}) {
   };
 
   const repository: RepositoryPort = {
+    async finalizeGuardCheck() {
+      throw new Error("not used");
+    },
+    async readGuardResult() {
+      throw new Error("not used");
+    },
     async updatePolicy() {
       throw new Error("not used");
     },

@@ -176,6 +176,56 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       };
     },
 
+    async finalizeGuardCheck({
+      operationId,
+      actor,
+      tokenId,
+      scope,
+      decision,
+      reasons,
+      usage,
+      event,
+      unknown,
+    }) {
+      return data(
+        db.rpc("finalize_guard_check", {
+          p_operation_id: operationId,
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_token_id: tokenId,
+          p_scope: scope,
+          p_decision: decision,
+          p_reasons: reasons,
+          p_usage: usage,
+          p_payload: event,
+          p_unknown: unknown,
+        }),
+      );
+    },
+
+    async readGuardResult(actor, operationId) {
+      const intent = await data<{ trace_id: string } | null>(
+        db
+          .from("audit_events")
+          .select("trace_id")
+          .eq("organisation_id", actor.organisation_id)
+          .eq("actor_id", actor.actor_id)
+          .eq("operation_id", operationId)
+          .eq("event_type", "intent")
+          .maybeSingle(),
+      );
+      if (!intent) return null;
+      return data(
+        db
+          .from("actor_activity")
+          .select("trace_id, decision, reasons, usage, policy_version, feed_version")
+          .eq("trace_id", intent.trace_id)
+          .eq("organisation_id", actor.organisation_id)
+          .eq("actor_id", actor.actor_id)
+          .maybeSingle(),
+      );
+    },
+
     async readRun(actor, runId) {
       return data<RunRecord | null>(
         db

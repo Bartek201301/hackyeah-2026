@@ -89,6 +89,17 @@ function harness(over: Partial<Opts> = {}) {
 }
 
 describe("searchExcerpts", () => {
+  it("keeps browser audience for every role and narrows an admin-backed integration to public", async () => {
+    for (const role of ["admin", "analyst", "employee", "external"] as const) {
+      const h = harness({ rows: [row({ classification: "public" })] });
+      const browser = { ...actor, role, deal_ids: [], audience: "actor" as const };
+      await searchExcerpts(h.deps, browser, { query: QUERY }, KEY);
+      expect(h.searches[0]?.audience).toBe("actor");
+      const integration = { ...browser, audience: "public" as const };
+      await searchExcerpts(h.deps, integration, { query: QUERY }, KEY);
+      expect(h.searches[1]?.audience).toBe("public");
+    }
+  });
   it("returns the projected excerpt and its citation for a permitted row", async () => {
     const { deps, searches, recorded } = harness();
     const { status, body } = await searchExcerpts(deps, actor, { query: QUERY }, KEY);
@@ -189,6 +200,15 @@ describe("searchExcerpts", () => {
 });
 
 describe("readExcerpt", () => {
+  it("passes browser and public integration audiences to the SQL permission filter", async () => {
+    for (const role of ["admin", "analyst", "employee", "external"] as const) {
+      const h = harness({ rows: [row({ classification: "public" })] });
+      const browser = { ...actor, role, audience: "actor" as const };
+      await readExcerpt(h.deps, browser, EX_ID);
+      await readExcerpt(h.deps, { ...browser, audience: "public" }, EX_ID);
+      expect(h.reads.map(([, audience]) => audience)).toEqual(["actor", "public"]);
+    }
+  });
   it("returns one permitted excerpt and audits the access as allowed", async () => {
     const { deps, reads, recorded } = harness();
     const { status, body } = await readExcerpt(deps, actor, EX_ID);

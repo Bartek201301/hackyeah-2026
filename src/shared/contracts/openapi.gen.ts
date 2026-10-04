@@ -760,6 +760,26 @@ export interface components {
         /** @constant */
         label: "Illustrative commercial equivalent; not an invoice";
       };
+      client_guard?: {
+        /** @constant */
+        profile: "restricted-demo-v1";
+        /** @constant */
+        prompt_assessment_required: true;
+        allowed_tools: (
+          | "Read"
+          | "Glob"
+          | "Grep"
+          | "Edit"
+          | "Write"
+          | "mcp__interlock__search_excerpts"
+          | "mcp__interlock__read_excerpt"
+        )[];
+        /** @constant */
+        editable_root: "src";
+        editable_extensions: (".ts" | ".tsx" | ".js" | ".jsx" | ".json" | ".md" | ".css")[];
+        max_prompt_bytes: number;
+        max_edit_bytes: number;
+      };
       retention: {
         raw_days: number;
         audit_days: number;

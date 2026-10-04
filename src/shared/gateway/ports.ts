@@ -204,6 +204,36 @@ export interface RepositoryPort {
     traceId: string;
     runId: string | null;
   }): Promise<BegunOperation>;
+  /** Complete a previously recorded standalone guard intent and its safe activity in one transaction. */
+  finalizeGuardCheck(input: {
+    operationId: string;
+    actor: ActorContext;
+    tokenId: string;
+    scope: string;
+    decision: "ALLOW" | "BLOCK" | "REVIEW";
+    reasons: string[];
+    usage: Usage;
+    event: Record<string, unknown> & { stage: string };
+    unknown: boolean;
+  }): Promise<{
+    trace_id: string;
+    decision: "ALLOW" | "BLOCK" | "REVIEW";
+    reasons: string[];
+    policy_version: number;
+    feed_version: number;
+  }>;
+  /** Safe stored decision for an idempotent replay; null means the first attempt is unfinished. */
+  readGuardResult(
+    actor: ActorContext,
+    operationId: string,
+  ): Promise<{
+    trace_id: string;
+    decision: "ALLOW" | "BLOCK" | "REVIEW";
+    reasons: string[];
+    usage: Usage;
+    policy_version: number;
+    feed_version: number;
+  } | null>;
   /** Own runs only: organisation and actor must match. */
   readRun(actor: ActorContext, runId: string): Promise<RunRecord | null>;
   /** Returns the lease token, or null when the run is not pending. */

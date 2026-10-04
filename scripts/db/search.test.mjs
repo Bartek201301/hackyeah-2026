@@ -113,6 +113,13 @@ test("the external reviewer, and any public-audience search, sees public rows on
   assert.deepEqual([...classes(reviewer)], ["public"]);
   const analystPublic = await rows("analyst", { audience: "public" });
   assert.deepEqual([...classes(analystPublic)], ["public"]);
+  for (const { alias } of fixtures.accounts) {
+    const externalScope = await rows(alias, { audience: "public" });
+    assert.ok(
+      externalScope.every((item) => item.classification === "public"),
+      alias,
+    );
+  }
 });
 
 test("Boreal stays invisible even when searched by its own words", async () => {

@@ -74,7 +74,7 @@ export async function searchExcerpts(
   const rows = await deps.repository.searchPermittedExcerpts(actor, {
     query: body.query,
     dealId,
-    audience: "actor",
+    audience: actor.audience,
     limit: controls.policy.execution.max_search_results,
   });
   const items: Excerpt[] = [];
@@ -119,7 +119,7 @@ export async function searchExcerpts(
  * withholds the excerpt instead of releasing it unaudited.
  */
 export async function readExcerpt(deps: GatewayDeps, actor: ActorContext, id: string): Promise<Outcome> {
-  const [row] = await deps.repository.readPermittedExcerpts(actor, "actor", [id]);
+  const [row] = await deps.repository.readPermittedExcerpts(actor, actor.audience, [id]);
   const checked = row ? toExcerpt(row) : null;
 
   const recorded = await record(deps, {
