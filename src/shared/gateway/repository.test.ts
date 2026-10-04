@@ -89,12 +89,14 @@ describe("createSupabaseRepository window queries", () => {
   }
   const window = { organisationId: "org", from: "f", to: "t", limit: 5 };
 
-  it("leaves db_test rows out of metrics and export, and filters own scope in the query", async () => {
+  it("leaves db_test rows and reservations out of metrics and export, and filters own scope in the query", async () => {
     const { calls, repository } = recording();
     await repository.readMetricsRows({ ...window, ownActorId: "me" });
     await repository.exportActivity({ ...window, ownActorId: null });
     expect(calls.filter(([name]) => name === "neq")).toEqual([
       ["neq", "operation", "db_test"],
+      // test:db charges reservations on purpose; they must not make the day's price unknown.
+      ["neq", "operations.operation", "db_test"],
       ["neq", "operation", "db_test"],
     ]);
     expect(calls).toContainEqual(["eq", "actor_id", "me"]);
