@@ -9,6 +9,7 @@ import type {
   ActivityRow,
   DatasetBatch,
   EventRow,
+  ExportRow,
   ImportRow,
   MetricsActivityRow,
   MetricsReservationRow,
@@ -410,6 +411,46 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
         }),
       );
       return result.finalized === true;
+    },
+
+    async storeExport(key, bytes) {
+      await data(
+        db.storage
+          .from("generated-exports")
+          .upload(key, bytes, { contentType: "application/pdf", upsert: false }),
+      );
+    },
+
+    async finalizeExport({ runId, leaseToken, operationId, outcome, publication }) {
+      const result = await data(
+        db.rpc("finalize_export", {
+          p_run_id: runId,
+          p_lease_token: leaseToken,
+          p_operation_id: operationId,
+          p_outcome: outcome,
+          p_export: publication,
+        }),
+      );
+      return result.finalized === true;
+    },
+
+    async readExport(actor, id) {
+      return data<ExportRow | null>(
+        db
+          .from("exports")
+          .select("id, run_id, storage_key, expires_at, status, excerpt_versions")
+          .eq("id", id)
+          // Owner only, filtered here because the admin client bypasses RLS.
+          .eq("organisation_id", actor.organisation_id)
+          .eq("actor_id", actor.actor_id)
+          .maybeSingle(),
+      );
+    },
+
+    async readExportFile(key) {
+      const blob = await data(db.storage.from("generated-exports").download(key));
+      if (!blob) throw new GatewayError("STATE_UNAVAILABLE");
+      return new Uint8Array(await blob.arrayBuffer());
     },
 
     async listActivity({ organisationId, actorId, after, limit }) {

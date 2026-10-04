@@ -4,14 +4,15 @@ import { readOwnRun } from "./calls";
 import { executeChat } from "./chat";
 import { sha256Hex } from "./checks";
 import { envelope, errorOutcome } from "./envelope";
+import { executeExport } from "./exports";
 import { executeImport } from "./imports";
 import type { GatewayDeps, Outcome, StoredResult } from "./ports";
 
 // run_execute / run_read dispatch by the stored run kind; each engine re-checks its own kind, so an
-// import run never reaches the chat engine or the reverse. Export runs are not built yet (404).
+// import run never reaches the chat engine or the reverse.
 
 export const readRunResult = (deps: GatewayDeps, actor: ActorContext, runId: string) =>
-  readOwnRun(deps, actor, runId, ["chat", "import"]);
+  readOwnRun(deps, actor, runId, ["chat", "import", "export"]);
 
 export async function executeRun(
   deps: GatewayDeps,
@@ -23,6 +24,7 @@ export async function executeRun(
   const run = await deps.repository.readRun(actor, runId);
   if (run?.kind === "chat") return executeChat(deps, actor, runId, idempotencyKey, signal);
   if (run?.kind === "import") return executeImport(deps, actor, runId, idempotencyKey, signal);
+  if (run?.kind === "export") return executeExport(deps, actor, runId, idempotencyKey, signal);
   return errorOutcome("NOT_FOUND");
 }
 
