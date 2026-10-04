@@ -299,9 +299,11 @@ describe("export run", () => {
     expect(text).toContain("120");
     expect(text).toContain("webinar");
     expect(text).toContain("PUB-01");
+    // CreationDate is the generation clock by design; at 01:25 UTC it holds "125", so it is not content.
+    const metadata = JSON.stringify({ ...info, CreationDate: undefined });
     for (const value of FORBIDDEN) {
       expect(text).not.toContain(value);
-      expect(JSON.stringify(info)).not.toContain(value);
+      expect(metadata).not.toContain(value);
     }
     expect(info.Title).toBe(PDF_TITLE);
     expect(info.Producer).toBeUndefined();
