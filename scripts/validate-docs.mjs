@@ -128,11 +128,10 @@ const active = [
   "CLAUDE.md",
   "DESIGN.md",
   "docs/README.md",
-  ...["docs/product", "docs/team", "docs/contracts", "docs/testing", "docs/demo", "docs/pitch"].flatMap(
-    (dir) =>
-      walk(resolve(root, dir))
-        .filter((f) => f.endsWith(".md"))
-        .map((f) => relative(root, f)),
+  ...["docs/product", "docs/team", "docs/contracts", "docs/testing", "docs/demo"].flatMap((dir) =>
+    walk(resolve(root, dir))
+      .filter((f) => f.endsWith(".md"))
+      .map((f) => relative(root, f)),
   ),
 ];
 let links = 0;
@@ -167,9 +166,8 @@ for (const split of ["development", "held_out"])
     assert.equal(semantic.cases.filter((c) => c.split === split && c.category === category).length, 4);
   }
 assert(read("CLAUDE.md").startsWith("@AGENTS.md"));
-assert.equal((read("docs/pitch/presentation.html").match(/aria-roledescription="slide"/g) || []).length, 6);
 console.log(
-  `Documentation checks passed: ${Object.keys(examples).length + 2} schema examples, ${operationIds.size} operations, ${links} local links, 20 mapped requirements, 24 semantic cases, 6 slides.`,
+  `Documentation checks passed: ${Object.keys(examples).length + 2} schema examples, ${operationIds.size} operations, ${links} local links, 20 mapped requirements, 24 semantic cases.`,
 );
 console.log(
   "Schema assertions checked with AJV 8 (draft-07 mode) using the shared draft-07/2020-12 subset; this is not a full OpenAPI conformance certification.",

@@ -27,4 +27,4 @@ Use `PageHeader` on each page, `Card`/`CardHeader` for sections, `StatCard` for 
 
 Visible keyboard focus, semantic buttons/links, labelled inputs and errors associated with controls. Do not communicate status only by color. Keep English sentences short and actionable. Responsive single-column flow on phones; no horizontal page overflow. Tables can use a labelled local scroll region where necessary. Respect reduced motion. Provide empty/loading/error/permission-denied/incomplete states; “not measured” differs from zero. Use English number/date formatting with explicit currency and units, UTC timestamps labelled or localized with zone.
 
-Browser validation follows the project browser-QA skill. A source review or green build is not visual verification. The pitch's six-slide layout is separately verified at desktop/tablet/phone sizes.
+Browser validation follows the project browser-QA skill. A source review or green build is not visual verification.
