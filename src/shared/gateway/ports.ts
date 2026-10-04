@@ -372,11 +372,23 @@ export interface RepositoryPort {
   readClient(organisationId: string, id: string): Promise<ClientRow | null>;
   /** create_client: idempotent insert and its ALLOW audit in one transaction. */
   createClient(input: ClientWrite & { client: ClientCreate }): Promise<ClientWritten>;
+  /** record_client_review: a held client action (REVIEW), recorded with ids and field names only; writes
+   *  nothing else. The same key and hash return the first trace; a key used for another decision conflicts. */
+  recordClientReview(input: {
+    actor: ActorContext;
+    operation: ClientOperation;
+    idempotencyKey: string;
+    requestSha256: string;
+    reasons: string[];
+    clientId: string | null;
+    fields: string[] | null;
+  }): Promise<{ trace_id: string; policy_version: number; feed_version: number }>;
   /** update_client: a stale `expectedVersion` throws CONFLICT and writes nothing. */
   updateClient(
     input: ClientWrite & { clientId: string; expectedVersion: number; changes: ClientUpdate["changes"] },
   ): Promise<ClientWritten>;
 }
+export type ClientOperation = "client_create" | "client_update" | "client_delete";
 /** Uniqueness is (organisation, actor, operation, key); the same key and hash replay the first result. */
 export type ClientWrite = { actor: ActorContext; idempotencyKey: string; requestSha256: string };
 export type ClientWritten = { client_id: string; version: number; replayed: boolean };

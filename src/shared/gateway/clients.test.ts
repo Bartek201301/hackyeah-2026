@@ -41,12 +41,14 @@ const row = (over: Partial<ClientRow> = {}): ClientRow => ({
 });
 
 type Recorded = Parameters<RepositoryPort["recordAccessDecision"]>[0];
+type Review = Parameters<RepositoryPort["recordClientReview"]>[0];
 
 // TEST FAKE: unit tests only; the app never composes these. The store is keyed like the RPCs'
 // idempotency (operation, key) so a replay returns the first result.
 function harness(opts: { rows?: ClientRow[]; audit?: boolean; conflict?: boolean } = {}) {
   const rows = opts.rows ?? [row()];
   const recorded: Recorded[] = [];
+  const reviews: Review[] = [];
   const writes: { op: string; input: unknown }[] = [];
   const replays = new Map<string, { client_id: string; version: number }>();
   const reads: { organisationId: string; id: string }[] = [];
@@ -61,6 +63,7 @@ function harness(opts: { rows?: ClientRow[]; audit?: boolean; conflict?: boolean
     RepositoryPort,
     | "loadActivePolicyAndFeed"
     | "recordAccessDecision"
+    | "recordClientReview"
     | "listClients"
     | "readClient"
     | "createClient"
@@ -78,6 +81,11 @@ function harness(opts: { rows?: ClientRow[]; audit?: boolean; conflict?: boolean
     async recordAccessDecision(input) {
       if (opts.audit === false) throw new Error("audit down");
       recorded.push(input);
+      return { trace_id: TRACE, policy_version: 1, feed_version: 1 };
+    },
+    async recordClientReview(input) {
+      if (opts.audit === false) throw new Error("audit down");
+      reviews.push(input);
       return { trace_id: TRACE, policy_version: 1, feed_version: 1 };
     },
     async listClients(organisationId, limit) {
@@ -100,7 +108,7 @@ function harness(opts: { rows?: ClientRow[]; audit?: boolean; conflict?: boolean
     },
   };
   const deps = { repository, detection: null, generation: null } as unknown as GatewayDeps;
-  return { deps, recorded, writes, reads };
+  return { deps, recorded, reviews, writes, reads };
 }
 
 const valid = ({ body }: Outcome) => expect(check("Response", body)).toEqual({ ok: true, value: body });
@@ -123,6 +131,16 @@ describe("client_list", () => {
     // The list is audited with a count, never a name.
     expect(h.recorded[0]).toMatchObject({ operation: "client_list", decision: "ALLOW" });
     expect(JSON.stringify(h.recorded)).not.toContain(NAME);
+  });
+
+  it("releases a client without a sector as null to every role", async () => {
+    // The column is nullable; client-rules widens ClientRow.sector to string | null.
+    const rows = [row({ sector: null as unknown as string })];
+    for (const role of ["admin", "employee"] as const) {
+      const out = await listClients(harness({ rows }).deps, actorOf(role));
+      valid(out);
+      expect((out.body.data as { items: { sector: unknown }[] }).items[0].sector).toBeNull();
+    }
   });
 
   it("is a generic not-found for externals, and withheld when the audit is down", async () => {
@@ -192,7 +210,8 @@ describe("client_create", () => {
       const event = JSON.stringify(h.recorded);
       // Field names and codes only: never the text, name or amount.
       expect(event).not.toMatch(/instructions|exfil\.example|jane|Contoso|50000/);
-      expect(h.recorded[0].event).toMatchObject({ stage: "client_action", held: false });
+      expect(h.recorded[0].event).toMatchObject({ stage: "client_action", limit_tier: "admin" });
+      expect(h.reviews).toEqual([]);
     }
   });
 });
@@ -232,17 +251,19 @@ describe("client_update", () => {
         null,
       ]);
       expect(h.writes).toEqual([]);
-      expect(h.recorded[0]).toMatchObject({
-        operation: "client_update",
-        reasons: ["action:change_exceeds_role_limit"],
-      });
-      expect(h.recorded[0].event).toEqual({
-        stage: "client_action",
-        client_id: CLIENT_ID,
-        fields: ["annual_fee_usd"],
-        limit_tier: role,
-        held: true,
-      });
+      // REVIEW goes to record_client_review (ids and field names only), never as a BLOCK.
+      expect(h.recorded).toEqual([]);
+      expect(h.reviews).toEqual([
+        {
+          actor: actorOf(role),
+          operation: "client_update",
+          idempotencyKey: KEY,
+          requestSha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+          reasons: ["action:change_exceeds_role_limit"],
+          clientId: CLIENT_ID,
+          fields: ["annual_fee_usd"],
+        },
+      ]);
     }
   });
 
@@ -314,8 +335,11 @@ describe("client_delete", () => {
     const unknown = await deleteClient(h.deps, actorOf("admin"), UNKNOWN_ID, KEY);
     expect(unknown.status).toBe(404);
     expect(h.writes).toEqual([]);
+    expect(h.reviews.map((r) => [r.operation, r.clientId, r.fields])).toEqual([
+      ["client_delete", CLIENT_ID, null],
+    ]);
     expect(h.recorded.map((r) => [r.operation, r.decision])).toEqual(
-      Array(4).fill(["client_delete", "BLOCK"]),
+      Array(3).fill(["client_delete", "BLOCK"]),
     );
   });
 });

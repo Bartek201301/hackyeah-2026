@@ -180,6 +180,7 @@ function harness(over: Partial<Opts> = {}) {
     readClient: unused,
     createClient: unused,
     updateClient: unused,
+    recordClientReview: unused,
     listActivity: unused,
     readMetricsRows: unused,
     exportActivity: unused,

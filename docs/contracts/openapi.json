@@ -4745,15 +4745,15 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 120
           },
           "sector": {
             "type": "string",
-            "maxLength": 100
+            "maxLength": 60
           },
           "notes": {
             "type": "string",
-            "maxLength": 2000
+            "maxLength": 500
           },
           "annual_fee_usd": {
             "type": ["integer", "null"],
@@ -4781,11 +4781,11 @@
             "properties": {
               "sector": {
                 "type": "string",
-                "maxLength": 100
+                "maxLength": 60
               },
               "notes": {
                 "type": "string",
-                "maxLength": 2000
+                "maxLength": 500
               },
               "annual_fee_usd": {
                 "type": ["integer", "null"],

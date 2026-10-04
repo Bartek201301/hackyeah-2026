@@ -13,7 +13,7 @@ import {
 } from "./client-rules";
 import { envelope, errorOutcome, GatewayError, notExecutedUsage, STATUS } from "./envelope";
 import { isUuid } from "./http";
-import type { GatewayDeps, Outcome } from "./ports";
+import type { ClientOperation, GatewayDeps, Outcome } from "./ports";
 
 /*
  * client_list, client_create, client_update, client_delete: the reference app's client actions.
@@ -21,8 +21,8 @@ import type { GatewayDeps, Outcome } from "./ports";
  * client-rules.ts decides who may do what; this module enforces it. Free text runs through the same
  * deterministic feed-signature and secret/contact checks as an import, and any hit blocks the write.
  * Only an ALLOW reaches create_client/update_client, which write and audit in one transaction. A
- * BLOCK or REVIEW writes nothing and is recorded here. Delete has no write path at all: an admin's
- * delete is held for approval and everyone else's is refused.
+ * BLOCK (record_access_decision) or REVIEW (record_client_review) writes nothing else and is recorded
+ * here. Delete has no write path at all: an admin's delete is held for approval, anyone else's refused.
  *
  * Audit payloads carry ids, field names and the role tier only, never a name, note or amount.
  */
@@ -34,10 +34,24 @@ const SIGNATURE_STAGE = "client_signature";
 
 type Recorded = { trace_id: string; policy_version: number; feed_version: number };
 type Event = Record<string, unknown>;
+/** What an audit may name about a refused action: ids, field names and finding codes. */
+type Target = { client_id?: string; fields?: string[]; findings?: Finding[] };
 type Versions = Pick<Recorded, "policy_version" | "feed_version">;
 
-/** A decision the caller is answered with; an unrecorded one withholds the answer (release gate). */
-async function record(
+/**
+ * The audit write is the release gate: a refusal the RPC itself decided is the answer, anything else
+ * withholds the answer as unrecorded.
+ */
+async function audited(write: () => Promise<Recorded>): Promise<Recorded | Outcome> {
+  try {
+    return await write();
+  } catch (error) {
+    const decided = error instanceof GatewayError && STATUS[error.code] < 500;
+    return errorOutcome(decided ? error.code : "AUDIT_UNAVAILABLE");
+  }
+}
+
+const record = (
   deps: GatewayDeps,
   actor: ActorContext,
   operation: string,
@@ -46,9 +60,9 @@ async function record(
   decision: "ALLOW" | "BLOCK",
   reasons: string[],
   event: Event,
-): Promise<Recorded | Outcome> {
-  try {
-    return await deps.repository.recordAccessDecision({
+) =>
+  audited(() =>
+    deps.repository.recordAccessDecision({
       actor,
       operation,
       idempotencyKey,
@@ -57,12 +71,8 @@ async function record(
       reasons,
       usage: notExecutedUsage(),
       event: { ...event, stage: STAGE },
-    });
-  } catch (error) {
-    const decided = error instanceof GatewayError && STATUS[error.code] < 500;
-    return errorOutcome(decided ? error.code : "AUDIT_UNAVAILABLE");
-  }
-}
+    }),
+  );
 
 const isOutcome = (result: Recorded | Outcome): result is Outcome => "body" in result;
 const versions = (r: Recorded): Versions => ({
@@ -70,25 +80,33 @@ const versions = (r: Recorded): Versions => ({
   feed_version: r.feed_version,
 });
 
-/**
- * BLOCK → 403; REVIEW → 200 with the hold and no data. Nothing was written either way.
- * ponytail: record_access_decision takes ALLOW|BLOCK only, so a held action is audited as the denied
- * operation it is, flagged `held`; record REVIEW itself once that RPC accepts it.
- */
+/** BLOCK → 403; REVIEW → 200 with the hold and no data. Nothing was written either way. */
 async function refuse(
   deps: GatewayDeps,
   actor: ActorContext,
-  operation: string,
+  operation: ClientOperation,
   key: string,
   requestSha256: string,
   verdict: ActionVerdict,
-  event: Event,
+  target: Target,
 ): Promise<Outcome> {
   const held = verdict.decision === "REVIEW";
-  const recorded = await record(deps, actor, operation, key, requestSha256, "BLOCK", verdict.reasons, {
-    ...event,
-    held,
-  });
+  const recorded = held
+    ? await audited(() =>
+        deps.repository.recordClientReview({
+          actor,
+          operation,
+          idempotencyKey: key,
+          requestSha256,
+          reasons: verdict.reasons,
+          clientId: target.client_id ?? null,
+          fields: target.fields ?? null,
+        }),
+      )
+    : await record(deps, actor, operation, key, requestSha256, "BLOCK", verdict.reasons, {
+        ...target,
+        limit_tier: actor.role,
+      });
   if (isOutcome(recorded)) return recorded;
   const fields = { trace_id: recorded.trace_id, ...versions(recorded), reasons: verdict.reasons };
   return held
@@ -100,7 +118,7 @@ async function refuse(
 async function notFound(
   deps: GatewayDeps,
   actor: ActorContext,
-  operation: string,
+  operation: ClientOperation,
   key: string,
   requestSha256: string,
 ): Promise<Outcome> {
@@ -251,7 +269,7 @@ export async function updateClient(
   const current = await readVisible(deps, actor, id);
   if (!current) return notFound(deps, actor, operation, key, sha);
 
-  const event = { client_id: id, fields: Object.keys(body.changes).sort(), limit_tier: actor.role };
+  const event = { client_id: id, fields: Object.keys(body.changes).sort() };
   const edit = editVerdict(actor.role, current, changes);
   if (edit.decision === "BLOCK") return refuse(deps, actor, operation, key, sha, edit, event);
 
@@ -294,8 +312,5 @@ export async function deleteClient(
   const sha = sha256Hex(JSON.stringify({ client_id: id }));
   const current = await readVisible(deps, actor, id);
   if (!current) return notFound(deps, actor, operation, key, sha);
-  return refuse(deps, actor, operation, key, sha, deleteVerdict(actor.role), {
-    client_id: id,
-    limit_tier: actor.role,
-  });
+  return refuse(deps, actor, operation, key, sha, deleteVerdict(actor.role), { client_id: id });
 }

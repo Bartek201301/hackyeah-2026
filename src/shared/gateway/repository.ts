@@ -666,6 +666,26 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
       );
     },
 
+    async recordClientReview({ actor, operation, idempotencyKey, requestSha256, reasons, clientId, fields }) {
+      const result = await data(
+        db.rpc("record_client_review", {
+          p_organisation_id: actor.organisation_id,
+          p_actor_id: actor.actor_id,
+          p_operation: operation,
+          p_idempotency_key: idempotencyKey,
+          p_request_sha256: requestSha256,
+          p_reasons: reasons,
+          p_client_id: clientId,
+          p_fields: fields,
+        }),
+      );
+      return {
+        trace_id: result.trace_id,
+        policy_version: result.policy_version,
+        feed_version: result.feed_version,
+      };
+    },
+
     updateClient({ actor, idempotencyKey, requestSha256, clientId, expectedVersion, changes }) {
       return data(
         db.rpc("update_client", {
