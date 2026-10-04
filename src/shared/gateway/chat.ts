@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type {
   ActorContext,
+  ApiResponse,
   ChatCheck,
   ChatRequest,
   Citation,
@@ -55,20 +56,35 @@ export const SYSTEM_PROMPT = [
 const MAX_ANSWER_CHARS = 12000;
 const REFUSED = "This request was refused by the control policy.";
 
-type Verdict = { decision: "ALLOW" | "REVIEW" | "BLOCK"; reasons: string[] };
+export type Verdict = { decision: "ALLOW" | "REVIEW" | "BLOCK"; reasons: string[] };
 type Retrieval = { query_sha256: string; result_count: number; excerpt_ids: string[]; cited_ids: string[] };
 /** What a publish step discloses instead of the answer, and the row finalize writes with it. */
 export type Published = {
   data: { download_path: string; expires_at: string };
   publication: ExportPublication;
 };
-type Ending =
-  (Verdict & { answer?: string; citations?: Citation[]; published?: Published }) | { error: ErrorCode };
+export type Ending =
+  | (Verdict & {
+      answer?: string;
+      citations?: Citation[];
+      published?: Published;
+      /** Act mode's result, disclosed as data (even with a BLOCK). */
+      data?: NonNullable<ApiResponse["data"]>;
+    })
+  | { error: ErrorCode };
+/** What an act step may use after the input checks passed. */
+export type ActStep = {
+  runId: string;
+  message: string;
+  generate: ReturnType<typeof createCalls>["generate"];
+  outputSignatures: (text: string) => Promise<Verdict>;
+  stage: (name: string) => void;
+};
 
 /** One answer run kind: chat (the actor's scope) or export (public only, published as a file). */
 export type AnswerSpec = {
   kind: "chat" | "export";
-  operation: "chat_start" | "export_start";
+  operation: "chat_start" | "export_start" | "action_start";
   /** The input_private field that holds the user's text. */
   field: "message" | "topic";
   audience: ExcerptAudience;
@@ -81,6 +97,9 @@ export type AnswerSpec = {
     answer: string;
     citations: Citation[];
   }) => Promise<Published>;
+  /** Act mode (client-act.ts): replaces retrieval, generation and the output checks after the input
+   *  checks. Its runs carry input_private.mode "client_action"; no other run reaches it. */
+  act?: (step: ActStep) => Promise<Ending>;
 };
 
 export const CHAT: AnswerSpec = {
@@ -117,7 +136,11 @@ export async function startAnswer(
   const promptBytes = utf8Bytes(buildContext([], spec.prompt, "", 0).system);
   if (promptBytes + utf8Bytes(text) > controls.policy.execution.max_input_utf8_bytes)
     return errorOutcome("INVALID_INPUT", { status: 413, message: "Shorten the question and try again." });
-  const input = { [spec.field]: text, deal_id: dealId ?? null };
+  const input = {
+    [spec.field]: text,
+    deal_id: dealId ?? null,
+    ...(spec.act && { mode: "client_action" }),
+  };
   const run = await deps.repository.startRun({
     actor,
     operation: spec.operation,
@@ -222,9 +245,15 @@ export async function executeAnswer(
   };
 
   const pipeline = async (): Promise<Ending> => {
-    const { [spec.field]: message, deal_id: dealId } = (run.input_private ?? {}) as Record<string, unknown>;
+    const {
+      [spec.field]: message,
+      deal_id: dealId,
+      mode,
+    } = (run.input_private ?? {}) as Record<string, unknown>;
     if (typeof message !== "string" || (dealId != null && typeof dealId !== "string"))
       throw new GatewayError("STATE_UNAVAILABLE");
+    // An act run never reaches the answer pipeline, nor a chat run the act step.
+    if ((mode === "client_action") !== Boolean(spec.act)) throw new GatewayError("STATE_UNAVAILABLE");
     let v = await signatures(message, "input_signature");
     if (v.decision !== "ALLOW") return v;
     // Adapter not composed: positive evidence that no provider call started, so no reservation.
@@ -234,6 +263,14 @@ export async function executeAnswer(
     stage = "input_semantic";
     v = await judge(message, "chat_input");
     if (v.decision !== "ALLOW") return v;
+    if (spec.act)
+      return spec.act({
+        runId: run.id,
+        message,
+        generate: calls.generate,
+        outputSignatures: (text) => signatures(text, "output_signature"),
+        stage: (name) => (stage = name),
+      });
 
     // Scope is filtered in SQL before ranking; the model only ever sees this actor's permitted rows.
     stage = "retrieval";
@@ -345,10 +382,13 @@ export async function executeAnswer(
     const fields = { ...common, semantic: semantic ?? SEMANTIC_NOT_REQUIRED, reasons: end.reasons };
     if (end.decision === "BLOCK") {
       outcome = errorOutcome("ACCESS_DENIED", { ...fields, message: REFUSED });
+      if (end.data) outcome.body.data = end.data;
       states = ["blocked", "denied"];
     } else {
       const data =
-        end.published?.data ?? (end.answer ? { answer: end.answer, citations: end.citations ?? [] } : null);
+        end.published?.data ??
+        end.data ??
+        (end.answer ? { answer: end.answer, citations: end.citations ?? [] } : null);
       outcome = { status: 200, body: envelope({ ...fields, decision: end.decision, data }) };
       states = [end.decision === "ALLOW" ? "completed" : "review", "completed"];
     }
