@@ -16,7 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, SquareX } from "lucide-react";
 import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
 import type { ApiResponse, Run } from "@/shared/contracts";
-import { Button, Card, Field, Textarea } from "@/shared/ui";
+import { Button, Card, Field, Textarea, ThinkingIndicator } from "@/shared/ui";
 import { cn } from "@/shared/cn";
 import type { GatewayOutcome } from "../lib/envelope";
 import { classifyChatResponse } from "../lib/chatFlow";
@@ -28,6 +28,7 @@ import {
   POLL_INTERVAL_MS,
   canCancel,
   cancelReachedDecision,
+  describeRun,
   shouldKeepPolling,
 } from "../lib/runState";
 import { OutcomeNotice } from "./OutcomeNotice";
@@ -228,6 +229,9 @@ export function ChatPanel() {
   }, [run, apply]);
 
   const asked = sent !== null;
+  /* While a run is in flight the gateway's own stage is the whole story: the indicator says it, so
+     the notice would only repeat it. Both come from the same polled run. */
+  const working = run && shouldKeepPolling(run) ? describeRun(run) : null;
 
   return (
     <div
@@ -246,7 +250,13 @@ export function ChatPanel() {
             </p>
           </div>
 
-          {outcome && <OutcomeNotice outcome={outcome} />}
+          {working ? (
+            // Real stage text only, never an invented thought: the label is the run's state and the
+            // second line is the server's own `stage`, shown verbatim.
+            <ThinkingIndicator label={working.label} detail={run?.stage?.trim() || undefined} />
+          ) : (
+            outcome && <OutcomeNotice outcome={outcome} />
+          )}
 
           {/* Rendered only when the gateway released a checked result. */}
           {outcome?.showsResult && result && (

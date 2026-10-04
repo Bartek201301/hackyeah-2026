@@ -130,6 +130,8 @@ describe("the Ask composer", () => {
     // The outcome notice already classifies progress and says what the stage means. A second badge
     // beside it printed the same words twice in a row, which reads as two separate events.
     expect(screen.getAllByText(/Queued/)).toHaveLength(1);
+    // And what it says is the server's own stage, never an invented thought.
+    expect(screen.getByText("queued")).toBeTruthy();
   });
 
   it("retries the question that was asked, not the empty composer", async () => {
