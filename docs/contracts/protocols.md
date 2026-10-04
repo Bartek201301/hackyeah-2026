@@ -16,7 +16,7 @@ All mutation POST/PUT operations require `Idempotency-Key: <UUID>`. Uniqueness: 
 - 429: budget/rate/loop refusal (`BLOCK`, specific reason).
 - 503: required state/provider/audit unavailable; `decision: null`, service `error`, no protected result.
 
-`REVIEW` holds output and returns only a review reference to its requester; candidate contents are admin-only. Unknown timings/usage are null where allowed, never falsely zero. Before identity/policy lookup failure, versions may be null. Do not include the generic `data` union member for a different operation: validate operation-specific shape in tests.
+`REVIEW` normally holds output and returns only a review reference. The source-selection exception returns `{selection_required:true,sources:[{id,label,created_at}]}` for two to six _permitted_ same-name files; it contains no excerpt text. Raw candidate contents remain admin-only; ordinary chat/search/read may return only a request-time safe fact projection. Unknown timings/usage are null where allowed, never falsely zero. Before identity/policy lookup failure, versions may be null. Do not include the generic `data` union member for a different operation: validate operation-specific shape in tests.
 
 ### Response data by operation
 

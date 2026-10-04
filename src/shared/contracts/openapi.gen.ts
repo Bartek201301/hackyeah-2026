@@ -466,6 +466,17 @@ export interface components {
           }
         | components["schemas"]["Excerpt"]
         | {
+            /** @constant */
+            selection_required: true;
+            sources: {
+              /** Format: uuid */
+              id: string;
+              label: string;
+              /** Format: date-time */
+              created_at: string;
+            }[];
+          }
+        | {
             answer: string;
             citations: components["schemas"]["Citation"][];
           }
@@ -557,11 +568,15 @@ export interface components {
       query: string;
       /** Format: uuid */
       deal_id?: string;
+      /** Format: uuid */
+      source_id?: string;
     };
     ChatRequest: {
       message: string;
       /** Format: uuid */
       deal_id?: string;
+      /** Format: uuid */
+      source_id?: string;
     };
     ExportRequest: {
       topic: string;

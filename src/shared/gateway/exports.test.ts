@@ -180,8 +180,9 @@ function harness(over: Partial<Opts> = {}) {
   const generation: GenerationPort = {
     async generate(input) {
       const system = input.messages[0].content;
-      prompts.push(system);
-      const text = [...system.matchAll(/^\[S(\d+)\][^:]*: (.*)$/gm)]
+      const sources = JSON.parse(input.messages[1].content).source_data as string;
+      prompts.push(`${system}\n${sources}`);
+      const text = [...sources.matchAll(/^\[S(\d+)\][^:]*: (.*)$/gm)]
         .map((m) => `${m[2]} [S${m[1]}]`)
         .join(" ");
       return {

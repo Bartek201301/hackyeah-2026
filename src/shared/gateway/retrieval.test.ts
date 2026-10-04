@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { utf8Bytes } from "./checks";
 import type { PermittedExcerpt } from "./ports";
-import { buildContext, hasNumericClaim, parseCitations, rewriteCitations, toCitation } from "./retrieval";
+import {
+  buildContext,
+  hasNumericClaim,
+  monetaryClaimsGrounded,
+  parseCitations,
+  rewriteCitations,
+  toCitation,
+} from "./retrieval";
 
 // TEST FAKE: permitted rows in rank order.
 const row = (n: number, text: string): PermittedExcerpt => ({
@@ -86,6 +93,12 @@ describe("hasNumericClaim", () => {
     expect(hasNumericClaim("The FY2025 figures differ.")).toBe(false);
     expect(hasNumericClaim("The webinar is on 15 October 2026.")).toBe(false);
   });
+});
+
+it("rejects an unsupported amount even when the answer cites a real source", () => {
+  expect(monetaryClaimsGrounded("Revenue was USD 120 million [S1].", ROWS)).toBe(true);
+  expect(monetaryClaimsGrounded("Revenue was USD 999 million [S1].", ROWS)).toBe(false);
+  expect(monetaryClaimsGrounded("Revenue was USD 125 million [S1].", ROWS)).toBe(false);
 });
 
 it("toCitation projects the Citation fields only", () => {

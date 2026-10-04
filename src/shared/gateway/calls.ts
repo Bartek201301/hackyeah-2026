@@ -15,8 +15,9 @@ import type {
 import manifest from "@/shared/contracts/runtime-manifest.json";
 import verifier from "@/shared/contracts/security-verification.json";
 import { check } from "@/shared/contracts/validate";
-import { sha256Hex, utcDay, utf8Bytes, verifyCoverage } from "./checks";
-import { envelope, errorOutcome, GatewayError } from "./envelope";
+import { matchSensitive, sha256Hex, utcDay, utf8Bytes, verifyCoverage } from "./checks";
+import { envelope, errorOutcome, GatewayError, notExecutedUsage } from "./envelope";
+import { projectServedExcerpts } from "./safe-projection";
 import type {
   BegunOperation,
   BudgetUnit,
@@ -75,6 +76,44 @@ export function stored(run: RunRecord): Outcome | null {
   return { status, body: envelope({ ...fields, trace_id: run.id, ...runVersions(run) }) };
 }
 
+/** A stored answer is a new disclosure: recheck current access and commit a fresh safe audit event. */
+async function releaseStored(deps: GatewayDeps, actor: ActorContext, run: RunRecord, outcome: Outcome) {
+  if (run.kind !== "chat" || outcome.body.decision !== "ALLOW") return outcome;
+  const data = outcome.body.data;
+  if (!data || typeof data !== "object" || !("answer" in data) || !("citations" in data)) return outcome;
+  if (
+    typeof data.answer !== "string" ||
+    !Array.isArray(data.citations) ||
+    matchSensitive(data.answer, "replay").length
+  )
+    return errorOutcome("ACCESS_DENIED");
+  const controls = await loadControls(deps, actor);
+  if (!controls) return errorOutcome("POLICY_UNAVAILABLE");
+  const citations = data.citations;
+  if (citations.length > 20 || !citations.every((citation) => check("Citation", citation).ok))
+    return errorOutcome("STATE_UNAVAILABLE");
+  const ids = citations.map((citation) => citation.excerpt_id);
+  const raw = ids.length ? await deps.repository.readPermittedExcerpts(actor, "actor", ids) : [];
+  const safe = new Map(projectServedExcerpts(raw, controls.feed).map((excerpt) => [excerpt.id, excerpt]));
+  if (!citations.every((citation) => safe.get(citation.excerpt_id)?.version === citation.excerpt_version))
+    return errorOutcome("ACCESS_DENIED");
+  try {
+    await deps.repository.recordAccessDecision({
+      actor,
+      operation: "chat_replay",
+      idempotencyKey: null,
+      requestSha256: sha256Hex(run.id),
+      decision: "ALLOW",
+      reasons: [],
+      usage: notExecutedUsage(controls.policy.comparison_rate.version),
+      event: { stage: "access", run_id: run.id, cited_count: ids.length },
+    });
+  } catch {
+    return errorOutcome("AUDIT_UNAVAILABLE");
+  }
+  return outcome;
+}
+
 /** A cancel_requested run still holds its execute's lease, so a lost lease leaves it unknown too. */
 export const leaseExpired = (run: RunRecord) =>
   (run.state === "running" || run.state === "cancel_requested") &&
@@ -104,16 +143,16 @@ export async function readOwnRun(
   const run = await deps.repository.readRun(actor, runId);
   if (!run || !kinds.includes(run.kind)) return errorOutcome("NOT_FOUND");
   if (leaseExpired(run)) return unknownOutcome(run);
-  return (
-    stored(run) ?? {
-      status: 202,
-      body: envelope({
-        trace_id: run.id,
-        ...runVersions(run),
-        data: { id: run.id, kind: run.kind, state: run.state, stage: run.stage },
-      }),
-    }
-  );
+  const done = stored(run);
+  if (done) return releaseStored(deps, actor, run, done);
+  return {
+    status: 202,
+    body: envelope({
+      trace_id: run.id,
+      ...runVersions(run),
+      data: { id: run.id, kind: run.kind, state: run.state, stage: run.stage },
+    }),
+  };
 }
 
 export type Clock = ReturnType<typeof clock>;
@@ -135,7 +174,7 @@ export async function openRun(
   const run = await t.time("persistence_ms", () => repo.readRun(actor, runId));
   if (!run || run.kind !== kind) return { exit: errorOutcome("NOT_FOUND") };
   const done = stored(run);
-  if (done) return { exit: done };
+  if (done) return { exit: await releaseStored(deps, actor, run, done) };
   if (leaseExpired(run)) return { exit: unknownOutcome(run) };
 
   // Controls are validated before any intent is written.
@@ -159,7 +198,13 @@ export async function openRun(
   );
   if (!lease) {
     const now = await t.time("persistence_ms", () => repo.readRun(actor, run.id));
-    return { exit: (now && stored(now)) ?? errorOutcome("CONFLICT", { trace_id: run.id, ...versions }) };
+    const complete = now && stored(now);
+    return {
+      exit:
+        complete && now
+          ? await releaseStored(deps, actor, now, complete)
+          : errorOutcome("CONFLICT", { trace_id: run.id, ...versions }),
+    };
   }
   return { run, ...controls, op, lease };
 }
