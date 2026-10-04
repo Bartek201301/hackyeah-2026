@@ -21,7 +21,7 @@ import type { GatewayDeps, Outcome } from "./ports";
  * 404, and a denied attempt records no id. Bytes are streamed by the gateway; no Storage URL exists.
  */
 
-export const EXPORT_PROMPT = `${SYSTEM_PROMPT} This summary is for a public audience.`;
+export const EXPORT_PROMPT = `${SYSTEM_PROMPT} This summary is for a public audience. Briefly cover each provided source, each with its citation.`;
 export const downloadPath = (id: string) => `/api/v1/exports/${id}/download`;
 
 const exportSpec = (deps: GatewayDeps, actor: ActorContext): AnswerSpec => ({

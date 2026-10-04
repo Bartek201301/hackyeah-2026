@@ -233,6 +233,7 @@ describe("export run", () => {
     // One generation: no contextual verification call for exports.
     expect(h.prompts).toHaveLength(1);
     expect(h.prompts[0].startsWith(EXPORT_PROMPT)).toBe(true);
+    expect(EXPORT_PROMPT).toContain("Briefly cover each provided source, each with its citation.");
   });
 
   it("never puts an internal or restricted excerpt into the prompt", async () => {
