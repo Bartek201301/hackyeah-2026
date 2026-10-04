@@ -23,6 +23,7 @@ import type { GatewayOutcome } from "../lib/envelope";
 import { classifyChatResponse } from "../lib/chatFlow";
 import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
 import { readChatResult, readChatRun, type ChatResult } from "../lib/chatData";
+import { describeAct, readActResult, type ActResult } from "../lib/actFlow";
 import { checkCitations, type CitationView } from "../lib/citations";
 import {
   CANCEL_UNAVAILABLE,
@@ -33,6 +34,7 @@ import {
   shouldKeepPolling,
 } from "../lib/runState";
 import { viewHref } from "../lib/views";
+import { ActNotice } from "./ActNotice";
 import { OutcomeNotice } from "./OutcomeNotice";
 
 /** Matches ChatRequest.message in the contract. */
@@ -62,6 +64,27 @@ const EXAMPLES = [
 
 const client = createGatewayClient();
 
+type Mode = "ask" | "act";
+const MODES: { value: Mode; label: string }[] = [
+  { value: "ask", label: "Ask" },
+  { value: "act", label: "Act on clients" },
+];
+
+/**
+ * Starts an Act run. Same lifecycle as chat afterwards (execute once, poll the run).
+ * ponytail: plain fetch until the act backend's path is in the generated types; then `client.POST("/actions")`.
+ */
+async function startAction(message: string, key: string) {
+  const response = await fetch("/api/v1/actions", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json", "Idempotency-Key": key },
+    body: JSON.stringify({ message }),
+  });
+  const json: unknown = await response.json().catch(() => undefined);
+  return readEnvelope(response.ok ? { data: json, response } : { error: json, response });
+}
+
 /* Lifecycle-aware: a pending run carries decision null by contract and must read as progress,
  * not as a fail-closed service error. See lib/chatFlow.ts. */
 const classify = (status: number, body: ApiResponse | null) => classifyChatResponse(status, body);
@@ -82,6 +105,7 @@ const HELD_ADMIN_NOTE =
   "Nothing here is yours to approve: only an imported candidate enters the review queue, and a held answer is never released after the fact. The reason codes say which check was uncertain — if the rule itself is wrong, change it and ask again.";
 
 export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
+  const [mode, setMode] = useState<Mode>("ask");
   const [message, setMessage] = useState("");
   /** The question this conversation is about: what was sent, not what is being typed. */
   const [sent, setSent] = useState<string | null>(null);
@@ -93,6 +117,8 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
   const [citations, setCitations] = useState<CitationView[]>([]);
   const [rejectedCitations, setRejectedCitations] = useState(false);
   const [cancelNotice, setCancelNotice] = useState<string | null>(null);
+  /** Act mode only: the final `{action, client_id, client_trace_id}`. */
+  const [act, setAct] = useState<ActResult | null>(null);
 
   /**
    * Key bound to the question it was minted for. A retry of the same question reuses it; a
@@ -110,6 +136,7 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
     setCitations([]);
     setRejectedCitations(false);
     setRun(null);
+    setAct(null);
     executed.current = false;
   };
 
@@ -117,6 +144,8 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
   const apply = useCallback((status: number, body: ApiResponse | null) => {
     const { outcome: next, run: inFlight } = classify(status, body);
     setOutcome(next);
+    // Act payloads only; a chat answer or a run never matches, so Ask is unaffected.
+    setAct(readActResult(body?.data ?? null));
     // Unconditional: a response that ended the lifecycle returns no run, which clears the progress
     // badge and the Cancel button instead of leaving "Running checks" next to a finished outcome.
     setRun(inFlight);
@@ -159,17 +188,21 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
 
     actionKey.current = keyForAction(
       actionKey.current,
-      canonicalInput({ message: trimmed }),
+      // The mode is part of the request: the same text in Act is a different action.
+      canonicalInput(mode === "act" ? { message: trimmed, mode } : { message: trimmed }),
       newIdempotencyKey,
     );
-    const start = readEnvelope(
-      await client.POST("/chat", {
-        // No deal_id for G2 (B6): deal labels are not available yet, and a browser-chosen deal could
-        // never grant access anyway. Retrieval scope comes from the actor's trusted memberships.
-        body: { message: trimmed },
-        params: { header: { "Idempotency-Key": actionKey.current.key } },
-      }),
-    );
+    const start =
+      mode === "act"
+        ? await startAction(trimmed, actionKey.current.key)
+        : readEnvelope(
+            await client.POST("/chat", {
+              // No deal_id for G2 (B6): deal labels are not available yet, and a browser-chosen deal
+              // could never grant access anyway. Retrieval scope comes from the actor's trusted memberships.
+              body: { message: trimmed },
+              params: { header: { "Idempotency-Key": actionKey.current.key } },
+            }),
+          );
     const created = apply(start.status, start.body);
     const startedRun = readChatRun(start.body?.data ?? null);
 
@@ -245,7 +278,18 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
     };
   }, [run, apply]);
 
+  /** A new mode starts a new conversation, so an answer never sits under an Act request. */
+  const switchMode = (next: Mode) => {
+    if (next === mode) return;
+    reset();
+    setSent(null);
+    setValidationError(null);
+    setMode(next);
+  };
+
   const asked = sent !== null;
+  const acting = mode === "act";
+  const actView = acting && outcome ? describeAct(outcome, act) : null;
   /* While a run is in flight the gateway's own stage is the whole story: the indicator says it, so
      the notice would only repeat it. Both come from the same polled run. */
   const working = run && shouldKeepPolling(run) ? describeRun(run) : null;
@@ -271,11 +315,18 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
             // Real stage text only, never an invented thought: the label is the run's state and the
             // second line is the server's own `stage`, shown verbatim.
             <ThinkingIndicator label={working.label} detail={run?.stage?.trim() || undefined} />
+          ) : actView ? (
+            <ActNotice
+              view={actView}
+              reasons={outcome?.reasons ?? []}
+              traceId={outcome?.traceId ?? null}
+              clientTraceId={act?.clientTraceId ?? null}
+            />
           ) : (
             outcome && <OutcomeNotice outcome={outcome} />
           )}
 
-          {outcome?.kind === "review" && role === "admin" && (
+          {!acting && outcome?.kind === "review" && role === "admin" && (
             <p className="text-sm text-muted">
               {HELD_ADMIN_NOTE}{" "}
               <Link
@@ -288,7 +339,7 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
           )}
 
           {/* Rendered only when the gateway released a checked result. */}
-          {outcome?.showsResult && result && (
+          {!acting && outcome?.showsResult && result && (
             <div className="flex flex-col gap-4">
               <p className="text-sm whitespace-pre-wrap text-fg">{result.answer}</p>
               <Card className="bg-surface-muted">
@@ -314,6 +365,14 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
               </Card>
             </div>
           )}
+        </div>
+      ) : acting ? (
+        <div className="flex flex-col items-center gap-6 text-center">
+          <h1 className="text-2xl font-semibold text-fg">What should change for a client?</h1>
+          <p className="max-w-xl text-sm text-muted">
+            Describe one change. The gateway checks your role, your role&apos;s limits and the request itself
+            before anything is written, and a held change waits for a second person.
+          </p>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-6 text-center">
@@ -341,24 +400,56 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
 
       {/* Stays in reach while an answer is being read, like any chat composer. */}
       <div className={cn("flex flex-col gap-3", asked && "sticky bottom-0 bg-surface pt-4 pb-1")}>
+        {/* Presentation only: the gateway authorizes every request in either mode. */}
+        <div
+          role="group"
+          aria-label="Mode"
+          className="inline-flex w-fit rounded-control border border-border bg-surface-muted p-0.5"
+        >
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              aria-pressed={mode === m.value}
+              disabled={busy}
+              onClick={() => switchMode(m.value)}
+              className={cn(
+                "h-8 rounded-control px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
+                mode === m.value ? "bg-surface text-fg shadow-card" : "text-muted hover:text-fg",
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
         <Field
-          label="Question"
-          hint={`${message.trim().length} of ${MAX_MESSAGE} characters. One question per request.`}
+          label={acting ? "Request" : "Question"}
+          hint={`${message.trim().length} of ${MAX_MESSAGE} characters. One ${acting ? "change" : "question"} per request.`}
           error={validationError ?? undefined}
         >
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Brief me on AsterCloud revenue and cite sources."
+            placeholder={
+              acting
+                ? "e.g. Raise Northwind's annual fee to 120,000"
+                : "Brief me on AsterCloud revenue and cite sources."
+            }
             maxLength={MAX_MESSAGE}
             disabled={busy}
             className="min-h-20"
           />
         </Field>
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={submit} loading={busy} disabled={busy} aria-label="Send question">
+          <Button
+            onClick={submit}
+            loading={busy}
+            disabled={busy}
+            aria-label={acting ? "Send request" : "Send question"}
+          >
             <ArrowUp className="size-4" aria-hidden />
-            Send question
+            {acting ? "Send request" : "Send question"}
           </Button>
           {canCancel(run) && (
             <Button variant="secondary" onClick={() => void cancel()}>

@@ -2,6 +2,7 @@ import "server-only";
 import type { ActorContext } from "@/shared/contracts";
 import { readOwnRun } from "./calls";
 import { executeChat } from "./chat";
+import { executeAct } from "./client-act";
 import { sha256Hex } from "./checks";
 import { envelope, errorOutcome } from "./envelope";
 import { executeExport } from "./exports";
@@ -22,6 +23,9 @@ export async function executeRun(
   signal: AbortSignal,
 ): Promise<Outcome> {
   const run = await deps.repository.readRun(actor, runId);
+  // Act mode is a chat run marked in its private input; the act engine re-checks the mark.
+  if (run?.kind === "chat" && (run.input_private as { mode?: unknown } | null)?.mode === "client_action")
+    return executeAct(deps, actor, runId, idempotencyKey, signal);
   if (run?.kind === "chat") return executeChat(deps, actor, runId, idempotencyKey, signal);
   if (run?.kind === "import") return executeImport(deps, actor, runId, idempotencyKey, signal);
   if (run?.kind === "export") return executeExport(deps, actor, runId, idempotencyKey, signal);
