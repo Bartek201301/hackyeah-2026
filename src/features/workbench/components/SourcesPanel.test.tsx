@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ImportSummary } from "@/shared/contracts";
 import { devEnvelope, devError, devRun } from "../lib/fixtures";
 
 /*
@@ -24,7 +25,7 @@ type Reply = { status: number; body: unknown };
  * TEST FAKE gateway: records every call and answers the upload, execute and list paths. The app
  * never composes this; it exists so the panel can be driven without a server.
  */
-const gateway = (execute: Reply) => {
+const gateway = (execute: Reply, imports: ImportSummary[] = []) => {
   const calls: { method: string; url: string; key: string | null }[] = [];
   const lists = { sources: 0, imports: 0 };
   const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -40,7 +41,7 @@ const gateway = (execute: Reply) => {
     }
     if (url.endsWith("/imports")) {
       lists.imports += 1;
-      return json(200, devEnvelope({ decision: "ALLOW", data: { items: [] } }));
+      return json(200, devEnvelope({ decision: "ALLOW", data: { items: imports } }));
     }
     if (url.endsWith("/imports/upload")) return json(202, devEnvelope({ data: RUN }));
     if (url.endsWith("/execute")) return json(execute.status, execute.body);
@@ -114,6 +115,30 @@ describe("SourcesPanel upload lifecycle", () => {
     await upload();
     await waitFor(() => expect(screen.getByText("Blocked")).toBeTruthy());
     await waitFor(() => expect(lists.imports).toBeGreaterThan(onLoad));
+  });
+
+  it("links each import row to its own audited trace", async () => {
+    // ImportSummary carries no label, so without the trace a settled import is an anonymous row.
+    const RUN_ID = "00000000-0000-4000-8000-0000000000bb";
+    gateway(
+      {
+        status: 200,
+        body: devEnvelope({ decision: "ALLOW", data: devRun("completed", "publish", "import") }),
+      },
+      [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          run_id: RUN_ID,
+          status: "approved",
+          classification: "internal",
+        },
+      ],
+    );
+    await upload();
+
+    // The upload's own notice links its trace too, so this asserts the row's link exists among them.
+    const links = await screen.findAllByRole("link", { name: /View the audited trace/ });
+    expect(links.map((l) => l.getAttribute("href"))).toContain(`/audit?trace=${RUN_ID}`);
   });
 
   it("refuses a PDF in the browser, without a round trip", async () => {

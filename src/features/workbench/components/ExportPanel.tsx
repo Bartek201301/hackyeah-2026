@@ -17,7 +17,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, FileText, SquareX } from "lucide-react";
 import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
 import type { ApiResponse, Run } from "@/shared/contracts";
-import { Badge, Button, Card, CardHeader, Field, Input, Notice, Select } from "@/shared/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Field,
+  Input,
+  Notice,
+  Select,
+  ThinkingIndicator,
+} from "@/shared/ui";
 import type { GatewayOutcome } from "../lib/envelope";
 import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
 import {
@@ -35,6 +45,7 @@ import {
   POLL_INTERVAL_MS,
   canCancel,
   cancelReachedDecision,
+  describeRun,
   shouldKeepPolling,
 } from "../lib/runState";
 import { OutcomeNotice } from "./OutcomeNotice";
@@ -160,6 +171,8 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
 
   const expiry = ready ? expiryInstant(ready.expiresAt) : null;
   const expired = ready ? hasExpired(ready.expiresAt) : false;
+  // The same rule as Ask: the indicator carries the gateway's own stage while the run is in flight.
+  const working = run && shouldKeepPolling(run) ? describeRun(run) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -231,7 +244,13 @@ export function ExportPanel({ dealIds = [] }: { dealIds?: readonly string[] }) {
         </div>
       </Card>
 
-      {outcome && <OutcomeNotice outcome={outcome} />}
+      {working ? (
+        <Card>
+          <ThinkingIndicator label={working.label} detail={run?.stage?.trim() || undefined} />
+        </Card>
+      ) : (
+        outcome && <OutcomeNotice outcome={outcome} />
+      )}
 
       {/* Rendered only when the gateway released a checked PDF. */}
       {outcome?.showsResult && ready && (

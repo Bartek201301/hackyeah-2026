@@ -664,3 +664,43 @@ like the fix; Bartosz's call.
 The admin **Review** queue (live since #85) and the production MIX-01 upload, which is held until
 Bartosz says P05 is finished. The analyst's own source list was not re-checked here, though an admin
 read earlier in the session returned **12 sources**, so the corpus is in.
+
+---
+
+# Run 7 — Sources and Public summary, preview build, as the analyst
+
+| Target | PR #90 preview, `f980307` then the alignment fix                                            |
+| ------ | ------------------------------------------------------------------------------------------- |
+| Who    | Analyst                                                                                     |
+| Width  | 1440 px (phone width not re-checked: verified once on Ask, and the judged demo is a laptop) |
+
+## Passed
+
+Both screens sit in the same reading column as Ask, with the page title on the same axis as the card
+under it. Configured sources renders as separated rows; the Imports row shows
+`Held for review · Restricted · "Separation was uncertain, so an administrator must review the
+candidate"` with a working **View the audited trace** link — before this it was an anonymous pair of
+badges, because `ImportSummary` carries no label.
+
+Keyboard: tab order through Sources is file → classification → deal → Upload file → trace link, and
+the Upload button takes a clearly visible focus ring. Public summary is topic → deal → Create summary.
+
+## The defect this run found
+
+The centred column was added to each panel, so the `PageHeader` stayed at the far-left edge of the
+content area while the card sat in the middle — on both screens. Fixed by giving the title and the
+panel one column in `WorkbenchPage` instead of each panel centring itself, and re-verified on the
+rebuilt preview.
+
+## Still unverified
+
+The `ThinkingIndicator` in a live run. It merged (#86) after run 6, and seeing it needs another
+gateway run, which is a write to the shared project during P05/P09. Covered by its own tests and by
+the panel test that pins the stage to one occurrence and asserts the server's stage string.
+
+## Visible to a judge, not ours to delete
+
+`MIX-01.csv` appears **twice** in the analyst's Configured sources, and `audit-own-2026-10-03.csv ·
+Public · Upload` is still listed — an audit export that was uploaded back in as a source. Both are on
+the pre-rehearsal cleanup list. The deal selector still shows a raw UUID rather than a deal name (B6:
+no server-side deal-label projection), on both Sources and Public summary.

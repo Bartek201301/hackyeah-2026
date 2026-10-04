@@ -39,7 +39,9 @@ export async function WorkbenchPage({ searchParams, role, dealIds }: WorkbenchPa
   const view = resolveView(parseView(params.view), role);
 
   return (
-    <>
+    /* One reading column for every view, so a page title and the panel under it share an axis.
+       Centring each panel instead left the header stranded at the far edge of the content area. */
+    <div className="mx-auto flex w-full max-w-3xl flex-col">
       {/* Ask is a conversation, so it opens with its own greeting instead of a page title. Every
           other view is a form or a list and keeps the header, now that the only navigation is the
           app sidebar. */}
@@ -57,6 +59,6 @@ export async function WorkbenchPage({ searchParams, role, dealIds }: WorkbenchPa
       {view === "review" && <ReviewPanel />}
 
       {view === "export" && <ExportPanel dealIds={dealIds} />}
-    </>
+    </div>
   );
 }
