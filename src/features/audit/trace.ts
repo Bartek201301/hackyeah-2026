@@ -7,8 +7,9 @@
  *  - a Finding carries no value, and this model does not add one
  */
 import type { Assessment, AuditProjection, Decision, Finding, ToolCall, Usage } from "@/shared/contracts";
+import { describeOperation, describeReason, describeStage } from "@/shared/reasons";
 import type { Tone } from "@/shared/ui";
-import { copy } from "./copy";
+import { copy, fill } from "./copy";
 import {
   formatCount,
   formatDuration,
@@ -339,4 +340,40 @@ export function stageRows(events: readonly AuditEvent[] | undefined, rootUsage?:
       usage: usageView(event.usage, "operation", rootUsage),
     };
   });
+}
+
+/**
+ * One "What happened" sentence, built only from fields the projection already carries: operation,
+ * decision, first reason, state, the stage of the last decision event and usage. A null measurement
+ * reads "not measured", never zero, and no answer, note or prompt text is used.
+ */
+export function whatHappened(trace: AuditProjection): string {
+  const operation = describeOperation(trace.operation);
+  const reason = trace.reasons[0] ? `: ${describeReason(trace.reasons[0]).label}` : "";
+  switch (trace.decision) {
+    case "ALLOW": {
+      const {
+        generation_ms: ms,
+        generation_input_tokens: input,
+        generation_output_tokens: output,
+      } = trace.usage;
+      const measured = fill(copy.summary.measured, {
+        duration: ms === null ? copy.summary.notMeasured : formatDuration(ms),
+        tokens: input === null || output === null ? copy.summary.notMeasured : group(input + output),
+      });
+      return `${operation}: ${copy.summary.released} ${measured}`;
+    }
+    case "REVIEW":
+      return `${operation} ${copy.summary.held}${reason}. ${copy.summary.nothingWritten}`;
+    case "BLOCK": {
+      const stage = trace.events?.filter((event) => event.event_type === "decision").at(-1)?.stage;
+      const at = stage ? ` at ${describeStage(stage)}` : "";
+      return `${operation} ${copy.summary.refused}${at}${reason}. ${copy.summary.nothingWritten}`;
+    }
+    case "REDACT":
+      return `${operation} ${copy.summary.redacted}${reason}.`;
+    default:
+      if (isInFlightState(trace.state)) return `${operation} ${copy.summary.running}`;
+      return `${operation} ${trace.state.toLowerCase() === "cancelled" ? copy.summary.cancelled : copy.summary.incomplete}`;
+  }
 }

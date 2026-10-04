@@ -99,7 +99,8 @@ describe("AT10-8 — a full page says so and offers the next one", () => {
     const { container } = render(
       <ActivityList rows={activityRows([projection()])} moreMayExist={false} onLoadOlder={() => {}} />,
     );
-    expect(container.querySelector("button")).toBeNull();
+    // The decision filters are buttons too; the one that must be absent is the next-page control.
+    expect(screen.queryByRole("button", { name: "Load older records" })).toBeNull();
     expect(container.textContent).not.toContain("Showing the 100 most recent records.");
   });
 

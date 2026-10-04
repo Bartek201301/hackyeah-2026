@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { PAGE_CAP, activityRows, classifyActivityRead, settledGenerationTokens } from "./activity";
+import {
+  PAGE_CAP,
+  activityRows,
+  classifyActivityRead,
+  filterRows,
+  settledGenerationTokens,
+} from "./activity";
 import { envelope, projection, usage } from "./test-support";
 
 const listOf = (items: unknown[]) => envelope({ data: { items } });
@@ -21,12 +27,34 @@ describe("activity rows", () => {
     expect(activityRows([projection()], { showActor: true })[0].actorIdShort).toBe("b17d9f40…2e19");
   });
 
-  it("shows two reason codes inline and counts the rest", () => {
-    const reasons = ["ACCESS_DENIED", "RESTRICTED_SOURCE", "DEAL_SCOPE", "AUDIENCE"];
+  it("shows two reasons inline, as labels that keep their codes, and counts the rest", () => {
+    const reasons = ["input_signature:SIG-001", "RESTRICTED_SOURCE", "DEAL_SCOPE", "AUDIENCE"];
     const [row] = activityRows([projection({ decision: "BLOCK", reasons })]);
-    expect(row.inlineReasons).toEqual(["ACCESS_DENIED", "RESTRICTED_SOURCE"]);
+    expect(row.inlineReasons).toEqual([
+      { code: "input_signature:SIG-001", label: "Known prompt-injection pattern (SIG-001)", tone: "danger" },
+      { code: "RESTRICTED_SOURCE", label: "RESTRICTED_SOURCE", tone: "neutral" },
+    ]);
     expect(row.hiddenReasons).toBe(2);
     expect(activityRows([projection()])[0].hiddenReasons).toBe(0);
+  });
+
+  it("names the operation in words and keeps its code", () => {
+    const [row] = activityRows([projection({ operation: "action_start" })]);
+    expect(row.operation).toBe("Client action from chat");
+    expect(row.operationCode).toBe("action_start");
+  });
+
+  it("filters the loaded rows by decision", () => {
+    const rows = activityRows([
+      projection({ trace_id: "a", decision: "BLOCK" }),
+      projection({ trace_id: "b", decision: "REVIEW" }),
+      projection({ trace_id: "c", decision: "ALLOW" }),
+      projection({ trace_id: "d", decision: null, state: "failed" }),
+    ]);
+    expect(filterRows(rows, "all").map((row) => row.traceId)).toEqual(["a", "b", "c", "d"]);
+    expect(filterRows(rows, "blocked").map((row) => row.traceId)).toEqual(["a"]);
+    expect(filterRows(rows, "held").map((row) => row.traceId)).toEqual(["b"]);
+    expect(filterRows(rows, "allowed").map((row) => row.traceId)).toEqual(["c"]);
   });
 
   it("marks a pending decision as pending rather than allowed", () => {

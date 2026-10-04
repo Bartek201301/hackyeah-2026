@@ -1,8 +1,14 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { FileClock } from "lucide-react";
 import { Badge, Button, Card, CardHeader, EmptyState, IconTile, Notice } from "@/shared/ui";
-import type { ActivityRow } from "../activity";
+import type { ActivityFilter, ActivityRow } from "../activity";
+import { filterRows } from "../activity";
 import { copy } from "../copy";
+
+const FILTERS: ActivityFilter[] = ["all", "blocked", "held", "allowed"];
 
 function Row({ row }: { row: ActivityRow }) {
   return (
@@ -31,9 +37,12 @@ function Row({ row }: { row: ActivityRow }) {
         </div>
         {(row.inlineReasons.length > 0 || row.unresolvedReservation) && (
           <ul className="flex flex-wrap gap-1.5">
+            {/* The label is what a reader sees; the stored code stays in the tooltip and description. */}
             {row.inlineReasons.map((reason) => (
-              <li key={reason}>
-                <Badge tone={row.decisionTone === "danger" ? "danger" : "neutral"}>{reason}</Badge>
+              <li key={reason.code}>
+                <span title={reason.code} aria-description={reason.code}>
+                  <Badge tone={reason.tone}>{reason.label}</Badge>
+                </span>
               </li>
             ))}
             {row.hiddenReasons > 0 && (
@@ -79,6 +88,9 @@ export function ActivityList({
   loadingOlder = false,
   olderFailed = false,
 }: ActivityListProps) {
+  const [filter, setFilter] = useState<ActivityFilter>("all");
+  const shown = filterRows(rows, filter);
+
   return (
     <Card className="animate-enter" style={{ animationDelay: "120ms" }}>
       <CardHeader title={copy.activity.title} description={copy.activity.description} />
@@ -91,11 +103,34 @@ export function ActivityList({
         <EmptyState title={copy.activity.emptyTitle} description={copy.activity.emptyDescription} />
       ) : (
         <>
-          <ul className="flex flex-col gap-4">
-            {rows.map((row) => (
-              <Row key={row.traceId} row={row} />
-            ))}
-          </ul>
+          <div className="mb-5 flex flex-col gap-2">
+            <div role="group" aria-label={copy.activity.filterLabel} className="flex flex-wrap gap-2">
+              {FILTERS.map((key) => (
+                <Button
+                  key={key}
+                  size="sm"
+                  variant={filter === key ? "primary" : "secondary"}
+                  aria-pressed={filter === key}
+                  onClick={() => setFilter(key)}
+                >
+                  {`${copy.activity.filters[key]} (${filterRows(rows, key).length})`}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted">{copy.activity.filterNote}</p>
+          </div>
+          {shown.length === 0 ? (
+            <EmptyState
+              title={copy.activity.filterEmpty[filter]}
+              description={copy.activity.filterEmptyHint}
+            />
+          ) : (
+            <ul className="flex flex-col gap-4">
+              {shown.map((row) => (
+                <Row key={row.traceId} row={row} />
+              ))}
+            </ul>
+          )}
           <div className="mt-5 flex flex-col gap-2">
             {moreMayExist && <p className="text-xs text-muted">{copy.activity.pageCap}</p>}
             {onLoadOlder && moreMayExist && (

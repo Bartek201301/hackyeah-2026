@@ -63,7 +63,13 @@ describe("ClientsPanel", () => {
     render(<ClientsPanel />);
     fireEvent.click(await screen.findByRole("button", { name: /Delete/ }));
     await screen.findByText("Blocked");
-    expect(screen.getByText("action:role_not_permitted")).toBeTruthy();
+    // The plain label is visible; the raw code is only in the tooltip and accessible description.
+    const label = screen.getByText("This role cannot do that");
+    expect(label.closest("[title]")?.getAttribute("title")).toBe("action:role_not_permitted");
+    expect(label.closest("[aria-description]")?.getAttribute("aria-description")).toBe(
+      "action:role_not_permitted",
+    );
+    expect(screen.queryByText("action:role_not_permitted")).toBeNull();
     expect(screen.getByRole("link", { name: /audited trace/ }).getAttribute("href")).toBe(
       `/audit?trace=${TRACE}`,
     );

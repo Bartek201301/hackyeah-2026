@@ -7,8 +7,9 @@ import {
   isToolSubcall,
   stageRows,
   usageView,
+  whatHappened,
 } from "./trace";
-import { assessment, auditEvent, usage } from "./test-support";
+import { assessment, auditEvent, projection, usage } from "./test-support";
 
 describe("decision badge", () => {
   it("names every decision without softening a refusal", () => {
@@ -355,5 +356,67 @@ describe("root requests versus tool subcalls", () => {
   it("groups nothing when there are no subcalls", () => {
     const rows = stageRows([at(7, "input_assessment"), at(8, "generation")]);
     expect(groupStages(rows).every((group) => group.kind === "stage")).toBe(true);
+  });
+});
+
+describe("what happened", () => {
+  const decisionAt = (stage: string) => [
+    auditEvent({ stage: "chat_start", event_type: "intent" }),
+    auditEvent({ stage, event_type: "decision" }),
+  ];
+
+  it("says an allowed operation was released, with its measured use", () => {
+    expect(whatHappened(projection({ operation: "chat_start" }))).toBe(
+      "Question: passed every check and was released. Generation time: 7.1 s. Generation tokens: 2,393.",
+    );
+  });
+
+  it("says not measured, never zero, when the use is unknown", () => {
+    const unknown = usage({ generation_ms: null, generation_output_tokens: null });
+    expect(whatHappened(projection({ usage: unknown }))).toMatch(
+      /Generation time: not measured\. Generation tokens: not measured\.$/,
+    );
+  });
+
+  it("names the first reason for a held operation and that nothing was written", () => {
+    expect(
+      whatHappened(
+        projection({
+          operation: "action_start",
+          decision: "REVIEW",
+          reasons: ["action:change_exceeds_role_limit"],
+        }),
+      ),
+    ).toBe(
+      "Client action from chat held for a person to decide: Change exceeds this role's approval limit. Nothing was released or written.",
+    );
+  });
+
+  it("names the stage of the last decision event for a refusal", () => {
+    expect(
+      whatHappened(
+        projection({
+          operation: "chat_start",
+          decision: "BLOCK",
+          reasons: ["input_signature:SIG-001", "semantic:instruction_manipulation"],
+          events: decisionAt("input_signature"),
+        }),
+      ),
+    ).toBe(
+      "Question refused at the known-pattern check on the question: Known prompt-injection pattern (SIG-001). Nothing was released or written.",
+    );
+    expect(whatHappened(projection({ decision: "BLOCK", reasons: [] }))).toBe(
+      "chat_answer refused. Nothing was released or written.",
+    );
+  });
+
+  it("is honest about a missing decision", () => {
+    expect(whatHappened(projection({ decision: null, state: "running" }))).toBe(
+      "chat_answer is still running; no decision is recorded yet.",
+    );
+    expect(whatHappened(projection({ decision: null, state: "failed" }))).toBe(
+      "chat_answer did not complete, so no decision was stored and no result was released.",
+    );
+    expect(whatHappened(projection({ decision: null, state: "cancelled" }))).toMatch(/was cancelled/);
   });
 });

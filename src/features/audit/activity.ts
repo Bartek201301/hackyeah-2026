@@ -6,10 +6,11 @@
  *    means "the 100 most recent", not "everything" (open question 4 for the integrator)
  *  - a row's token figure is the sum of settled provider-reported counts, and when either side
  *    is unknown the row says Not measured rather than summing around a null
- *  - reason codes are shown as codes; a row never resolves an actor id into a name, because no
- *    name source exists in this contract
+ *  - reason codes are shown as plain-language labels with the stored code kept beside them; a row
+ *    never resolves an actor id into a name, because no name source exists in this contract
  */
-import type { AuditProjection } from "@/shared/contracts";
+import type { AuditProjection, Decision } from "@/shared/contracts";
+import { describeOperation, describeReason } from "@/shared/reasons";
 import type { Tone } from "@/shared/ui";
 import type { ReadFailure } from "./envelope";
 import { classifyFailure, readProjections } from "./envelope";
@@ -23,15 +24,23 @@ export const PAGE_CAP = 100;
 /** Reason codes shown inline on a row; the rest are counted and read in the trace detail. */
 const INLINE_REASONS = 2;
 
+/** A stored reason code and its plain-language label; the code stays the evidence. */
+export type ReasonView = { code: string; label: string; tone: Tone };
+
+export const reasonViews = (codes: readonly string[]): ReasonView[] =>
+  codes.map((code) => ({ code, ...describeReason(code) }));
+
 export type ActivityRow = {
   traceId: string;
   traceIdShort: string;
   operation: string;
+  operationCode: string;
   when: string;
+  decision: Decision | null;
   decisionLabel: string;
   decisionTone: Tone;
   state: string;
-  inlineReasons: string[];
+  inlineReasons: ReasonView[];
   hiddenReasons: number;
   policyVersion: number;
   feedVersion: number;
@@ -75,12 +84,14 @@ export function activityRows(
     return {
       traceId: projection.trace_id,
       traceIdShort: shortId(projection.trace_id),
-      operation: projection.operation,
+      operation: describeOperation(projection.operation),
+      operationCode: projection.operation,
       when: formatTimestampUtc(projection.created_at),
+      decision: projection.decision,
       decisionLabel: badge.label,
       decisionTone: badge.tone,
       state: projection.state,
-      inlineReasons: projection.reasons.slice(0, INLINE_REASONS),
+      inlineReasons: reasonViews(projection.reasons.slice(0, INLINE_REASONS)),
       hiddenReasons: Math.max(0, projection.reasons.length - INLINE_REASONS),
       policyVersion: projection.policy_version,
       feedVersion: projection.feed_version,
@@ -90,6 +101,19 @@ export function activityRows(
       actorIdShort: options.showActor ? shortId(projection.actor_id) : null,
     };
   });
+}
+
+export type ActivityFilter = "all" | "blocked" | "held" | "allowed";
+
+const FILTER_DECISION: Record<Exclude<ActivityFilter, "all">, Decision> = {
+  blocked: "BLOCK",
+  held: "REVIEW",
+  allowed: "ALLOW",
+};
+
+/** Narrows the rows already loaded; it never asks the gateway for more. */
+export function filterRows(rows: readonly ActivityRow[], filter: ActivityFilter): ActivityRow[] {
+  return filter === "all" ? [...rows] : rows.filter((row) => row.decision === FILTER_DECISION[filter]);
 }
 
 export function classifyActivityRead(

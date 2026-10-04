@@ -59,7 +59,10 @@ describe("no protected text reaches a view model", () => {
   it("still shows the reason codes, which are the evidence a blocked trace must carry", () => {
     const state = classifyActivityRead(200, envelope({ data: { items: [contaminated()] } }));
     if (state.kind !== "ok") throw new Error("expected a readable list");
-    expect(state.rows[0].inlineReasons).toEqual(["ACCESS_DENIED", "RESTRICTED_SOURCE"]);
+    expect(state.rows[0].inlineReasons.map((reason) => reason.code)).toEqual([
+      "ACCESS_DENIED",
+      "RESTRICTED_SOURCE",
+    ]);
     expect(state.rows[0].decisionLabel).toBe("Blocked");
   });
 
