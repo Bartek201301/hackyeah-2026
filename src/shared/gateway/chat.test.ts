@@ -355,7 +355,7 @@ describe("executeChat", () => {
   });
 
   it("resolves moderate chat flags, preserves raw evidence, and accounts for all three Qwen calls", async () => {
-    const h = harness({ inputScore: 0.6542, outputScore: 0.3382, controls: { policy: verifiedPolicy() } });
+    const h = harness({ inputScore: 0.6042, outputScore: 0.3382, controls: { policy: verifiedPolicy() } });
     const out = await h.execute();
     valid(out);
     expect(out.body.decision).toBe("ALLOW");
@@ -366,7 +366,7 @@ describe("executeChat", () => {
       unresolved_reservation: false,
     });
     expect(out.body.semantic.chat_checks).toHaveLength(2);
-    expect(out.body.semantic.chat_checks?.[0].laya_scores.instruction_manipulation).toBe(0.6542);
+    expect(out.body.semantic.chat_checks?.[0].laya_scores.instruction_manipulation).toBe(0.6042);
     expect(out.body.semantic.chat_checks?.[0].verification?.verdict.instruction_manipulation).toBe(false);
     expect(h.reserves.map((r) => r.provider)).toEqual(["laya", "ollama", "ollama", "laya", "ollama"]);
     expect(h.finals[0].event.semantic).toEqual(out.body.semantic);
@@ -374,19 +374,23 @@ describe("executeChat", () => {
     expect(JSON.stringify(h.finals[0].event)).not.toContain(ANSWER);
   });
 
-  it.each(["strong", "signature", "strict"])("verification cannot clear a %s denial", async (kind) => {
-    const policy = verifiedPolicy();
-    if (kind === "strict") policy.mode = "strict";
-    const h = harness({
-      controls: { policy },
-      inputScore: kind === "strong" ? 0.7 : 0.34,
-      ...(kind === "signature" ? { message: INJECTION } : {}),
-    });
-    const out = await h.execute();
-    expect(out.body.decision).toBe("BLOCK");
-    expect(h.calls("generate")).toBe(0);
-    withheld(h, out, kind === "signature" ? INJECTION : MESSAGE);
-  });
+  it.each(["strong", "policy-block", "signature", "strict"])(
+    "verification cannot clear a %s denial",
+    async (kind) => {
+      const policy = verifiedPolicy();
+      if (kind === "strict") policy.mode = "strict";
+      const h = harness({
+        controls: { policy },
+        // policy-block: above the policy's 0.65 block threshold but below the 0.70 ceiling.
+        inputScore: kind === "strong" ? 0.7 : kind === "policy-block" ? 0.6542 : 0.34,
+        ...(kind === "signature" ? { message: INJECTION } : {}),
+      });
+      const out = await h.execute();
+      expect(out.body.decision).toBe("BLOCK");
+      expect(h.calls("generate")).toBe(0);
+      withheld(h, out, kind === "signature" ? INJECTION : MESSAGE);
+    },
+  );
 
   it.each([
     { text: '{"instruction_manipulation":false}' },
