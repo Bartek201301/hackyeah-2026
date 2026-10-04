@@ -25,7 +25,7 @@ npm ci
 npm run check
 ```
 
-Expected: exit 0, **1044 tests in 72 files**, 25 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
+Expected: exit 0, **1045 tests in 72 files**, 25 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
 
 Just the control decisions, in under a second:
 
@@ -318,11 +318,11 @@ From production, with trace ids recorded for each: a foreign run, trace and exce
 
 ### Verified commands
 
-Run on this branch merged with `origin/main` at `09541af` on 2026-10-04:
+Run on this branch merged with `origin/main` at `42a5324` on 2026-10-04:
 
 ```
 npm run check
-# tooling 25/25, vitest 1044/1044 in 72 files, production build, exit 0
+# tooling 25/25, vitest 1045/1045 in 72 files, production build, exit 0
 # also exit 0 from a fresh worktree with npm ci and no .env.local
 ```
 
@@ -392,7 +392,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1044 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
+`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1045 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
 
 To run the application, put the project's Supabase values in `.env.local`, copied from `.env.example`:
 
@@ -469,7 +469,7 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 | Robustness of the solution and quality of guardrails |  30%   | Ten-stage ordered gate, deterministic and AI in series, neither able to approve alone; fail-closed on any missing control                                      | [Benchmark](docs/testing/benchmark/REPORT.md), [calibration](docs/testing/control-assessment/calibration/REPORT.md), [held-out](src/features/detection/J2-CALIBRATION.md) |
 | Architecture and performance efficiency              |  20%   | Six trust boundaries, atomic SQL accounting, single-forward-pass classifier, measured cold and warm latency with sample sizes                                  | [Architecture](docs/product/architecture.md), benchmark latency table                                                                                                     |
 | Security reporting                                   |  20%   | Audit before effect, per-stage trace detail with locators, CSV export, management metrics with labelled estimates and unresolved usage                         | `src/shared/gateway/audit.ts`, `src/shared/gateway/auditExport.ts`, `src/shared/gateway/metrics.ts`, `src/features/audit/`                                                |
-| Completeness of the self-testing suite               |  15%   | 1044 unit tests in 72 files with positive and negative cases, 25 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
+| Completeness of the self-testing suite               |  15%   | 1045 unit tests in 72 files with positive and negative cases, 25 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
 | Practical implementability and scalability           |  15%   | HTTP API with OpenAPI and a generated typed client, policy swappable without redeploy, model behind a port interface, documented recovery                      | [OpenAPI](docs/contracts/openapi.json), `src/shared/gateway/ports.ts`, [runbook](docs/demo/runbook.md)                                                                    |
 
 ### Formal requirements
