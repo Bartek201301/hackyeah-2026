@@ -32,7 +32,7 @@ flowchart LR
 1. **Browser/MCP → server:** all bodies, uploaded data, tool arguments and model outputs untrusted. Resolve actor and scope server-side. Cookie mutations require exact allowed Origin checks; bearer clients use scoped tokens and explicit audience.
 2. **Gateway → database:** privileged credentials can bypass RLS, so server code must check organisation, actor, role and deal for each operation. SQL RPCs enforce atomic invariants. Browser RLS has no SELECT on raw or excerpt tables.
 3. **Gateway → model bridge:** server-only bearer token, HTTPS, fixed host/routes, bounded JSON, no arbitrary model/path/command, no model-controlled network destinations. Bridge has no Supabase key.
-4. **Raw data → approved excerpts:** provenance and immutable version retained; classification and processing status independent. Semantic scores cannot change permissions.
+4. **Raw data → request-time fact projection:** originals and unsafe candidates remain private; trusted, permission-filtered access creates bounded safe facts for the current request. Provenance and immutable version are retained; classification and processing status are independent. Semantic scores cannot change permissions.
 5. **Model output → user/export:** citations validated against supplied context; output checked before exposure. Private reasoning is neither requested nor shown.
 6. **Operational logs → dashboards:** structured safe reason codes and metrics; no prompts, secret values, raw text or denied document titles in personal traces.
 

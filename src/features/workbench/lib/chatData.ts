@@ -46,6 +46,36 @@ export function readChatRun(data: Data): Run | null {
 }
 
 export type ChatResult = { answer: string; citations: Citation[] };
+export type SourceChoice = { id: string; label: string; created_at: string };
+
+/** A gateway-filtered file choice. This is metadata, never a candidate excerpt. */
+export function readSourceSelection(data: Data): SourceChoice[] | null {
+  const o: unknown = data;
+  if (
+    !isRecord(o) ||
+    o.selection_required !== true ||
+    !Array.isArray(o.sources) ||
+    o.sources.length < 2 ||
+    o.sources.length > 6
+  )
+    return null;
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (
+    !o.sources.every(
+      (source) =>
+        isRecord(source) &&
+        typeof source.id === "string" &&
+        uuid.test(source.id) &&
+        typeof source.label === "string" &&
+        source.label.length > 0 &&
+        source.label.length <= 200 &&
+        typeof source.created_at === "string" &&
+        !Number.isNaN(Date.parse(source.created_at)),
+    )
+  )
+    return null;
+  return o.sources as SourceChoice[];
+}
 
 const isCitation = (v: unknown): v is Citation =>
   isRecord(v) &&

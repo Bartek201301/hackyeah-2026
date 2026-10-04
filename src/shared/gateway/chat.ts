@@ -35,7 +35,17 @@ import type {
   Outcome,
   StoredResult,
 } from "./ports";
-import { buildContext, hasNumericClaim, parseCitations, rewriteCitations, toCitation } from "./retrieval";
+import { completeRequestedFacts } from "./fact-ledger";
+import {
+  buildContext,
+  hasNumericClaim,
+  monetaryClaimsGrounded,
+  parseCitations,
+  rewriteCitations,
+  toCitation,
+} from "./retrieval";
+import { projectServedExcerpts } from "./safe-projection";
+import { resolveSource } from "./source-resolution";
 
 // Controlled chat (technical-spec §2/§6/§8/§9): durable intent → deterministic checks → reservation →
 // Laya on the input → permission-filtered retrieval → Ollama → citation validation and rewrite →
@@ -63,7 +73,13 @@ export type Published = {
   publication: ExportPublication;
 };
 type Ending =
-  (Verdict & { answer?: string; citations?: Citation[]; published?: Published }) | { error: ErrorCode };
+  | (Verdict & {
+      answer?: string;
+      citations?: Citation[];
+      published?: Published;
+      selection?: { selection_required: true; sources: { id: string; label: string; created_at: string }[] };
+    })
+  | { error: ErrorCode };
 
 /** One answer run kind: chat (the actor's scope) or export (public only, published as a file). */
 export type AnswerSpec = {
@@ -98,7 +114,7 @@ export async function startChat(
   body: ChatRequest,
   idempotencyKey: string,
 ): Promise<Outcome> {
-  return startAnswer(deps, actor, CHAT, body.message, body.deal_id, idempotencyKey);
+  return startAnswer(deps, actor, CHAT, body.message, body.deal_id, idempotencyKey, body.source_id);
 }
 
 export async function startAnswer(
@@ -108,6 +124,7 @@ export async function startAnswer(
   text: string,
   dealId: string | undefined,
   idempotencyKey: string,
+  sourceId?: string,
 ): Promise<Outcome> {
   // deal_id narrows scope; it never grants it.
   if (dealId !== undefined && !actor.deal_ids.includes(dealId)) return errorOutcome("NOT_FOUND");
@@ -117,7 +134,11 @@ export async function startAnswer(
   const promptBytes = utf8Bytes(buildContext([], spec.prompt, "", 0).system);
   if (promptBytes + utf8Bytes(text) > controls.policy.execution.max_input_utf8_bytes)
     return errorOutcome("INVALID_INPUT", { status: 413, message: "Shorten the question and try again." });
-  const input = { [spec.field]: text, deal_id: dealId ?? null };
+  const input = {
+    [spec.field]: text,
+    deal_id: dealId ?? null,
+    ...(spec.kind === "chat" ? { source_id: sourceId ?? null } : {}),
+  };
   const run = await deps.repository.startRun({
     actor,
     operation: spec.operation,
@@ -222,8 +243,16 @@ export async function executeAnswer(
   };
 
   const pipeline = async (): Promise<Ending> => {
-    const { [spec.field]: message, deal_id: dealId } = (run.input_private ?? {}) as Record<string, unknown>;
-    if (typeof message !== "string" || (dealId != null && typeof dealId !== "string"))
+    const {
+      [spec.field]: message,
+      deal_id: dealId,
+      source_id: sourceId,
+    } = (run.input_private ?? {}) as Record<string, unknown>;
+    if (
+      typeof message !== "string" ||
+      (dealId != null && typeof dealId !== "string") ||
+      (sourceId != null && typeof sourceId !== "string")
+    )
       throw new GatewayError("STATE_UNAVAILABLE");
     let v = await signatures(message, "input_signature");
     if (v.decision !== "ALLOW") return v;
@@ -237,12 +266,31 @@ export async function executeAnswer(
 
     // Scope is filtered in SQL before ranking; the model only ever sees this actor's permitted rows.
     stage = "retrieval";
+    const resolved =
+      spec.kind === "chat"
+        ? await t.time("persistence_ms", () =>
+            resolveSource(deps, actor, {
+              message,
+              sourceId: sourceId ?? null,
+              dealId: dealId ?? null,
+              audience: spec.audience,
+            }),
+          )
+        : { kind: "none" as const };
+    if (resolved.kind === "missing") return { error: "NOT_FOUND" };
+    if (resolved.kind === "ambiguous")
+      return {
+        decision: "REVIEW",
+        reasons: ["source:selection_required"],
+        selection: { selection_required: true, sources: resolved.sources },
+      };
     const found = await t.time("persistence_ms", () =>
       repo.searchPermittedExcerpts(actor, {
         query: message,
         dealId: dealId ?? null,
         audience: spec.audience,
         limit: policy.execution.max_search_results,
+        sourceId: resolved.kind === "selected" ? resolved.sourceId : null,
       }),
     );
     findings.push({
@@ -252,7 +300,34 @@ export async function executeAnswer(
       stage: "tool:search_excerpts",
       locator: `results:${found.length}`,
     });
-    const context = buildContext(found, spec.prompt, message, policy.execution.max_input_utf8_bytes);
+    const projected = projectServedExcerpts(found, feed);
+    let context = buildContext(projected, spec.prompt, message, policy.execution.max_input_utf8_bytes);
+    const messagesFor = (system: string) => [
+      { role: "system" as const, content: spec.prompt },
+      {
+        role: "user" as const,
+        content: JSON.stringify({ question: message, source_data: system.slice(spec.prompt.length + 2) }),
+      },
+    ];
+    let modelMessages = messagesFor(context.system);
+    while (
+      modelMessages.reduce((n, part) => n + utf8Bytes(part.content), 0) >
+        policy.execution.max_input_utf8_bytes &&
+      context.excerpts.length
+    ) {
+      context = buildContext(
+        context.excerpts.slice(0, -1),
+        spec.prompt,
+        message,
+        policy.execution.max_input_utf8_bytes,
+      );
+      modelMessages = messagesFor(context.system);
+    }
+    if (
+      modelMessages.reduce((n, part) => n + utf8Bytes(part.content), 0) >
+      policy.execution.max_input_utf8_bytes
+    )
+      return { error: "INCOMPLETE" };
     retrieval = {
       query_sha256: sha256Hex(message),
       result_count: found.length,
@@ -261,21 +336,22 @@ export async function executeAnswer(
     };
 
     stage = "generation";
-    const g = await calls.generate([
-      { role: "system", content: context.system },
-      { role: "user", content: message },
-    ]);
+    const g = await calls.generate(modelMessages);
     // No tools are registered, so any proposed call is refused.
     if (g.tool_calls.length > 0) return { decision: "BLOCK", reasons: ["generation:tool_call_refused"] };
     if (!g.finished || !g.text || g.text.length > MAX_ANSWER_CHARS) return { error: "INCOMPLETE" };
+    const complete = completeRequestedFacts(g.text, message, context.excerpts);
+    if (complete.length > MAX_ANSWER_CHARS) return { error: "INCOMPLETE" };
 
     // Citations resolve only within the permitted context; the rewritten text is what is checked and shown.
     stage = "citations";
-    const { tags, unknown } = parseCitations(g.text, context.excerpts.length);
+    const { tags, unknown } = parseCitations(complete, context.excerpts.length);
     if (unknown) return { decision: "REVIEW", reasons: ["citation:unknown_source"] };
-    if (tags.length === 0 && hasNumericClaim(g.text))
+    if (tags.length === 0 && hasNumericClaim(complete))
       return { decision: "REVIEW", reasons: ["citation:missing"] };
-    const answer = rewriteCitations(g.text, tags);
+    if (!monetaryClaimsGrounded(complete, context.excerpts))
+      return { decision: "REVIEW", reasons: ["citation:unsupported_amount"] };
+    const answer = rewriteCitations(complete, tags);
     const cited = tags.map((n) => context.excerpts[n - 1]);
     const citedIds = cited.map((e) => e.id);
     retrieval.cited_ids = citedIds;
@@ -296,8 +372,8 @@ export async function executeAnswer(
       const still = await t.time("persistence_ms", () =>
         repo.readPermittedExcerpts(actor, spec.audience, citedIds),
       );
-      const ids = new Set(still.map((e) => e.id));
-      if (!citedIds.every((id) => ids.has(id)))
+      const safe = new Map(projectServedExcerpts(still, feed).map((e) => [e.id, e]));
+      if (!cited.every((e) => safe.get(e.id)?.version === e.version && safe.get(e.id)?.text === e.text))
         return { decision: "BLOCK", reasons: ["citation:access_revoked"] };
     }
     if (overall.aborted) throw new Stop({ error: "INCOMPLETE" });
@@ -348,7 +424,9 @@ export async function executeAnswer(
       states = ["blocked", "denied"];
     } else {
       const data =
-        end.published?.data ?? (end.answer ? { answer: end.answer, citations: end.citations ?? [] } : null);
+        end.published?.data ??
+        end.selection ??
+        (end.answer ? { answer: end.answer, citations: end.citations ?? [] } : null);
       outcome = { status: 200, body: envelope({ ...fields, decision: end.decision, data }) };
       states = [end.decision === "ALLOW" ? "completed" : "review", "completed"];
     }

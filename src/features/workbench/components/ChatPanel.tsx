@@ -21,7 +21,13 @@ import { cn } from "@/shared/cn";
 import type { GatewayOutcome } from "../lib/envelope";
 import { classifyChatResponse } from "../lib/chatFlow";
 import { canonicalInput, keyForAction, type ActionKey } from "../lib/idempotency";
-import { readChatResult, readChatRun, type ChatResult } from "../lib/chatData";
+import {
+  readChatResult,
+  readChatRun,
+  readSourceSelection,
+  type ChatResult,
+  type SourceChoice,
+} from "../lib/chatData";
 import { checkCitations, type CitationView } from "../lib/citations";
 import {
   CANCEL_UNAVAILABLE,
@@ -76,6 +82,8 @@ export function ChatPanel() {
   const [citations, setCitations] = useState<CitationView[]>([]);
   const [rejectedCitations, setRejectedCitations] = useState(false);
   const [cancelNotice, setCancelNotice] = useState<string | null>(null);
+  const [sourceChoices, setSourceChoices] = useState<SourceChoice[]>([]);
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
 
   /**
    * Key bound to the question it was minted for. A retry of the same question reuses it; a
@@ -93,12 +101,22 @@ export function ChatPanel() {
     setCitations([]);
     setRejectedCitations(false);
     setRun(null);
+    setSourceChoices([]);
     executed.current = false;
   };
 
   /** Apply one response: narrow the operation-specific shape, then classify. */
   const apply = useCallback((status: number, body: ApiResponse | null) => {
-    const { outcome: next, run: inFlight } = classify(status, body);
+    const { outcome: classified, run: inFlight } = classify(status, body);
+    const choices = body?.decision === "REVIEW" ? readSourceSelection(body.data) : null;
+    const next = choices
+      ? {
+          ...classified,
+          title: "Choose a file",
+          detail: "Several permitted files have that name. Select one to continue.",
+        }
+      : classified;
+    setSourceChoices(choices ?? []);
     setOutcome(next);
     // Unconditional: a response that ended the lifecycle returns no run, which clears the progress
     // badge and the Cancel button instead of leaving "Running checks" next to a finished outcome.
@@ -123,7 +141,7 @@ export function ChatPanel() {
     return next;
   }, []);
 
-  const send = async (text: string) => {
+  const send = async (text: string, sourceId: string | null = null) => {
     const trimmed = text.trim();
     if (trimmed.length === 0) {
       setValidationError("Enter a question before sending.");
@@ -135,6 +153,7 @@ export function ChatPanel() {
     }
     setValidationError(null);
     reset();
+    setSelectedSourceId(sourceId);
     setSent(trimmed);
     // Cleared like any chat composer; the question stays on screen as the turn above it.
     setMessage("");
@@ -142,14 +161,14 @@ export function ChatPanel() {
 
     actionKey.current = keyForAction(
       actionKey.current,
-      canonicalInput({ message: trimmed }),
+      canonicalInput({ message: trimmed, source_id: sourceId }),
       newIdempotencyKey,
     );
     const start = readEnvelope(
       await client.POST("/chat", {
         // No deal_id for G2 (B6): deal labels are not available yet, and a browser-chosen deal could
         // never grant access anyway. Retrieval scope comes from the actor's trusted memberships.
-        body: { message: trimmed },
+        body: sourceId ? { message: trimmed, source_id: sourceId } : { message: trimmed },
         params: { header: { "Idempotency-Key": actionKey.current.key } },
       }),
     );
@@ -192,7 +211,7 @@ export function ChatPanel() {
 
   const submit = () => void send(message);
   /** Retry the same question: same text, so `keyForAction` deliberately keeps the same key. */
-  const retry = () => void send(sent ?? "");
+  const retry = () => void send(sent ?? "", selectedSourceId);
 
   // Poll at the protocol interval, only while the tab is visible, and stop on a terminal state.
   useEffect(() => {
@@ -256,6 +275,27 @@ export function ChatPanel() {
             <ThinkingIndicator label={working.label} detail={run?.stage?.trim() || undefined} />
           ) : (
             outcome && <OutcomeNotice outcome={outcome} />
+          )}
+
+          {sourceChoices.length > 0 && (
+            <Card className="bg-surface-muted">
+              <h3 className="mb-2 text-sm font-semibold text-fg">Permitted files</h3>
+              <ul className="flex flex-col gap-2">
+                {sourceChoices.map((choice) => (
+                  <li key={choice.id}>
+                    <Button
+                      variant="secondary"
+                      className="h-auto w-full justify-start py-2 text-left whitespace-normal"
+                      disabled={busy}
+                      onClick={() => void send(sent ?? "", choice.id)}
+                    >
+                      {choice.label} · {new Date(choice.created_at).toLocaleString()} ·{" "}
+                      {choice.id.slice(0, 8)}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </Card>
           )}
 
           {/* Rendered only when the gateway released a checked result. */}

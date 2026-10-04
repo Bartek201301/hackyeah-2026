@@ -168,6 +168,10 @@ export type ExcerptAudience = "actor" | "public";
 /** search/read_permitted_excerpts row: approved and visible to the actor; never deal_id or other rows. */
 export type PermittedExcerpt = {
   id: string;
+  /** Internal provenance; never sent as a public excerpt field. */
+  source_id?: string;
+  /** Candidate rows are private until projected at request time. */
+  status?: "approved" | "candidate";
   version: number;
   text: string;
   classification: "public" | "internal" | "restricted";
@@ -179,6 +183,7 @@ export type PermittedExcerpt = {
   fact_key: string | null;
   source_label: string;
 };
+export type PermittedSourceMatch = { id: string; label: string; created_at: string };
 /** Names follow protocols.md; startRun/readRun/claimRun are additions. Every method throws GatewayError
  *  carrying the RPC's ErrorCode, or STATE_UNAVAILABLE for anything else. */
 export interface RepositoryPort {
@@ -331,8 +336,19 @@ export interface RepositoryPort {
    */
   searchPermittedExcerpts(
     actor: ActorContext,
-    input: { query: string; dealId: string | null; audience: ExcerptAudience; limit: number },
+    input: {
+      query: string;
+      dealId: string | null;
+      audience: ExcerptAudience;
+      limit: number;
+      sourceId?: string | null;
+    },
   ): Promise<PermittedExcerpt[]>;
+  /** Only sources with at least one excerpt in the actor's effective scope; at most six matches. */
+  matchPermittedSources(
+    actor: ActorContext,
+    input: { name: string | null; sourceId: string | null; dealId: string | null; audience: ExcerptAudience },
+  ): Promise<PermittedSourceMatch[]>;
   /**
    * The same SQL permission filter by ID (at most 20); never pass a role or deals. Only permitted IDs
    * come back, so a missing and a forbidden excerpt look identical.

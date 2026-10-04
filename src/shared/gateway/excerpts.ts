@@ -6,6 +6,8 @@ import { sha256Hex } from "./checks";
 import { envelope, errorOutcome, GatewayError, notExecutedUsage, STATUS } from "./envelope";
 import type { GatewayDeps, Outcome, PermittedExcerpt } from "./ports";
 import { toCitation } from "./retrieval";
+import { projectServedExcerpt, projectServedExcerpts } from "./safe-projection";
+import { resolveSource } from "./source-resolution";
 
 /*
  * excerpt_search and excerpt_read: the only operations that hand approved text to a caller directly.
@@ -70,15 +72,47 @@ export async function searchExcerpts(
   if (dealId !== null && !actor.deal_ids.includes(dealId)) return errorOutcome("NOT_FOUND");
   const controls = await loadControls(deps, actor);
   if (!controls) return errorOutcome("POLICY_UNAVAILABLE");
+  const resolved = await resolveSource(deps, actor, {
+    message: body.query,
+    sourceId: body.source_id ?? null,
+    dealId,
+    audience: "actor",
+  });
+  if (resolved.kind === "missing") return errorOutcome("NOT_FOUND");
+  if (resolved.kind === "ambiguous") {
+    const recorded = await record(deps, {
+      actor,
+      operation: "excerpt_search",
+      idempotencyKey,
+      requestSha256: sha256Hex(JSON.stringify(body)),
+      decision: "ALLOW",
+      reasons: ["source:selection_required"],
+      usage: notExecutedUsage(controls.policy.comparison_rate.version),
+      event: { stage: "source_selection", result_count: resolved.sources.length },
+    });
+    if (isOutcome(recorded)) return recorded;
+    return {
+      status: 200,
+      body: envelope({
+        trace_id: recorded.trace_id,
+        policy_version: recorded.policy_version,
+        feed_version: recorded.feed_version,
+        decision: "REVIEW",
+        reasons: ["source:selection_required"],
+        data: { selection_required: true, sources: resolved.sources },
+      }),
+    };
+  }
 
   const rows = await deps.repository.searchPermittedExcerpts(actor, {
     query: body.query,
     dealId,
     audience: "actor",
     limit: controls.policy.execution.max_search_results,
+    sourceId: resolved.kind === "selected" ? resolved.sourceId : null,
   });
   const items: Excerpt[] = [];
-  for (const row of rows) {
+  for (const row of projectServedExcerpts(rows, controls.feed)) {
     const checked = toExcerpt(row);
     // Never partial: one unmappable row withholds the whole result, as the list reads do.
     if (!checked.ok) return errorOutcome("STATE_UNAVAILABLE");
@@ -89,7 +123,9 @@ export async function searchExcerpts(
     actor,
     operation: "excerpt_search",
     idempotencyKey,
-    requestSha256: sha256Hex(JSON.stringify({ query: body.query, deal_id: dealId })),
+    requestSha256: sha256Hex(
+      JSON.stringify({ query: body.query, deal_id: dealId, source_id: body.source_id ?? null }),
+    ),
     decision: "ALLOW",
     reasons: [],
     usage: notExecutedUsage(controls.policy.comparison_rate.version),
@@ -119,8 +155,11 @@ export async function searchExcerpts(
  * withholds the excerpt instead of releasing it unaudited.
  */
 export async function readExcerpt(deps: GatewayDeps, actor: ActorContext, id: string): Promise<Outcome> {
+  const controls = await loadControls(deps, actor);
+  if (!controls) return errorOutcome("POLICY_UNAVAILABLE");
   const [row] = await deps.repository.readPermittedExcerpts(actor, "actor", [id]);
-  const checked = row ? toExcerpt(row) : null;
+  const safe = row ? projectServedExcerpt(row, controls.feed) : null;
+  const checked = safe ? toExcerpt(safe) : null;
 
   const recorded = await record(deps, {
     actor,

@@ -137,7 +137,7 @@ describe("createSupabaseRepository excerpt access", () => {
     await repository.readPermittedExcerpts(actor, "public", ["e1"]);
     expect(calls).toEqual([
       [
-        "search_permitted_excerpts",
+        "search_served_excerpts",
         {
           p_organisation_id: "o",
           p_actor_id: "a",
@@ -145,10 +145,11 @@ describe("createSupabaseRepository excerpt access", () => {
           p_query: "q",
           p_limit: 5,
           p_deal_id: null,
+          p_source_id: null,
         },
       ],
       [
-        "read_permitted_excerpts",
+        "read_served_excerpts",
         { p_organisation_id: "o", p_actor_id: "a", p_audience: "public", p_ids: ["e1"] },
       ],
     ]);
