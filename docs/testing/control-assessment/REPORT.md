@@ -89,10 +89,18 @@ The read-only diagnostic distinguishes stopped services, missing authenticated h
 
 ## Rollout and remaining gates
 
-Final local `npm run check`, including the policy activation follow-up and main `9018cf1`, passed: 912 application tests in 61 files, 22 tooling/SQL tests, generated contracts, formatting, type checking, lint, repository rules and the production build. Documentation validation also passed. The parser regression covers escaped duplicate JSON keys that could otherwise overwrite a risk flag.
+Final local `npm run check`, including the policy activation follow-up and main `b877879`, passed: 928 application tests in 63 files, 22 tooling/SQL tests, generated contracts, formatting, type checking, lint, repository rules and the production build. Documentation validation also passed. The parser regression covers escaped duplicate JSON keys that could otherwise overwrite a risk flag.
 
 Local verification after integrating main: the manual live suite passed 10 tests (six gateway cases, three corpus gates and static trace rendering). The actual `StageList` component was inspected before this merge in the in-app browser at 1440×1000 and 375×900 using recorded synthetic evidence and built CSS. Both assessment labels and verdicts were visible; DOM scroll width matched viewport width; no console errors were reported. The isolated preview requested a missing favicon (404). This was a component preview, not a signed-in application walkthrough; authentication, deployed persistence, loading/error journeys, the merged app shell and production performance were not tested there. The temporary server was stopped and viewport override reset.
 
 The optional policy is not activated in shared Supabase. The follow-up now implements the administrator policy-update route and an additive atomic RPC migration. Its isolated SQL tests cover version/retry behavior, active-admin/tenant checks, browser-role denial and full rollback on audit failure. The migration has not been applied to shared Supabase. Follow [the activation procedure](ROLLOUT.md): review/apply the migration, deploy compatible code to all instances, then add an immutable policy version. Older binaries reject the new field. Do not edit historical policy rows.
 
 Record full checks/CI, peer review, preview browser checks, shared-DB acceptance and production rehearsal before claiming the deployed system is fixed. Service readiness alone is not security accuracy.
+
+### Approval and migration access — 4 October 2026
+
+Julian confirmed that Bartosz approved the change. This is a user-reported approval; GitHub still showed no submitted review when checked. The approved migration remains unchanged (SHA-256 `cea30e6c3ba319cadc77e50361c1e6a1c7f12115b682ecb449427c818bd0de6d`).
+
+The Supabase CLI account on this Mac could list another project but could not link to `qrriwnmluhbbpyuacepv`: the Management API explicitly returned insufficient privileges. No migration was attempted and no shared policy was changed. Bartosz can apply the reviewed migration or grant the operator project access. Authentication to the local Laya service and the pinned Ollama model was rechecked successfully at 2026-10-04 00:07 UTC.
+
+A read-only check using the configured application credentials confirmed active balanced policy v1, no `chat_verification` field, feed v1 expiring 10 October, nine approved excerpts, and no exposed `update_policy` RPC in the service OpenAPI schema. The live deployment acceptance must now account for permitted source data; the earlier empty-source test remains an isolated test case.
