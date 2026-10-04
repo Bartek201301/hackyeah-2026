@@ -2,6 +2,8 @@
 
 A server-side control layer that every AI interaction passes through. It checks who is asking, which records may reach the model, whether the content carries hostile instructions, how much compute the operation may spend, and what the model is allowed to do with the answer. Deterministic code and a central versioned policy make the final decision. A local AI classifier, [Laya](https://github.com/NandhaKishorM/laya), supplies the semantic half of a hybrid gate and never grants permission on its own.
 
+It works in both directions. A web app or any HTTP client calls it directly. A coding agent reaches company data through it as an **MCP server**, and the same layer also **governs that agent**: Claude Code's own prompts and proposed tool calls are checked server-side before they take effect, so an agent cannot talk its way into a shell, a dotfile or a dependency change.
+
 Measured on a 36-case held-out adversarial set committed before the run: **0 of 36 protected values leaked**, 12 of 12 benign questions answered, 7 of 12 attacks blocked, 4 of 12 attacks answered without leaking. Reproduce with one command. Numbers, method and limits below.
 
 **Challenge:** HackYeah 2026, Goldman Sachs "AI Control Layer" ([task page](https://hackyeah.pl/tasks-prizes)).
@@ -25,7 +27,15 @@ npm ci
 npm run check
 ```
 
-Expected: exit 0, **1045 tests in 72 files**, 25 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
+Expected: exit 0, **1085 tests in 79 files**, 34 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
+
+Then the one command that answers the brief directly:
+
+```
+npm run test:controls
+```
+
+One row per control area named in the task PDF, the test that proves the allowed path, the test that proves the BLOCK, REVIEW or 503 path, and a verdict. It runs offline in a few seconds with no `.env.local`. Current result: **15 of 15 rows PASS, 304 tests across 18 files**, plus a second table of five items that are honestly **not** implemented. That table never changes the exit code, because we would rather hand you the gaps than have you find them. The full matrix is printed under [Control matrix](#control-matrix) below.
 
 Just the control decisions, in under a second:
 
@@ -35,14 +45,16 @@ npx vitest run src/shared/gateway/checks.test.ts src/shared/gateway/chat.test.ts
 # 120 tests in 4 files, about 300 ms
 ```
 
-| Suite                       | Command                                                    | Needs                     | Proves                                                                                                                                                                                     |
-| --------------------------- | ---------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Unit and contract           | `npm run check`                                            | nothing                   | Decision precedence, policy validation, budget arithmetic, redaction, audit projection, module boundaries. Positive and negative.                                                          |
-| Database and access control | `npm run test:db`                                          | Supabase env              | 59 tests: anon and all four roles read nothing from base tables, cannot forge role or membership, cannot reach either private bucket, and concurrent budget reservations cannot overspend. |
-| Live adversarial benchmark  | `npm run benchmark:gateway`                                | running instance + models | 36 frozen cases end to end through the real gateway, with a leak oracle. Writes per-case metadata to `docs/testing/benchmark/results.json`.                                                |
-| Live classifier corpora     | `node scripts/security-eval.mjs laya development out.json` | Laya on localhost         | Scores a labelled corpus against the real pinned checkpoint. `heldout` and `adversarial` are the other corpora.                                                                            |
-| Live model gate             | `npx vitest run --config scripts/live/vitest.config.mts`   | Laya + Qwen               | The whole hybrid gate with real models and an in-memory repository.                                                                                                                        |
-| Runtime preflight           | `npm run verify:release`                                   | full env                  | Env names, database, active policy and feed, pinned classifier revision, pinned model digest, app reachability. Fails on any missing service; skips nothing.                               |
+| Suite                              | Command                                                                                                                                                                                    | Needs                                                                                  | Proves                                                                                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Unit and contract                  | `npm run check`                                                                                                                                                                            | nothing                                                                                | Decision precedence, policy validation, budget arithmetic, redaction, audit projection, module boundaries. Positive and negative.                                                          |
+| Control matrix mapped to the brief | `npm run test:controls`                                                                                                                                                                    | nothing                                                                                | Each control area in the PDF, its ALLOW proof and its BLOCK/REVIEW/503 proof, with the not-implemented list                                                                                |
+| MCP server and agent guard         | `npx vitest run src/app/api/mcp/route.test.ts src/app/api/v1/guard/check/route.test.ts src/shared/gateway/standalone-check.test.ts` plus `node --test scripts/tests/claude-guard.test.mjs` | nothing (the hook test binds a loopback mock and may ask for local network permission) | The two MCP tools, the scoped-token checks, and the hook denials for shell, network, non-`src` paths and oversized edits                                                                   |
+| Database and access control        | `npm run test:db`                                                                                                                                                                          | Supabase env                                                                           | 59 tests: anon and all four roles read nothing from base tables, cannot forge role or membership, cannot reach either private bucket, and concurrent budget reservations cannot overspend. |
+| Live adversarial benchmark         | `npm run benchmark:gateway`                                                                                                                                                                | running instance + models                                                              | 36 frozen cases end to end through the real gateway, with a leak oracle. Writes per-case metadata to `docs/testing/benchmark/results.json`.                                                |
+| Live classifier corpora            | `node scripts/security-eval.mjs laya development out.json`                                                                                                                                 | Laya on localhost                                                                      | Scores a labelled corpus against the real pinned checkpoint. `heldout` and `adversarial` are the other corpora.                                                                            |
+| Live model gate                    | `npx vitest run --config scripts/live/vitest.config.mts`                                                                                                                                   | Laya + Qwen                                                                            | The whole hybrid gate with real models and an in-memory repository.                                                                                                                        |
+| Runtime preflight                  | `npm run verify:release`                                                                                                                                                                   | full env                                                                               | Env names, database, active policy and feed, pinned classifier revision, pinned model digest, app reachability. Fails on any missing service; skips nothing.                               |
 
 **Try to break it by hand.** Any ad-hoc prompt is welcome. The gateway buffers the answer and checks it before you see it, so a successful jailbreak still has to get a protected value past the output check, and the records it would need were never retrieved. Every attempt returns a `trace_id`; open it in the UI to see the stage, reason code and usage.
 
@@ -197,6 +209,48 @@ Written in Laya's own spirit, because a control layer that overstates its classi
 
 ---
 
+## MCP: the layer works in both directions
+
+The brief asks for a control layer that governs agent-to-MCP and agent-to-model traffic. We built both directions, because serving an agent and governing an agent are different problems.
+
+**Outbound: the gateway is an MCP server.** `/api/mcp` exposes exactly two tools through the official MCP SDK, so Claude Code reaches company data through the same engine the web app uses.
+
+| Tool              | Does                                                                      |
+| ----------------- | ------------------------------------------------------------------------- |
+| `search_excerpts` | Searches public-approved excerpts and returns citations plus audit traces |
+| `read_excerpt`    | Reads one public-approved excerpt by UUID                                 |
+
+Every call is governed, not proxied:
+
+- **A scoped integration bearer token, never a session.** 43-character token, stored only as a SHA-256 hash, bound to an active actor and organisation, with an `audience` of `public`, an expiry and a revocation column. Scopes are per tool (`excerpt:search`, `excerpt:read`). The SQL retrieval audience stays `public` even when the token belongs to an administrator, so connecting an agent cannot widen what that person can reach.
+- **Input and output are both assessed.** The search text goes through the gate at stage `mcp_input`; the complete returned JSON, including excerpt text, citation and source label, goes through again at `mcp_output` before the MCP callback releases anything.
+- **The control head is re-checked after the call.** The token is re-resolved and the active policy and feed versions are compared with the versions the assessment ran under. A mismatch is `STATE_CHANGED` and the content is withheld, so a policy change mid-call cannot be outrun.
+- **Refusals are legible to the agent.** A blocked call returns `InterLock blocked this action (CODE)` with the trace id, so the model is told it was refused instead of silently receiving nothing.
+- **Bounded surface.** Origin pinned to `INTERLOCK_PUBLIC_ORIGIN`, 8 KB maximum request body, stateless, `Cache-Control: no-store`, and closed input schemas with `additionalProperties: false`.
+
+Every successful response carries `trace_id`, `retrieval_trace_id`, `policy_version` and `feed_version`, so an answer an agent gives in a chat window can be traced back to the decision that allowed it.
+
+**Inbound: the gateway governs the agent.** `/api/v1/guard/check` sits behind Claude Code hooks and checks the agent's own prompts and proposed tool calls before they take effect. This is the part a prompt cannot talk its way past, because the decision is made by a server the agent cannot reach with text.
+
+| Event    | Checked                                                                              | Hard denial                                              |
+| -------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| `prompt` | The user prompt, 6 KB ceiling, assessed at stage `claude_prompt`                     | Over the ceiling, or the gate withholds                  |
+| `tool`   | The proposed tool name, path and up to 2 KB of proposed text, at stage `claude_tool` | `TOOL_NOT_ALLOWED`, `PATH_NOT_ALLOWED`, `EDIT_TOO_LARGE` |
+
+The deny rules in `src/shared/gateway/guard-request.ts` are deterministic and they refuse before any semantic step:
+
+- **Tools are a closed set in code, which policy may narrow but never widen.** The effective set is `Read`, `Edit`, `Write` and the two InterLock MCP tools. Shell and network tools are not in it, so no policy edit can enable `Bash`. The policy schema additionally lists `Glob` and `Grep`, but the code ceiling does not include them, so a policy naming them still gets `TOOL_NOT_ALLOWED`. The demo session is launched with `--tools Read,Edit,Write` and never offers them, so this is a schema that is wider than the enforcement rather than a hole; it fails in the safe direction and is worth narrowing.
+- **Paths must start with `src/`**, with no backslash, no NUL byte, no empty or `.` or `..` segment, and no segment beginning with a dot. That refuses `.env`, `.git/`, traversal and symlink tricks in one rule rather than by blocklist.
+- **Named files are denied outright:** `package.json`, the three lockfiles, `AGENTS.md` and `CLAUDE.md`. An agent cannot edit its own instructions or add a dependency.
+- **Extensions are an allow-list** of seven, intersected with the policy's list.
+- **An `Edit` or `Write` whose proposed text did not arrive is denied**, so an edit too large to inspect is refused rather than waved through.
+
+The hook runner fails closed. A supervisor spawns the worker with a 25-second watchdog; on timeout it kills the worker, writes `InterLock watchdog blocked this action.` and exits 2, which is Claude Code's deny code. Hook input is capped at 12 KB and worker output at 1 KB. The idempotency key is derived as a stable hash of token, stage and event id, so a replayed hook event cannot double-charge a budget or produce a second audit record.
+
+**What the guard is not.** Stated plainly, because overclaiming here would be the worst kind. Command hooks can be skipped or killed by the host, so this is not an unbypassable admission controller; the exit-2 denials, the HTTP deadline, the independent supervisor and the host timeout reduce that risk rather than remove it. The installed Claude binary, the operator and the hook installation are trusted. A differently configured session is outside the boundary. The restricted Claude profile and the server-side permissions are independent limits, so **the gateway still protects company data even with no hooks at all**, which is the property that matters. The guard does not control the agent's total token bill, its final answer text, other applications, other MCP servers, or every code vulnerability.
+
+**Release status, honestly.** The code is merged and unit-tested, and migration `supabase/migrations/20261004034000_guard_finalization.sql` is applied and recorded. It is not released: both endpoints read `policy.client_guard` and return `POLICY_UNAVAILABLE` when it is absent, so until policy v4 is activated they refuse everything. The frozen [ten-question MCP set](docs/testing/mcp-evaluation.json) is marked `frozen-before-live-run` and has not been run. The full release order, the four-minute judge path and every gate are in the [MCP guard runbook](docs/team/mcp-guard-runbook.md). If the gates are not passed by demo time, we present the web runbook and describe this as built but not activated.
+
 ## Hybrid defence: what is deterministic and what is AI
 
 | Control                               | Deterministic | AI  | Notes                                                                                                              |
@@ -229,6 +283,7 @@ One JSON document, versioned in Postgres, is the only source of control settings
 | `imports`         | Untrusted input           | Byte, row, page, character and processing ceilings, allowed formats, the one allowlisted connector dataset                                                                       |
 | `budgets`         | Spend and resources       | Per-actor and per-organisation generation tokens and milliseconds, semantic tokens, **commercial micro-USD**, requests per minute, max active runs                               |
 | `comparison_rate` | Cost reporting            | An explicitly labelled illustrative rate, never presented as an invoice                                                                                                          |
+| `client_guard`    | The agent guard, optional | Profile name, prompt assessment required, the tool allow-list, editable root and extensions, maximum prompt and edit bytes. Absent means both agent endpoints refuse everything  |
 | `retention`       | Data lifetime             | Raw days, audit days, export minutes, review days                                                                                                                                |
 
 Three properties make this a control and not a settings file:
@@ -243,14 +298,14 @@ Both local and commercial budget units exist. Local units are generation tokens 
 
 ## Historical attack mitigation and model supply chain
 
-| Attack class from the brief                        | What stops it here                                                                                                                                                                                                                  | Where                                                                                                                                     |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Known exploit signatures, externally fed           | A versioned feed with an expiry. Indicator kinds `literal` and `domain`; categories `prompt_injection`, `exfiltration`, `unsafe_code`, `resource_abuse`; per-indicator action `REVIEW` or `BLOCK`, up to 100 indicators             | [feed example](docs/contracts/threat-feed.example.json), [schema](docs/contracts/threat-feed.schema.json), `src/shared/gateway/checks.ts` |
-| Malicious code execution                           | Model output is never evaluated, shelled out or templated into a command. The model's only write path emits one JSON plan that is validated and projected onto a closed schema, then re-decided by role rules                       | `src/shared/gateway/client-act.ts`                                                                                                        |
-| Unsafe deserialization                             | No YAML, pickle or arbitrary object graph is ever parsed. Every input is CSV lines or JSON validated by Ajv against a schema with `additionalProperties: false`                                                                     | `src/shared/contracts/validate.ts`                                                                                                        |
-| Supply-chain exploits on model repositories        | The pinned Laya checkpoint revision and the pinned Ollama model digest are enforced by the adapters on every health read. Any other value is a 503. The bridge exposes fixed routes only, with no caller-chosen model, path or host | `src/shared/contracts/runtime-manifest.json`, `src/features/detection/providers/laya.ts`                                                  |
-| Exfiltration to an attacker-controlled destination | Domain indicators match on dot boundaries, and the model has no network egress of its own                                                                                                                                           | `src/shared/gateway/checks.ts`                                                                                                            |
-| Stale or emptied feed                              | A feed has `expires_at` and `verify:release` fails on an expired one. An invalid feed cannot silently clear checks                                                                                                                  | `src/shared/gateway/controls.ts`                                                                                                          |
+| Attack class from the brief                        | What stops it here                                                                                                                                                                                                                                                                                                                   | Where                                                                                                                                     |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Known exploit signatures, externally fed           | A versioned feed with an expiry. Indicator kinds `literal` and `domain`; categories `prompt_injection`, `exfiltration`, `unsafe_code`, `resource_abuse`; per-indicator action `REVIEW` or `BLOCK`, up to 100 indicators                                                                                                              | [feed example](docs/contracts/threat-feed.example.json), [schema](docs/contracts/threat-feed.schema.json), `src/shared/gateway/checks.ts` |
+| Malicious code execution                           | Model output is never evaluated, shelled out or templated into a command. The model's only write path emits one JSON plan that is validated and projected onto a closed schema, then re-decided by role rules                                                                                                                        | `src/shared/gateway/client-act.ts`                                                                                                        |
+| Unsafe deserialization                             | No YAML, pickle or arbitrary object graph is ever parsed. Every input is CSV lines or JSON validated by Ajv against a schema with `additionalProperties: false`. Upload type is decided by content, not by filename: pickle bytes named `.csv` are refused with 415 before anything is stored, and so is a PDF whatever it is called | `src/shared/contracts/validate.ts`, `src/shared/gateway/imports.ts` (`M9` in the control matrix)                                          |
+| Supply-chain exploits on model repositories        | The pinned Laya checkpoint revision and the pinned Ollama model digest are enforced by the adapters on every health read. Any other value is a 503. The bridge exposes fixed routes only, with no caller-chosen model, path or host                                                                                                  | `src/shared/contracts/runtime-manifest.json`, `src/features/detection/providers/laya.ts`                                                  |
+| Exfiltration to an attacker-controlled destination | Domain indicators match on dot boundaries, and the model has no network egress of its own                                                                                                                                                                                                                                            | `src/shared/gateway/checks.ts`                                                                                                            |
+| Stale or emptied feed                              | A feed has `expires_at` and `verify:release` fails on an expired one. An invalid feed cannot silently clear checks                                                                                                                                                                                                                   | `src/shared/gateway/controls.ts`                                                                                                          |
 
 A stale feed is the failure mode we care about most, because an empty indicator list looks exactly like a clean one. The feed carries a version and an expiry, and the preflight refuses to start a demo on an expired feed.
 
@@ -260,18 +315,18 @@ A stale feed is the failure mode we care about most, because an empty indicator 
 
 Honest mapping, with the gaps named. This is where our controls land, not a claim of complete coverage.
 
-|       | Risk                             | Status             | Control                                                                                                                                                      |
-| ----- | -------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| LLM01 | Prompt injection                 | Partial            | Signatures, Laya, bounded Qwen verification; 4 of 12 benchmark attacks were not flagged                                                                      |
-| LLM02 | Sensitive information disclosure | Covered            | SQL scope before retrieval, output check, PII patterns, public-only PDF export, identical 404 for absent and forbidden ids                                   |
-| LLM03 | Supply chain                     | Covered for models | Pinned checkpoint revision and model digest, fixed bridge routes, allowlisted connector dataset. We do not scan npm dependencies                             |
-| LLM04 | Data and model poisoning         | Partial            | Imports quarantined, decided per line, published only through human review with a recorded editor, audience and reason. Review approval is not in this build |
-| LLM05 | Improper output handling         | Covered            | Answer buffered and checked before display; citations validated against supplied context and rewritten                                                       |
-| LLM06 | Excessive agency                 | Covered            | Closed `allowed_tools` enum, at most one action per Act run, role fee limits, destructive actions always held                                                |
-| LLM07 | System prompt leakage            | Covered by design  | No enforcement lives in a prompt, so leaking it grants nothing. Permissions are in code and SQL                                                              |
-| LLM08 | Vector and embedding weaknesses  | Not applicable     | No vector search or embeddings in this build                                                                                                                 |
-| LLM09 | Misinformation                   | Partial            | Citation validation, conflicting figures kept explicit, honest evidence limitation when the corpus has no answer                                             |
-| LLM10 | Unbounded consumption            | Covered            | Atomic reservations before the call, call and turn and repetition and time ceilings, per-minute and active-run caps, unresolved usage never recorded as zero |
+|       | Risk                             | Status             | Control                                                                                                                                                                                                           |
+| ----- | -------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LLM01 | Prompt injection                 | Partial            | Signatures, Laya, bounded Qwen verification; 4 of 12 benchmark attacks were not flagged                                                                                                                           |
+| LLM02 | Sensitive information disclosure | Covered            | SQL scope before retrieval, output check, PII patterns, public-only PDF export, identical 404 for absent and forbidden ids                                                                                        |
+| LLM03 | Supply chain                     | Covered for models | Pinned checkpoint revision and model digest, fixed bridge routes, allowlisted connector dataset. We do not scan npm dependencies                                                                                  |
+| LLM04 | Data and model poisoning         | Partial            | Imports quarantined, decided per line, published only through human review with a recorded editor, audience and reason. Review approval is not in this build                                                      |
+| LLM05 | Improper output handling         | Covered            | Answer buffered and checked before display; citations validated against supplied context and rewritten                                                                                                            |
+| LLM06 | Excessive agency                 | Covered            | Closed `allowed_tools` enum, at most one action per Act run, role fee limits, destructive actions always held. For a coding agent, the guard denies shell and network tools outright and confines edits to `src/` |
+| LLM07 | System prompt leakage            | Covered by design  | No enforcement lives in a prompt, so leaking it grants nothing. Permissions are in code and SQL                                                                                                                   |
+| LLM08 | Vector and embedding weaknesses  | Not applicable     | No vector search or embeddings in this build                                                                                                                                                                      |
+| LLM09 | Misinformation                   | Partial            | Citation validation, conflicting figures kept explicit, honest evidence limitation when the corpus has no answer                                                                                                  |
+| LLM10 | Unbounded consumption            | Covered            | Atomic reservations before the call, call and turn and repetition and time ceilings, per-minute and active-run caps, unresolved usage never recorded as zero                                                      |
 
 Sources we read while designing the gate, and what each changed: [control assessment, Primary research](docs/testing/control-assessment/REPORT.md) covers the Laya model card, NVIDIA NeMo self checks, Meta LlamaFirewall, LiteLLM guardrails, PromptArmor and AgentDojo. LlamaFirewall is why the policy engine combines separate scanners rather than one blended score; LiteLLM is why output is buffered and checked after the call; PromptArmor is why we did not trust a contextual verifier on its own.
 
@@ -358,11 +413,11 @@ Not implemented, stated rather than hidden:
 
 ### Verified commands
 
-Run on this branch merged with `origin/main` at `42a5324` on 2026-10-04:
+Run on this branch merged with `origin/main` at `55c0884` on 2026-10-04:
 
 ```
 npm run check
-# tooling 25/25, vitest 1045/1045 in 72 files, production build, exit 0
+# tooling 34/34, vitest 1085/1085 in 79 files, production build, exit 0
 # also exit 0 from a fresh worktree with npm ci and no .env.local
 ```
 
@@ -416,7 +471,9 @@ Nothing here is mocked for the demo. "Not in this build" means the route answers
 | Review approval flow                                     | Partial           | A candidate is created and visible; approving it is not in this build                                                                                                                                                               |
 | Threat-feed push endpoint                                | Not in this build | `GET /feeds` reads the active feed; `POST`/`PUT` answer 503                                                                                                                                                                         |
 | PDF upload                                               | Not in this build | Refused with `UNSUPPORTED_FILE` and a message, never silently parsed                                                                                                                                                                |
-| MCP adapter for Claude Code or ChatGPT                   | Not in this build | Specified in the OpenAPI contract; no adapter exists in `src`                                                                                                                                                                       |
+| MCP server for Claude Code, two tools                    | Built, gated      | `/api/mcp` on the official SDK. Scoped token, input and returned payload both assessed, control head re-checked after the call. Unit-tested; the live release gates below are not all passed                                        |
+| Guard over Claude Code's own prompts and tool calls      | Built, gated      | `/api/v1/guard/check` behind Claude Code hooks. Hard-denies shell, network, paths outside `src/`, dotfiles and oversized edits before any effect                                                                                    |
+| MCP and guard live release                               | Not yet released  | Migration `20261004034000` is applied, but both endpoints answer `POLICY_UNAVAILABLE` until policy v4 carries `client_guard`. v4 activation, the frozen live run and the Claude Code rehearsal are not recorded as done             |
 | High availability                                        | Not claimed       | Both models run on one Mac that must stay awake and connected                                                                                                                                                                       |
 
 ---
@@ -432,7 +489,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1045 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
+`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1085 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
 
 To run the application, put the project's Supabase values in `.env.local`, copied from `.env.example`:
 
@@ -452,7 +509,7 @@ A `200` means the app is up and reached the database. Signing in needs one of th
 
 The quickest honest path for a reviewer is the hosted instance with a prepared account.
 
-**Integrating your own application.** The control layer is an HTTP API, not a library you have to adopt. 24 paths are specified in [OpenAPI](docs/contracts/openapi.json); `npm run contracts:types` generates the types and `src/shared/contracts/client.ts` is a thin typed client over `openapi-fetch`. An application sends a request and reads one envelope: `decision`, `reasons`, `policy_version`, `feed_version`, `semantic`, `usage`, `timings`, `data`, `error`, `trace_id`. Nothing else needs to change.
+**Integrating your own application.** The control layer is an HTTP API, not a library you have to adopt. 25 paths are specified in [OpenAPI](docs/contracts/openapi.json); `npm run contracts:types` generates the types and `src/shared/contracts/client.ts` is a thin typed client over `openapi-fetch`. An application sends a request and reads one envelope: `decision`, `reasons`, `policy_version`, `feed_version`, `semantic`, `usage`, `timings`, `data`, `error`, `trace_id`. Nothing else needs to change.
 
 ---
 
@@ -460,8 +517,13 @@ The quickest honest path for a reviewer is the hosted instance with a prepared a
 
 ```mermaid
 flowchart TB
-  A["Caller: the web app, or any client of the 24 OpenAPI paths"]
+  A["Web app, or any client of the 25 OpenAPI paths"]
+  AG["Coding agent: Claude Code"]
   A --> R["Thin route handler: origin, actor, idempotency key, closed-schema body"]
+  AG -->|"MCP: search_excerpts, read_excerpt"| MC["/api/mcp: scoped token, input and output both assessed"]
+  AG -->|"hooks: prompt and proposed tool call"| GD["/api/v1/guard/check: closed tool set, src-only paths"]
+  MC --> R
+  GD --> R
   R --> S1
 
   subgraph E["Gateway engine: the only place a decision is made"]
@@ -489,6 +551,8 @@ flowchart TB
   DB -->|"active policy and feed version"| S1
   DB --> PR["Sanitised projections: own traces, admin aggregates"]
   PR --> A
+  S6 -->|"trace id, policy and feed version"| MC
+  GD -.->|"exit 2 denies the action"| AG
   E -.->|"any required control unavailable"| F["503: nothing reserved, nothing disclosed"]
 ```
 
@@ -509,31 +573,31 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 | Robustness of the solution and quality of guardrails |  30%   | Ten-stage ordered gate, deterministic and AI in series, neither able to approve alone; fail-closed on any missing control                                      | [Benchmark](docs/testing/benchmark/REPORT.md), [calibration](docs/testing/control-assessment/calibration/REPORT.md), [held-out](src/features/detection/J2-CALIBRATION.md) |
 | Architecture and performance efficiency              |  20%   | Six trust boundaries, atomic SQL accounting, single-forward-pass classifier, measured cold and warm latency with sample sizes                                  | [Architecture](docs/product/architecture.md), benchmark latency table                                                                                                     |
 | Security reporting                                   |  20%   | Audit before effect, per-stage trace detail with locators, CSV export, management metrics with labelled estimates and unresolved usage                         | `src/shared/gateway/audit.ts`, `src/shared/gateway/auditExport.ts`, `src/shared/gateway/metrics.ts`, `src/features/audit/`                                                |
-| Completeness of the self-testing suite               |  15%   | 1045 unit tests in 72 files with positive and negative cases, 25 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
+| Completeness of the self-testing suite               |  15%   | 1085 unit tests in 79 files with positive and negative cases, 34 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
 | Practical implementability and scalability           |  15%   | HTTP API with OpenAPI and a generated typed client, policy swappable without redeploy, model behind a port interface, documented recovery                      | [OpenAPI](docs/contracts/openapi.json), `src/shared/gateway/ports.ts`, [runbook](docs/demo/runbook.md)                                                                    |
 
 ### Formal requirements
 
-| #   | Requirement                                                                  | Status  | Where                                                                                            |
-| --- | ---------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
-| 1   | Centralized policy engine: controls, thresholds, allowed models, budgets     | Done    | [policy.example.json](docs/contracts/policy.example.json), `src/shared/gateway/policy-update.ts` |
-| 2a  | Deterministic controls: patterns for PII and secrets, auth and access checks | Done    | `src/shared/gateway/checks.ts`, `src/shared/auth/actor.ts`, `src/shared/gateway/retrieval.ts`    |
-| 2b  | Semantic AI-based controls                                                   | Done    | Laya `typed-decisions` plus bounded Qwen verification                                            |
-| 3   | Budget and resource governance, local and commercial                         | Done    | `budgets` section, atomic SQL reservations, micro-USD simulator                                  |
-| 4   | Historical attack mitigation from an external signature source               | Partial | Feed read and enforced; **push endpoint not in this build**                                      |
-| 5   | Security reporting and exportable audit logs                                 | Done    | Trace detail, admin metrics, `GET /audit/export`                                                 |
-| 6   | Self-testing suite, positive and negative                                    | Done    | `npm run check`, `npm run test:db`, `npm run benchmark:gateway`                                  |
+| #   | Requirement                                                                  | Status        | Where                                                                                                                                                                                                  |
+| --- | ---------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Centralized policy engine: controls, thresholds, allowed models, budgets     | Done, one gap | [policy.example.json](docs/contracts/policy.example.json), `src/shared/gateway/policy-update.ts`. The generation model is a pinned constant, not a configurable allowlist (`N2` in the control matrix) |
+| 2a  | Deterministic controls: patterns for PII and secrets, auth and access checks | Done          | `src/shared/gateway/checks.ts`, `src/shared/auth/actor.ts`, `src/shared/gateway/retrieval.ts`                                                                                                          |
+| 2b  | Semantic AI-based controls                                                   | Done          | Laya `typed-decisions` plus bounded Qwen verification                                                                                                                                                  |
+| 3   | Budget and resource governance, local and commercial                         | Done          | `budgets` section, atomic SQL reservations, micro-USD simulator                                                                                                                                        |
+| 4   | Historical attack mitigation from an external signature source               | Partial       | Feed read and enforced; **push endpoint not in this build**                                                                                                                                            |
+| 5   | Security reporting and exportable audit logs                                 | Done          | Trace detail, admin metrics, `GET /audit/export`                                                                                                                                                       |
+| 6   | Self-testing suite, positive and negative                                    | Done          | `npm run check`, `npm run test:db`, `npm run benchmark:gateway`                                                                                                                                        |
 
 ### Expected outcomes
 
-| Outcome                                                                 | Status                                                                                                                                                   |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Functional control layer developers can integrate                       | Done: 24-path HTTP API, OpenAPI contract, generated typed client                                                                                         |
-| Architecture diagram                                                    | Done: above, as built, with the unbuilt MCP arm removed                                                                                                  |
-| Documented sample configuration with strictness levels and budget rules | Done: `balanced` and `strict`, per-risk review and block thresholds, budget ceilings on tokens, time, commercial units, request rate and concurrent runs |
-| Interactive dashboard with controls, posture, blocked threats and cost  | Done: personal and organisation views, labelled estimates                                                                                                |
-| Executable test suite including budget limits and exploit mitigation    | Done: budget races in `test:db`, exploit cases in the unit suite and the live benchmark                                                                  |
-| Agent to agent, app to agent, agent to MCP, agent to model              | Partial: app to gateway to model and governed agent writes are live; the MCP adapter is specified, not built                                             |
+| Outcome                                                                 | Status                                                                                                                                                                 |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Functional control layer developers can integrate                       | Done: 24-path HTTP API, OpenAPI contract, generated typed client                                                                                                       |
+| Architecture diagram                                                    | Done: above, as built, including the MCP and guard arms                                                                                                                |
+| Documented sample configuration with strictness levels and budget rules | Done: `balanced` and `strict`, per-risk review and block thresholds, budget ceilings on tokens, time, commercial units, request rate and concurrent runs               |
+| Interactive dashboard with controls, posture, blocked threats and cost  | Done: personal and organisation views, labelled estimates                                                                                                              |
+| Executable test suite including budget limits and exploit mitigation    | Done: budget races in `test:db`, exploit cases in the unit suite and the live benchmark                                                                                |
+| Agent to agent, app to agent, agent to MCP, agent to model              | App to gateway to model and governed agent writes are live. Agent to MCP and the guard over the agent itself are built and unit-tested, pending the v4 activation gate |
 
 ---
 
@@ -553,7 +617,7 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 
 1. Close the semantic gap the benchmark exposed. The four auto-allowed phrasings are a training set, not an embarrassment to hide, and Laya is designed to be fine-tuned on exactly this kind of domain data.
 2. Ship the feed push endpoint so a security team can add an indicator without an administrator editing policy, which is the half of requirement 4 we did not finish.
-3. Ship the MCP adapter so Claude Code and ChatGPT reach company data through the same engine with a scoped token limited to public-approved content.
+3. Pass the MCP and guard release gates: activate policy v4 with `client_guard`, run the frozen ten-question MCP set and the twenty-four frozen guard prompts against live Laya, and record the Claude Code rehearsal.
 4. Re-verify the client-action trace read on the deployment, then finish review approval so a held candidate or a held action can be published with a recorded approver and reason.
 5. Replace the Mac bridge with a deployed classifier service behind the same port interface, which removes the single point of failure without touching the engine.
 
@@ -570,7 +634,7 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 
 ## Documentation
 
-[Documentation map](docs/README.md) · [requirements](docs/product/requirements.md) · [architecture](docs/product/architecture.md) · [technical spec](docs/product/technical-spec.md) · [semantic protocol](docs/contracts/semantic-protocol.md) · [data model](docs/contracts/data-model.md) · [judge runbook](docs/demo/runbook.md) · [release evidence](docs/testing/release-evidence.md) · [acceptance tests](docs/testing/acceptance.md)
+[Documentation map](docs/README.md) · [requirements](docs/product/requirements.md) · [architecture](docs/product/architecture.md) · [technical spec](docs/product/technical-spec.md) · [semantic protocol](docs/contracts/semantic-protocol.md) · [data model](docs/contracts/data-model.md) · [judge runbook](docs/demo/runbook.md) · [MCP and guard runbook](docs/team/mcp-guard-runbook.md) · [release evidence](docs/testing/release-evidence.md) · [acceptance tests](docs/testing/acceptance.md)
 
 Laya is Apache 2.0, by Convai Innovations: [repository](https://github.com/NandhaKishorM/laya) · [model](https://huggingface.co/convaiinnovations/laya). We use it unmodified at a pinned revision and claim nothing about it that we did not measure here.
 
