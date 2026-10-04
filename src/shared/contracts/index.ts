@@ -29,6 +29,9 @@ export type ConnectorImport = Schemas["ConnectorImport"];
 export type SourceSummary = Schemas["SourceSummary"];
 export type ImportSummary = Schemas["ImportSummary"];
 export type Metrics = Schemas["Metrics"];
+export type Client = Schemas["Client"];
+export type ClientCreate = Schemas["ClientCreate"];
+export type ClientUpdate = Schemas["ClientUpdate"];
 
 export type GatewayPolicy = PolicyUpdate["policy"];
 export type ThreatFeed = FeedUpdate["feed"];

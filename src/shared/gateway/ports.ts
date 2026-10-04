@@ -1,12 +1,15 @@
 import type {
   ActorContext,
   ApiResponse,
+  ClientCreate,
+  ClientUpdate,
   DetectionPort,
   GenerationPort,
   GatewayPolicy,
   Run,
   Usage,
 } from "@/shared/contracts";
+import type { ClientRow } from "./client-rules";
 
 export type BudgetUnit = "generation_tokens" | "generation_ms" | "semantic_tokens" | "commercial_micro_usd";
 /** Raw head snapshot; the engine validates policy/feed before use. */
@@ -363,7 +366,33 @@ export interface RepositoryPort {
   listReviews(organisationId: string, limit: number): Promise<ReviewRow[]>;
   /** One review request of the organisation, or null when the id is not one of its own. */
   readReview(organisationId: string, id: string): Promise<ReviewRow | null>;
+  /** Clients of the organisation with every editor column, newest first, at most `limit`. */
+  listClients(organisationId: string, limit: number): Promise<ClientRow[]>;
+  /** One client of the organisation, or null when the id is not one of its own. */
+  readClient(organisationId: string, id: string): Promise<ClientRow | null>;
+  /** create_client: idempotent insert and its ALLOW audit in one transaction. */
+  createClient(input: ClientWrite & { client: ClientCreate }): Promise<ClientWritten>;
+  /** record_client_review: a held client action (REVIEW), recorded with ids and field names only; writes
+   *  nothing else. The same key and hash return the first trace; a key used for another decision conflicts. */
+  recordClientReview(input: {
+    actor: ActorContext;
+    operation: ClientOperation;
+    idempotencyKey: string;
+    requestSha256: string;
+    reasons: string[];
+    clientId: string | null;
+    fields: string[] | null;
+  }): Promise<{ trace_id: string; policy_version: number; feed_version: number }>;
+  /** update_client: a stale `expectedVersion` throws CONFLICT and writes nothing. */
+  updateClient(
+    input: ClientWrite & { clientId: string; expectedVersion: number; changes: ClientUpdate["changes"] },
+  ): Promise<ClientWritten>;
 }
+export type ClientOperation = "client_create" | "client_update" | "client_delete";
+/** Uniqueness is (organisation, actor, operation, key); the same key and hash replay the first result. */
+export type ClientWrite = { actor: ActorContext; idempotencyKey: string; requestSha256: string };
+/** trace_id is the ALLOW audit the RPC wrote (the first one on a replay), so /audit resolves it. */
+export type ClientWritten = { client_id: string; version: number; replayed: boolean; trace_id: string };
 /** review_requests row for the admin review reads; candidate_text is private review content. */
 export type ReviewRow = {
   id: string;
