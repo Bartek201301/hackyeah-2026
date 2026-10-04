@@ -71,6 +71,7 @@ export async function downloadExport(
   const repo = deps.repository;
   const row = isUuid(id) ? await repo.readExport(actor, id) : null;
   let bytes: Uint8Array | null = null;
+  // ponytail: expiry is enforced here only; the row stays 'ready' (no sweeper), T12 maintenance purges it.
   if (row?.status === "ready" && Date.parse(row.expires_at) > now) {
     // Current access: a version revoked or re-classified since generation withdraws the file.
     const cited = row.excerpt_versions;

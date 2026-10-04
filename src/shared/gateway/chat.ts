@@ -77,7 +77,6 @@ export type AnswerSpec = {
   verify: boolean;
   /** Runs after every check passed; what it returns is disclosed instead of the answer. */
   publish?: (released: {
-    runId: string;
     policy: GatewayPolicy;
     answer: string;
     citations: Citation[];
@@ -308,7 +307,7 @@ export async function executeAnswer(
     let published: Published | undefined;
     if (spec.publish) {
       stage = "publication";
-      published = await spec.publish({ runId: run.id, policy, answer, citations });
+      published = await spec.publish({ policy, answer, citations });
       if (overall.aborted) throw new Stop({ error: "INCOMPLETE" });
     }
 
