@@ -7,6 +7,28 @@
 import type { ApiResponse } from "@/shared/contracts";
 import type { GatewayOutcome } from "./envelope";
 
+/*
+ * Which flow one chat message goes to. UX only: the gateway enforces the same rules on either path,
+ * and an Act run that finds nothing to do falls back to Ask in the panel.
+ */
+const word = (alternatives: string) =>
+  new RegExp(`(?<![\\p{L}\\p{N}_])(?:${alternatives})(?![\\p{L}\\p{N}_])`, "iu");
+const VERB = word(
+  "add|create|register|onboard|update|change|set|raise|increase|lower|reduce|cut|delete|remove|pause|activate|" +
+    "dodaj|utwórz|zmień|ustaw|podnieś|zwiększ|obniż|zmniejsz|usuń|skasuj|wstrzymaj",
+);
+const RECORD = word("clients?|fee|annual fee|status|sector|klient\\p{L}*|opłat\\p{L}*|sektor");
+// "Delete Northwind Advisory": a removal verb followed by a capitalised name is a client action too.
+const REMOVE_NAME = /(?<![\p{L}\p{N}_])(?:delete|remove|usuń|skasuj)\s+(\S)/giu;
+
+export function routeMessage(text: string): "act" | "ask" {
+  const trimmed = text.trim();
+  if (trimmed.endsWith("?")) return "ask";
+  const sentences = trimmed.split(/[.!?;\n]+/);
+  if (sentences.some((s) => VERB.test(s) && RECORD.test(s))) return "act";
+  return [...trimmed.matchAll(REMOVE_NAME)].some((m) => /\p{Lu}/u.test(m[1])) ? "act" : "ask";
+}
+
 export type ActResult = {
   action: "create" | "update" | "delete" | "none";
   clientId: string | null;
@@ -47,16 +69,15 @@ const DONE: Record<ActResult["action"], string> = {
   none: "Done: nothing needed to change",
 };
 
-// ponytail: patterns until the act backend publishes its reason codes; match exact codes once merged.
-const HELD: [RegExp, string][] = [
-  [/role_limit/, "The change exceeds your role's limit, so a second person must approve it."],
-  [/destructive/, "Destructive actions need a second person to approve them. Nothing was deleted."],
-  [
-    /client_not_found|ambiguous|identif|unknown_client/,
-    "The gateway could not identify the client, so nothing changed.",
-  ],
-  [/unclear|understand|intent|parse/, "The gateway could not understand the request, so nothing changed."],
-];
+/** The act backend's REVIEW reason codes (src/shared/gateway), in plain English. */
+const HELD: Record<string, string> = {
+  "action:change_exceeds_role_limit":
+    "The change exceeds your role's limit, so a second person must approve it.",
+  "action:destructive_requires_approval":
+    "Destructive actions need a second person to approve them. Nothing was deleted.",
+  "action:client_not_resolved": "The gateway could not identify the client, so nothing changed.",
+  "action:unparsed": "The gateway could not understand the request, so nothing changed.",
+};
 
 /** The Act notice for a decided outcome, or null when the outcome carries no decision (errors, progress). */
 export function describeAct(outcome: GatewayOutcome, act: ActResult | null): ActNoticeView | null {
@@ -72,7 +93,7 @@ export function describeAct(outcome: GatewayOutcome, act: ActResult | null): Act
       decision,
       title: "Held for approval",
       detail:
-        HELD.find(([re]) => reasons.some((r) => re.test(r)))?.[1] ??
+        reasons.map((r) => HELD[r]).find(Boolean) ??
         "A second person must approve this request. Nothing has changed yet.",
     };
   if (decision === "BLOCK")
