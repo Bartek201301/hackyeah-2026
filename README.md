@@ -213,8 +213,8 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 | Person  | Role                 | Owns                                                        |
 | ------- | -------------------- | ----------------------------------------------------------- |
 | Bartosz | Integrator           | Gateway engine, database, routes, deployment, release       |
-| Julian  | Builder A, workbench | Chat, sources, upload, review, policy and export interface  |
-| Maciej  | Builder B, detection | Parsers, deterministic findings, Laya adapter, model bridge |
+| Maciej  | Builder A, workbench | Chat, sources, upload, review, policy and export interface  |
+| Julian  | Builder B, detection | Parsers, deterministic findings, Laya adapter, model bridge |
 | Nikodem | Builder C, audit     | Personal and admin dashboards, trace presentation, metrics  |
 
 ## Documentation
