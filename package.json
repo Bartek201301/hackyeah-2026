@@ -22,6 +22,7 @@
     "new-feature": "node scripts/new-feature.mjs",
     "format:check": "prettier --check .",
     "test:tooling": "node --test scripts/tests/*.test.mjs",
+    "test:controls": "node scripts/control-matrix.mjs",
     "check:fast": "npm run contracts:types && npm run format:check && npm run typecheck && npm run lint && npm run check:rules && npm run test:tooling && npm run test",
     "contracts:types": "openapi-typescript docs/contracts/openapi.json -o src/shared/contracts/openapi.gen.ts && prettier --write src/shared/contracts/openapi.gen.ts",
     "test": "vitest run"
