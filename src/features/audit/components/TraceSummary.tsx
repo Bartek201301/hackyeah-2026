@@ -1,8 +1,10 @@
 import { Badge, Card, CardHeader, Notice } from "@/shared/ui";
 import type { AuditProjection } from "@/shared/contracts";
+import { describeOperation } from "@/shared/reasons";
+import { reasonViews } from "../activity";
 import { copy } from "../copy";
 import { formatTimestampUtc, shortId } from "../format";
-import { decisionBadge, usageView } from "../trace";
+import { decisionBadge, usageView, whatHappened } from "../trace";
 import { UsageGroups } from "./UsageGroups";
 
 type Props = {
@@ -28,8 +30,9 @@ function Pair({ label, value, title }: { label: string; value: string; title?: s
  * Identity, decision and measured use for one audited operation.
  *
  * What is absent is deliberate: no prompt, no excerpt, no document title and no reason text
- * beyond the stored safe reason codes. The counter is labelled a root request, so it is never
- * read as a sum of the stage events below it.
+ * beyond the stored safe reason codes and their fixed plain-language labels. The auditor sees both:
+ * the label to read, and the raw code under it as the evidence. The counter is labelled a root
+ * request, so it is never read as a sum of the stage events below it.
  */
 export function TraceSummary({ trace, incomplete, cancelled, eventsCapped, serverMessage }: Props) {
   const badge = decisionBadge(trace.decision, trace.state);
@@ -55,8 +58,13 @@ export function TraceSummary({ trace, incomplete, cancelled, eventsCapped, serve
       )}
 
       <Card>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">{copy.summary.title}</h2>
+        <p className="mt-1 text-base text-fg">{whatHappened(trace)}</p>
+      </Card>
+
+      <Card>
         <CardHeader
-          title={trace.operation}
+          title={describeOperation(trace.operation)}
           // Named rather than bare: in a real record this is the projection's own timestamp and
           // matched the LAST stored event, not the start of the operation. An unlabelled time
           // beside "root request" reads as when the request happened, which it is not.
@@ -76,10 +84,14 @@ export function TraceSummary({ trace, incomplete, cancelled, eventsCapped, serve
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
               {copy.label.reasons}
             </h3>
-            <ul className="flex flex-wrap gap-2">
-              {trace.reasons.map((reason) => (
-                <li key={reason}>
-                  <Badge tone={badge.tone === "danger" ? "danger" : "neutral"}>{reason}</Badge>
+            <ul className="flex flex-col gap-2">
+              {reasonViews(trace.reasons).map((reason) => (
+                <li key={reason.code} title={reason.code} className="flex flex-col items-start gap-0.5">
+                  <Badge tone={reason.tone}>{reason.label}</Badge>
+                  {/* An unknown code is already its own label, so it is not printed twice. */}
+                  {reason.label !== reason.code && (
+                    <code className="break-all font-mono text-xs text-muted">{reason.code}</code>
+                  )}
                 </li>
               ))}
             </ul>

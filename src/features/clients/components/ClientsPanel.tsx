@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { newIdempotencyKey } from "@/shared/contracts/client";
 import type { ApiResponse } from "@/shared/contracts";
+import { describeReason } from "@/shared/reasons";
 import {
   Badge,
   Button,
@@ -78,9 +79,15 @@ function OutcomeNotice({ outcome }: { outcome: ClientOutcome }) {
         {outcome.reasons.length > 0 && (
           <p className="flex flex-wrap items-center gap-1.5">
             <span className="text-muted">Reasons:</span>
-            {outcome.reasons.map((r) => (
-              <Badge key={r}>{r}</Badge>
-            ))}
+            {/* Plain label on screen; the stored code stays in the tooltip and description. */}
+            {outcome.reasons.map((r) => {
+              const reason = describeReason(r);
+              return (
+                <span key={r} title={r} aria-description={r}>
+                  <Badge tone={reason.tone}>{reason.label}</Badge>
+                </span>
+              );
+            })}
           </p>
         )}
         {href ? (
