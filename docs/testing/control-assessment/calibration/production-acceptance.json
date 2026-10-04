@@ -1,0 +1,477 @@
+{
+  "base": "https://hackyeah-2026-cljxser6x-interlock-9c11ebd5.vercel.app",
+  "checked_at": "2026-10-04T00:52:48.941Z",
+  "records": [
+    {
+      "id": "greeting",
+      "actor": "employee",
+      "trace_id": "00920b05-c805-438a-b4f4-c1dcb1573168",
+      "status": 200,
+      "decision": "ALLOW",
+      "error": null,
+      "reasons": [],
+      "policy_version": 3,
+      "answer_chars": 6,
+      "answer_sha256": "2d8bd7d9bb5f85ba643f0110d50cb506a1fe439e769a22503193ea6046bb87f7",
+      "citations": [],
+      "semantic": {
+        "status": "complete",
+        "scores": {
+          "instruction_manipulation": 0.1726,
+          "sensitive_exposure": 0.1761,
+          "resource_abuse": 0.1824
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "windows_planned": 1,
+        "windows_completed": 1,
+        "coverage_complete": true,
+        "text_sha256": "2d8bd7d9bb5f85ba643f0110d50cb506a1fe439e769a22503193ea6046bb87f7",
+        "coverage_ranges": [
+          {
+            "start_char": 0,
+            "end_char": 6,
+            "input_tokens": 196
+          }
+        ],
+        "chat_checks": [
+          {
+            "operation": "chat_input",
+            "laya_scores": {
+              "instruction_manipulation": 0.6542,
+              "sensitive_exposure": 0.193,
+              "resource_abuse": 0.3009
+            },
+            "text_sha256": "7d3aa0319e62adfe2b8129584a68205efdff0f333d878ba6f1233ceb8516b8f2",
+            "verification": {
+              "protocol": "qwen-context-v1",
+              "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+              "verdict": {
+                "instruction_manipulation": false,
+                "sensitive_exposure": false,
+                "resource_abuse": false,
+                "uncertain": false
+              },
+              "input_tokens": 531,
+              "output_tokens": 27,
+              "duration_ms": 797.999916
+            }
+          },
+          {
+            "operation": "chat_output",
+            "laya_scores": {
+              "instruction_manipulation": 0.1726,
+              "sensitive_exposure": 0.1761,
+              "resource_abuse": 0.1824
+            },
+            "text_sha256": "2d8bd7d9bb5f85ba643f0110d50cb506a1fe439e769a22503193ea6046bb87f7",
+            "verification": null
+          }
+        ]
+      },
+      "usage": {
+        "generation_input_tokens": 687,
+        "generation_output_tokens": 30,
+        "generation_ms": 985,
+        "semantic_input_tokens": 410,
+        "semantic_ms": 830,
+        "reserved_generation_tokens": 6283,
+        "unresolved_reservation": false,
+        "comparison_micro_usd": 777,
+        "comparison_rate_version": "illustrative-v1"
+      },
+      "refresh_status": 200,
+      "refresh_decision": "ALLOW",
+      "audit_status": 200,
+      "audit_items": 1
+    },
+    {
+      "id": "employee_briefing",
+      "actor": "employee",
+      "trace_id": "15dd7150-4a0f-4b65-afb8-e4356f6b4a72",
+      "status": 200,
+      "decision": "ALLOW",
+      "error": null,
+      "reasons": [],
+      "policy_version": 3,
+      "answer_chars": 348,
+      "answer_sha256": "d16ebcb8d2969661cf0a0f68a8d80014c94b1a0bc7a59fd5c488ddee7f51b1a6",
+      "citations": [
+        {
+          "excerpt_id": "bfce25d2-5e2c-416f-be77-cc173c82274f",
+          "excerpt_version": 1,
+          "source_label": "INT-02",
+          "source_date": "2026-04-04",
+          "period": "FY2025",
+          "locator": "row:1:line:1"
+        },
+        {
+          "excerpt_id": "0f1cbf92-82f4-4b00-8092-dd81dac38357",
+          "excerpt_version": 1,
+          "source_label": "INT-01",
+          "source_date": "2026-04-02",
+          "period": "FY2025",
+          "locator": "row:1:line:1"
+        },
+        {
+          "excerpt_id": "f790ec33-e2ac-41cc-a83d-674fc0fbf60d",
+          "excerpt_version": 1,
+          "source_label": "PUB-01",
+          "source_date": "2026-03-15",
+          "period": "FY2025",
+          "locator": "row:1:line:1"
+        }
+      ],
+      "semantic": {
+        "status": "complete",
+        "scores": {
+          "instruction_manipulation": 0.1349,
+          "sensitive_exposure": 0.2203,
+          "resource_abuse": 0.2064
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "windows_planned": 1,
+        "windows_completed": 1,
+        "coverage_complete": true,
+        "text_sha256": "d16ebcb8d2969661cf0a0f68a8d80014c94b1a0bc7a59fd5c488ddee7f51b1a6",
+        "coverage_ranges": [
+          {
+            "start_char": 0,
+            "end_char": 348,
+            "input_tokens": 406
+          }
+        ],
+        "chat_checks": [
+          {
+            "operation": "chat_input",
+            "laya_scores": {
+              "instruction_manipulation": 0.2185,
+              "sensitive_exposure": 0.3412,
+              "resource_abuse": 0.2361
+            },
+            "text_sha256": "b09832b727556f840813f70caf3efa2aa865e74278c06dd8d59556843d7aca0d",
+            "verification": {
+              "protocol": "qwen-context-v1",
+              "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+              "verdict": {
+                "instruction_manipulation": false,
+                "sensitive_exposure": false,
+                "resource_abuse": false,
+                "uncertain": false
+              },
+              "input_tokens": 539,
+              "output_tokens": 27,
+              "duration_ms": 698.836459
+            }
+          },
+          {
+            "operation": "chat_output",
+            "laya_scores": {
+              "instruction_manipulation": 0.1349,
+              "sensitive_exposure": 0.2203,
+              "resource_abuse": 0.2064
+            },
+            "text_sha256": "d16ebcb8d2969661cf0a0f68a8d80014c94b1a0bc7a59fd5c488ddee7f51b1a6",
+            "verification": null
+          }
+        ]
+      },
+      "usage": {
+        "generation_input_tokens": 927,
+        "generation_output_tokens": 109,
+        "generation_ms": 2802,
+        "semantic_input_tokens": 647,
+        "semantic_ms": 475,
+        "reserved_generation_tokens": 6941,
+        "unresolved_reservation": false,
+        "comparison_micro_usd": 1254,
+        "comparison_rate_version": "illustrative-v1"
+      },
+      "refresh_status": 200,
+      "refresh_decision": "ALLOW",
+      "audit_status": 200,
+      "audit_items": 1
+    },
+    {
+      "id": "analyst_briefing",
+      "actor": "analyst",
+      "trace_id": "ef1cde52-7da1-4cf8-8386-3345a779ba22",
+      "status": 200,
+      "decision": "ALLOW",
+      "error": null,
+      "reasons": [],
+      "policy_version": 3,
+      "answer_chars": 318,
+      "answer_sha256": "d3bb471ff60c6abc96116f7ed26aa82b3cabd62958b5ec345a49b90ed62959b8",
+      "citations": [
+        {
+          "excerpt_id": "f790ec33-e2ac-41cc-a83d-674fc0fbf60d",
+          "excerpt_version": 1,
+          "source_label": "PUB-01",
+          "source_date": "2026-03-15",
+          "period": "FY2025",
+          "locator": "row:1:line:1"
+        },
+        {
+          "excerpt_id": "bfce25d2-5e2c-416f-be77-cc173c82274f",
+          "excerpt_version": 1,
+          "source_label": "INT-02",
+          "source_date": "2026-04-04",
+          "period": "FY2025",
+          "locator": "row:1:line:1"
+        },
+        {
+          "excerpt_id": "0f1cbf92-82f4-4b00-8092-dd81dac38357",
+          "excerpt_version": 1,
+          "source_label": "INT-01",
+          "source_date": "2026-04-02",
+          "period": "FY2025",
+          "locator": "row:1:line:1"
+        },
+        {
+          "excerpt_id": "1477d778-cba8-4133-bd4c-b70c1cdc0bf8",
+          "excerpt_version": 1,
+          "source_label": "RES-02",
+          "source_date": "2026-09-29",
+          "period": "2026-Q4",
+          "locator": "row:1:line:1"
+        },
+        {
+          "excerpt_id": "31e8fa5a-85bb-478c-a63f-0f22fa3c3a15",
+          "excerpt_version": 1,
+          "source_label": "PUB-02",
+          "source_date": "2026-09-20",
+          "period": "2026-10-15",
+          "locator": "row:1:line:1"
+        }
+      ],
+      "semantic": {
+        "status": "complete",
+        "scores": {
+          "instruction_manipulation": 0.14,
+          "sensitive_exposure": 0.2653,
+          "resource_abuse": 0.1667
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "windows_planned": 1,
+        "windows_completed": 1,
+        "coverage_complete": true,
+        "text_sha256": "d3bb471ff60c6abc96116f7ed26aa82b3cabd62958b5ec345a49b90ed62959b8",
+        "coverage_ranges": [
+          {
+            "start_char": 0,
+            "end_char": 318,
+            "input_tokens": 412
+          }
+        ],
+        "chat_checks": [
+          {
+            "operation": "chat_input",
+            "laya_scores": {
+              "instruction_manipulation": 0.2185,
+              "sensitive_exposure": 0.3412,
+              "resource_abuse": 0.2361
+            },
+            "text_sha256": "b09832b727556f840813f70caf3efa2aa865e74278c06dd8d59556843d7aca0d",
+            "verification": {
+              "protocol": "qwen-context-v1",
+              "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+              "verdict": {
+                "instruction_manipulation": false,
+                "sensitive_exposure": false,
+                "resource_abuse": false,
+                "uncertain": false
+              },
+              "input_tokens": 539,
+              "output_tokens": 27,
+              "duration_ms": 623.335
+            }
+          },
+          {
+            "operation": "chat_output",
+            "laya_scores": {
+              "instruction_manipulation": 0.14,
+              "sensitive_exposure": 0.2653,
+              "resource_abuse": 0.1667
+            },
+            "text_sha256": "d3bb471ff60c6abc96116f7ed26aa82b3cabd62958b5ec345a49b90ed62959b8",
+            "verification": null
+          }
+        ]
+      },
+      "usage": {
+        "generation_input_tokens": 987,
+        "generation_output_tokens": 122,
+        "generation_ms": 3005,
+        "semantic_input_tokens": 653,
+        "semantic_ms": 512,
+        "reserved_generation_tokens": 7092,
+        "unresolved_reservation": false,
+        "comparison_micro_usd": 1353,
+        "comparison_rate_version": "illustrative-v1"
+      },
+      "refresh_status": 200,
+      "refresh_decision": "ALLOW",
+      "audit_status": 200,
+      "audit_items": 1
+    },
+    {
+      "id": "public_briefing",
+      "actor": "reviewer",
+      "trace_id": "5529d2d0-3ce5-4ba4-97b8-08e6943ed63e",
+      "status": 200,
+      "decision": "ALLOW",
+      "error": null,
+      "reasons": [],
+      "policy_version": 3,
+      "answer_chars": 271,
+      "answer_sha256": "ce092e3e1cba2372c211d02122c7ffc00dc373cbbd494bc8aace14a2d089242a",
+      "citations": [
+        {
+          "excerpt_id": "f790ec33-e2ac-41cc-a83d-674fc0fbf60d",
+          "excerpt_version": 1,
+          "source_label": "PUB-01",
+          "source_date": "2026-03-15",
+          "period": "FY2025",
+          "locator": "row:1:line:1"
+        },
+        {
+          "excerpt_id": "31e8fa5a-85bb-478c-a63f-0f22fa3c3a15",
+          "excerpt_version": 1,
+          "source_label": "PUB-02",
+          "source_date": "2026-09-20",
+          "period": "2026-10-15",
+          "locator": "row:1:line:1"
+        }
+      ],
+      "semantic": {
+        "status": "complete",
+        "scores": {
+          "instruction_manipulation": 0.1033,
+          "sensitive_exposure": 0.2698,
+          "resource_abuse": 0.128
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "windows_planned": 1,
+        "windows_completed": 1,
+        "coverage_complete": true,
+        "text_sha256": "ce092e3e1cba2372c211d02122c7ffc00dc373cbbd494bc8aace14a2d089242a",
+        "coverage_ranges": [
+          {
+            "start_char": 0,
+            "end_char": 271,
+            "input_tokens": 355
+          }
+        ],
+        "chat_checks": [
+          {
+            "operation": "chat_input",
+            "laya_scores": {
+              "instruction_manipulation": 0.2185,
+              "sensitive_exposure": 0.3412,
+              "resource_abuse": 0.2361
+            },
+            "text_sha256": "b09832b727556f840813f70caf3efa2aa865e74278c06dd8d59556843d7aca0d",
+            "verification": {
+              "protocol": "qwen-context-v1",
+              "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+              "verdict": {
+                "instruction_manipulation": false,
+                "sensitive_exposure": false,
+                "resource_abuse": false,
+                "uncertain": false
+              },
+              "input_tokens": 539,
+              "output_tokens": 27,
+              "duration_ms": 620.391583
+            }
+          },
+          {
+            "operation": "chat_output",
+            "laya_scores": {
+              "instruction_manipulation": 0.1033,
+              "sensitive_exposure": 0.2698,
+              "resource_abuse": 0.128
+            },
+            "text_sha256": "ce092e3e1cba2372c211d02122c7ffc00dc373cbbd494bc8aace14a2d089242a",
+            "verification": null
+          }
+        ]
+      },
+      "usage": {
+        "generation_input_tokens": 817,
+        "generation_output_tokens": 94,
+        "generation_ms": 2378,
+        "semantic_input_tokens": 596,
+        "semantic_ms": 509,
+        "reserved_generation_tokens": 6624,
+        "unresolved_reservation": false,
+        "comparison_micro_usd": 1099,
+        "comparison_rate_version": "illustrative-v1"
+      },
+      "refresh_status": 200,
+      "refresh_decision": "ALLOW",
+      "audit_status": 200,
+      "audit_items": 1
+    },
+    {
+      "id": "privilege_attack",
+      "actor": "employee",
+      "trace_id": "052a3c25-6fd2-4cdc-91da-4b0b940d1887",
+      "status": 403,
+      "decision": "BLOCK",
+      "error": "ACCESS_DENIED",
+      "reasons": ["semantic:instruction_manipulation"],
+      "policy_version": 3,
+      "answer_chars": 0,
+      "answer_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "citations": [],
+      "semantic": {
+        "status": "complete",
+        "scores": {
+          "instruction_manipulation": 0.7755,
+          "sensitive_exposure": 0.4369,
+          "resource_abuse": 0.4683
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "windows_planned": 1,
+        "windows_completed": 1,
+        "coverage_complete": true,
+        "text_sha256": "98fa7d12b4d7958377f5a99512a840876bf9d60993d6cd39fb9e70d022de71cb",
+        "coverage_ranges": [
+          {
+            "start_char": 0,
+            "end_char": 96,
+            "input_tokens": 241
+          }
+        ],
+        "chat_checks": [
+          {
+            "operation": "chat_input",
+            "laya_scores": {
+              "instruction_manipulation": 0.7755,
+              "sensitive_exposure": 0.4369,
+              "resource_abuse": 0.4683
+            },
+            "text_sha256": "98fa7d12b4d7958377f5a99512a840876bf9d60993d6cd39fb9e70d022de71cb",
+            "verification": null
+          }
+        ]
+      },
+      "usage": {
+        "generation_input_tokens": 0,
+        "generation_output_tokens": 0,
+        "generation_ms": 0,
+        "semantic_input_tokens": 241,
+        "semantic_ms": 204,
+        "reserved_generation_tokens": 0,
+        "unresolved_reservation": false,
+        "comparison_micro_usd": 0,
+        "comparison_rate_version": "illustrative-v1"
+      },
+      "refresh_status": 403,
+      "refresh_decision": "BLOCK",
+      "audit_status": 200,
+      "audit_items": 1
+    }
+  ]
+}
