@@ -21,7 +21,7 @@
 | MCP and restricted Claude Code release procedure | [MCP guard runbook](team/mcp-guard-runbook.md)                                                        |
 | Rationale / externally supported claims          | [Decisions](team/decisions.md) / [research](product/research-decisions.md)                            |
 | Product screens                                  | [Design contract](../DESIGN.md)                                                                       |
-| Demo / pitch                                     | [Runbook](demo/runbook.md), [pitch](pitch/pitch.md), [slides](pitch/presentation.html)                |
+| Demo                                             | [Runbook](demo/runbook.md)                                                                            |
 | README deep dives                                | [Laya](product/laya.md), [MCP and guard](product/mcp.md), [control matrix](testing/control-matrix.md) |
 
 The policy example owns default values. Schema maxima are hard safety ceilings; policy may lower limits. Never copy those defaults into feature logic. OpenAPI owns HTTP fields. Data-model definitions own stored fields; internal handoffs are in protocols. Examples demonstrate schemas, not additional API fields. Policy business validation is required in addition to JSON Schema.
@@ -32,7 +32,7 @@ For the named four-person assignment, start with [developer handoffs and copy-pa
 
 ## Reading paths
 
-- **Founder/judges:** PRD summary → scenarios → pitch → runbook.
+- **Founder/judges:** PRD summary → scenarios → runbook.
 - **Integrator:** AGENTS → PRD → architecture → contracts → technical spec → tasks → setup → acceptance.
 - **Builder A:** AGENTS → PRD roles/workflows → DESIGN → protocols/OpenAPI → scenarios → assigned tasks → browser acceptance.
 - **Builder B:** AGENTS → technical spec import/semantic sections → protocols/policy → scenarios → semantic evaluation → assigned tasks.
@@ -43,6 +43,6 @@ Run available T00 documentation checks with `node scripts/validate-docs.mjs`. Se
 
 ## Status and historical material
 
-Active files above are **accepted design, implementation pending**. Machine-readable contracts and the HTML presentation exist now. Runtime scripts marked “introduced by Txx” do not exist yet. Credentials, model digests and measured results are release evidence to collect, not missing product decisions.
+Active files above are **accepted design, implementation pending**. Machine-readable contracts exist now. Runtime scripts marked “introduced by Txx” do not exist yet. Credentials, model digests and measured results are release evidence to collect, not missing product decisions.
 
-[Archive](archive/README.md) retains replaced proposals. [Original Laya report](reference/laya-report-original.md), `reports/`, `research_notes/` and vendored `docs/ai/ecc/upstream/` are supporting evidence, not overriding instructions. The Laya report is preserved in its original language. Existing agent-tool installation guides remain auxiliary; use them only for a task that requires those tools.
+[Archive](archive/README.md) retains replaced proposals. [Original Laya report](reference/laya-report-original.md) and vendored `docs/ai/ecc/upstream/` are supporting evidence, not overriding instructions. The Laya report is preserved in its original language. Existing agent-tool installation guides remain auxiliary; use them only for a task that requires those tools.

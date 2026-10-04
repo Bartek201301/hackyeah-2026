@@ -8,7 +8,6 @@ Measured on a 36-case held-out adversarial set committed before the run: **0 of 
 
 **Challenge:** HackYeah 2026, Goldman Sachs "AI Control Layer" ([task page](https://hackyeah.pl/tasks-prizes)).
 **Live instance:** https://hackyeah-2026.vercel.app with four prepared sign-ins, which are in the HackTribe submission form. No public signup. It runs there, not on a local clone; see [For the judges](#for-the-judges).
-**Deck:** [six slides](docs/pitch/presentation.html) · [one-page pitch](docs/pitch/pitch.md).
 **Demo video:** _TODO: paste the recording URL before submitting._
 
 The reference application is an internal company chat and client book for a fictional acquisition target, AsterCloud. All data is synthetic. The control layer is the product; the app only makes its decisions visible.
