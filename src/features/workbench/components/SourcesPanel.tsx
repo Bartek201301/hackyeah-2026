@@ -22,7 +22,6 @@ import {
   CardHeader,
   EmptyState,
   Field,
-  Input,
   LoadingState,
   Select,
   ThinkingIndicator,
@@ -231,12 +230,18 @@ export function SourcesPanel({ dealIds = [] }: { dealIds?: readonly string[] }) 
             hint={`Accepted: CSV. The header must be ${CSV_HEADER.join(", ")}, and every line of every row is checked.`}
             error={errors.fileName ?? errors.fileSize}
           >
-            <Input
+            {/* The native control's text follows the browser language, so it is hidden and redrawn in English. */}
+            <input
               type="file"
               accept=".csv"
+              className="peer sr-only"
               onChange={(e) => onFile(e.target.files?.[0] ?? null)}
               disabled={busy}
             />
+            <span className="flex h-10 cursor-pointer items-center gap-3 rounded-control border border-border-strong bg-surface px-3 text-sm peer-focus-visible:border-fg peer-focus-visible:ring-3 peer-focus-visible:ring-fg/10 peer-disabled:cursor-not-allowed peer-disabled:opacity-50">
+              <span className="font-medium text-fg">Choose file</span>
+              <span className="truncate text-muted">{draft.fileName || "No file chosen"}</span>
+            </span>
           </Field>
 
           <Field
