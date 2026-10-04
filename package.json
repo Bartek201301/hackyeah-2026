@@ -15,6 +15,7 @@
     "benchmark:gateway": "node --env-file-if-exists=.env.local scripts/benchmark-gateway.mjs",
     "dev:session": "node --env-file-if-exists=.env.local scripts/dev-session.mjs",
     "test:db": "node --env-file-if-exists=.env.local --test scripts/db/*.test.mjs",
+    "verify:release": "node --env-file-if-exists=.env.local scripts/verify-release.mjs",
     "setup:agent-tools": "bash scripts/setup-agent-tools.sh",
     "codegraph:status": "codegraph status",
     "format": "prettier --write",

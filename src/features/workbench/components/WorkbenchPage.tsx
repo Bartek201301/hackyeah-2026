@@ -47,7 +47,7 @@ export async function WorkbenchPage({ searchParams, role, dealIds }: WorkbenchPa
           app sidebar. */}
       {view !== "chat" && <PageHeader title={VIEW_LABELS[view]} description={VIEW_DESCRIPTIONS[view]} />}
 
-      {view === "chat" && <ChatPanel />}
+      {view === "chat" && <ChatPanel role={role} />}
       {view === "sources" && <SourcesPanel dealIds={dealIds} />}
       {view === "policy" && (
         <div className="flex flex-col gap-6">
