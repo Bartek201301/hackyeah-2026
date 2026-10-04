@@ -83,8 +83,9 @@ export function toAuditProjection(activity: ActivityRow, events: EventRow[]): Au
         return {
           ...base,
           stage: payload.stage as string,
-          findings: payload.findings as Event["findings"],
-          semantic: payload.semantic as Event["semantic"],
+          // Access decisions and client actions write no findings or assessment: none ran.
+          findings: (payload.findings ?? base.findings) as Event["findings"],
+          semantic: (payload.semantic ?? base.semantic) as Event["semantic"],
           usage: payload.usage as Usage,
         };
       default:

@@ -212,6 +212,37 @@ describe("readAudit", () => {
     for (const leak of [REASON, "reason_code", LAYA_1]) expect(json).not.toContain(leak);
   });
 
+  it("projects decisions written without findings or assessment (access checks, client actions)", async () => {
+    const CLIENT = "44444444-4444-4444-8444-444444444444";
+    const held: ActivityRow = {
+      ...activity("ALLOW", "review"),
+      operation: "client_update",
+      decision: "REVIEW",
+      reasons: ["action:change_exceeds_role_limit"],
+      usage: notExecutedUsage("none"),
+    };
+    // Shaped as record_client_review / record_access_decision write it: no findings, no semantic.
+    const review: EventRow = {
+      event_type: "decision",
+      payload: {
+        stage: "client_update",
+        decision: "REVIEW",
+        reasons: ["action:change_exceeds_role_limit"],
+        client_id: CLIENT,
+        fields: ["annual_fee_usd"],
+        usage: notExecutedUsage("none"),
+        policy_version: 1,
+        feed_version: 1,
+      },
+      created_at: at(2),
+    };
+    const { status, body } = await read(held, [intent("client_update", 1), review]);
+    expect(status).toBe(200);
+    expect(check("Response", body).ok).toBe(true);
+    expect(items(body)[0].events.map((e) => e.stage)).toEqual(["client_update", "client_update"]);
+    expect(JSON.stringify(body)).not.toContain(CLIENT);
+  });
+
   it("refuses a trace above the event cap instead of truncating it", async () => {
     const many = Array.from({ length: 201 }, (_, i) => intent("run_execute", i % 60));
     const { status, body } = await read(activity("ALLOW", "completed"), many);
