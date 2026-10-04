@@ -7,7 +7,7 @@ It works in both directions. A web app or any HTTP client calls it directly. A c
 Measured on a 36-case held-out adversarial set committed before the run: **0 of 36 protected values leaked**, 12 of 12 benign questions answered, 7 of 12 attacks blocked, 4 of 12 attacks answered without leaking. Reproduce with one command. Numbers, method and limits below.
 
 **Challenge:** HackYeah 2026, Goldman Sachs "AI Control Layer" ([task page](https://hackyeah.pl/tasks-prizes)).
-**Live instance:** https://hackyeah-2026.vercel.app (four prepared accounts; passwords handed over in person, no signup).
+**Live instance:** https://hackyeah-2026.vercel.app with four prepared sign-ins, which are in the HackTribe submission form. No public signup. It runs there, not on a local clone; see [For the judges](#for-the-judges).
 **Deck:** [six slides](docs/pitch/presentation.html) · [one-page pitch](docs/pitch/pitch.md).
 **Demo video:** _TODO: paste the recording URL before submitting._
 **Team:** Bartosz (integrator), Maciej (workbench), Julian (detection), Nikodem (audit).
@@ -18,13 +18,23 @@ The reference application is an internal company chat and client book for a fict
 
 ## For the judges
 
-Two ways in. Use the **hosted instance** to see the product; use the **repository** to verify the tests. Please do not try to boot the web app locally: it needs our Supabase project and two locally hosted models, so `npm run dev` on your machine will not give you a working app. The two paths below cover everything.
+> ### Read this first
+>
+> **The four sign-ins are in the submission form on HackTribe, next to this repository link.** You need them: there is no public signup, and the login screen is as far as you get without an account.
+>
+> **Use the deployed instance, not a local clone.** The app only works on https://hackyeah-2026.vercel.app, because it needs our Supabase project and two models hosted on a team machine. Cloning the repository and running `npm run dev` will **not** give you a working app, and nothing in the product path can be judged that way.
+>
+> If the form did not reach you or a sign-in does not work, please tell us right away rather than scoring a login screen. We can get you in within a minute.
+>
+> The **repository** path further down is the opposite case: it needs no account, no credentials and no models, and it is where the tests are.
+
+Two ways in. Use the **hosted instance** to see the product; use the **repository** to verify the tests. The two paths below cover everything.
 
 ### 1. The hosted instance, no setup
 
 **https://hackyeah-2026.vercel.app/login**
 
-Four prepared sign-ins are handed over with this submission. There is no signup and every record is synthetic. The reference app is an internal company chat and client book for a fictional acquisition target called AsterCloud. What is being judged is the control layer every request passes through, not the chat.
+The four prepared sign-ins are in the HackTribe submission form. There is no signup and every record is synthetic. The reference app is an internal company chat and client book for a fictional acquisition target called AsterCloud. What is being judged is the control layer every request passes through, not the chat.
 
 | Role         | Access                                                                                                                     |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------- |
@@ -68,7 +78,7 @@ The MCP server and the guard over Claude Code are **built and unit-tested but no
 
 **https://github.com/Bartek201301/hackyeah-2026**
 
-Runs on a clean clone with no credentials and no model services. Verified from a fresh worktree with no `.env.local` present.
+This is the path that needs nothing: no account, no credentials, no model services. It will not start the app, and it is not meant to. Verified from a fresh worktree with no `.env.local` present.
 
 ```
 git clone https://github.com/Bartek201301/hackyeah-2026.git
