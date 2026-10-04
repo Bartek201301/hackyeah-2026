@@ -148,3 +148,53 @@ describe("the Ask composer", () => {
     expect(second!.key).toBe(first!.key);
   });
 });
+
+/*
+ * TEST FAKE gateway that settles the run as held for review, which is the state an administrator
+ * was being told to wait for themselves.
+ */
+const heldGateway = () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      if (url.endsWith("/execute")) {
+        return json(200, devEnvelope({ decision: "REVIEW", data: devRun("review", "assess") }));
+      }
+      return json(url.endsWith("/chat") ? 202 : 200, PENDING);
+    }),
+  );
+};
+
+/** Ask the question as `role` and wait for the held outcome. */
+const askAndHold = async (role?: "admin" | "employee") => {
+  vi.resetModules();
+  const { ChatPanel } = await import("./ChatPanel");
+  render(<ChatPanel role={role} />);
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: QUESTION } });
+  fireEvent.click(screen.getByRole("button", { name: /Send question/ }));
+  await waitFor(() => expect(screen.getAllByText(/Held for review/).length).toBeGreaterThan(0));
+};
+
+describe("an answer held for review", () => {
+  it("does not send an administrator to wait for an administrator", async () => {
+    // A held chat answer writes no review_requests row, so the queue an admin would open is empty
+    // and no decision there releases this text. The rule is the only thing they can actually change.
+    heldGateway();
+    await askAndHold("admin");
+
+    expect(screen.getByText(/Nothing here is yours to approve/)).toBeTruthy();
+    const link = screen.getByRole("link", { name: /Open Policy and feed/ });
+    expect(link.getAttribute("href")).toBe("/workbench?view=policy");
+    // Still withheld: the note is an explanation, never a release control.
+    expect(screen.queryByText(/^Sources$/)).toBeNull();
+  });
+
+  it("keeps the plain held notice for everyone else", async () => {
+    heldGateway();
+    await askAndHold("employee");
+
+    expect(screen.queryByText(/Nothing here is yours to approve/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Open Policy and feed/ })).toBeNull();
+  });
+});

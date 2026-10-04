@@ -13,9 +13,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ArrowUp, SquareX } from "lucide-react";
 import { createGatewayClient, newIdempotencyKey, readEnvelope } from "@/shared/contracts/client";
-import type { ApiResponse, Run } from "@/shared/contracts";
+import type { ActorContext, ApiResponse, Run } from "@/shared/contracts";
 import { Button, Card, Field, Textarea, ThinkingIndicator } from "@/shared/ui";
 import { cn } from "@/shared/cn";
 import type { GatewayOutcome } from "../lib/envelope";
@@ -31,6 +32,7 @@ import {
   describeRun,
   shouldKeepPolling,
 } from "../lib/runState";
+import { viewHref } from "../lib/views";
 import { OutcomeNotice } from "./OutcomeNotice";
 
 /** Matches ChatRequest.message in the contract. */
@@ -64,7 +66,22 @@ const client = createGatewayClient();
  * not as a fail-closed service error. See lib/chatFlow.ts. */
 const classify = (status: number, body: ApiResponse | null) => classifyChatResponse(status, body);
 
-export function ChatPanel() {
+/**
+ * Why an administrator gets a different sentence on a held answer.
+ *
+ * "An administrator must review this" is true of an import: `finalize_import` writes a
+ * `review_requests` row and the Review queue lists it. A held chat answer writes no such row —
+ * nothing reaches the queue, and no decision releases text that was already withheld. So the
+ * default sentence sends the one person who could act on it to a queue that will always be empty.
+ *
+ * The real remedy an administrator has is the rule itself, which is audited and versioned, so the
+ * note points there. It offers no release control here: the text stays withheld, and a changed
+ * policy only applies to the next run.
+ */
+const HELD_ADMIN_NOTE =
+  "Nothing here is yours to approve: only an imported candidate enters the review queue, and a held answer is never released after the fact. The reason codes say which check was uncertain — if the rule itself is wrong, change it and ask again.";
+
+export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
   const [message, setMessage] = useState("");
   /** The question this conversation is about: what was sent, not what is being typed. */
   const [sent, setSent] = useState<string | null>(null);
@@ -256,6 +273,18 @@ export function ChatPanel() {
             <ThinkingIndicator label={working.label} detail={run?.stage?.trim() || undefined} />
           ) : (
             outcome && <OutcomeNotice outcome={outcome} />
+          )}
+
+          {outcome?.kind === "review" && role === "admin" && (
+            <p className="text-sm text-muted">
+              {HELD_ADMIN_NOTE}{" "}
+              <Link
+                href={viewHref("policy")}
+                className="font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                Open Policy and feed
+              </Link>
+            </p>
           )}
 
           {/* Rendered only when the gateway released a checked result. */}
