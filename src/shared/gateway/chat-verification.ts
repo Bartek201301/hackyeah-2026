@@ -25,9 +25,12 @@ export function chatAssessmentGate(findings: Finding[], scores: Assessment["scor
   if (!verificationEnabled(policy)) return raw;
   const deterministic = decide(findings, null, policy);
   if (deterministic.decision !== "ALLOW") return deterministic;
+  // Verification may only resolve the policy's semantic REVIEW band. A policy BLOCK is final and never
+  // reaches the verifier, whatever the ceiling below says.
+  if (raw.decision !== "REVIEW") return raw;
   const strong = strongLayaReasons(scores);
   if (strong.length) return { decision: "BLOCK" as const, reasons: strong };
-  return raw.decision === "ALLOW" ? raw : null;
+  return null;
 }
 
 export function verifiedDecision(verdict: SecurityVerdict) {
