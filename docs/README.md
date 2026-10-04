@@ -22,6 +22,7 @@
 | Rationale / externally supported claims          | [Decisions](team/decisions.md) / [research](product/research-decisions.md)                            |
 | Product screens                                  | [Design contract](../DESIGN.md)                                                                       |
 | Demo / pitch                                     | [Runbook](demo/runbook.md), [pitch](pitch/pitch.md), [slides](pitch/presentation.html)                |
+| README deep dives                                | [Laya](product/laya.md), [MCP and guard](product/mcp.md), [control matrix](testing/control-matrix.md) |
 
 The policy example owns default values. Schema maxima are hard safety ceilings; policy may lower limits. Never copy those defaults into feature logic. OpenAPI owns HTTP fields. Data-model definitions own stored fields; internal handoffs are in protocols. Examples demonstrate schemas, not additional API fields. Policy business validation is required in addition to JSON Schema.
 
