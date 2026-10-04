@@ -14,6 +14,7 @@ const UNKNOWN_ID = "33333333-3333-4333-8333-333333333333";
 const TRACE = "44444444-4444-4444-8444-444444444444";
 const KEY = "66666666-6666-4666-8666-666666666666";
 const NEW_ID = "77777777-7777-4777-8777-777777777777";
+const WRITE_TRACE = "88888888-8888-4888-8888-888888888888";
 const NAME = "Northwind Logistics";
 const NOTES = "Renewal call booked for Q4.";
 
@@ -50,9 +51,14 @@ function harness(opts: { rows?: ClientRow[]; audit?: boolean; conflict?: boolean
   const recorded: Recorded[] = [];
   const reviews: Review[] = [];
   const writes: { op: string; input: unknown }[] = [];
-  const replays = new Map<string, { client_id: string; version: number }>();
+  const replays = new Map<string, { client_id: string; version: number; trace_id: string }>();
   const reads: { organisationId: string; id: string }[] = [];
-  const write = (op: string, key: string, input: unknown, result: { client_id: string; version: number }) => {
+  const write = (
+    op: string,
+    key: string,
+    input: unknown,
+    result: { client_id: string; version: number; trace_id: string },
+  ) => {
     const prior = replays.get(op + key);
     if (prior) return { ...prior, replayed: true };
     writes.push({ op, input });
@@ -97,13 +103,18 @@ function harness(opts: { rows?: ClientRow[]; audit?: boolean; conflict?: boolean
       return rows.find((r) => r.id === id && organisationId === ORG) ?? null;
     },
     async createClient(input) {
-      return write("create", input.idempotencyKey, input, { client_id: NEW_ID, version: 1 });
+      return write("create", input.idempotencyKey, input, {
+        client_id: NEW_ID,
+        version: 1,
+        trace_id: WRITE_TRACE,
+      });
     },
     async updateClient(input) {
       if (opts.conflict) throw new GatewayError("CONFLICT");
       return write("update", input.idempotencyKey, input, {
         client_id: input.clientId,
         version: input.expectedVersion + 1,
+        trace_id: WRITE_TRACE,
       });
     },
   };
@@ -160,13 +171,14 @@ describe("client_create", () => {
       const h = harness();
       const out = await createClient(h.deps, actorOf(role), body, KEY);
       valid(out);
-      expect([out.status, out.body.decision, out.body.data]).toEqual([
+      expect([out.status, out.body.decision, out.body.data, out.body.trace_id]).toEqual([
         201,
         "ALLOW",
         { client_id: NEW_ID, version: 1 },
+        WRITE_TRACE,
       ]);
       const again = await createClient(h.deps, actorOf(role), body, KEY);
-      expect(again.body.data).toEqual(out.body.data);
+      expect([again.body.data, again.body.trace_id]).toEqual([out.body.data, WRITE_TRACE]);
       expect(h.writes).toHaveLength(1);
       // create_client records its own ALLOW; nothing is recorded here.
       expect(h.recorded).toEqual([]);
@@ -227,10 +239,12 @@ describe("client_update", () => {
       const h = harness();
       const out = await updateClient(h.deps, actorOf(role), CLIENT_ID, update({ annual_fee_usd: fee }), KEY);
       valid(out);
-      expect([out.status, out.body.decision, out.body.data]).toEqual([
+      // The envelope carries the trace update_client audited, so /audit?trace= resolves it.
+      expect([out.status, out.body.decision, out.body.data, out.body.trace_id]).toEqual([
         200,
         "ALLOW",
         { client_id: CLIENT_ID, version: 4 },
+        WRITE_TRACE,
       ]);
       expect(h.writes).toHaveLength(1);
     }

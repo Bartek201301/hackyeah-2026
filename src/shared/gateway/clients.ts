@@ -90,8 +90,8 @@ async function refuse(
   verdict: ActionVerdict,
   target: Target,
 ): Promise<Outcome> {
-  const held = verdict.decision === "REVIEW";
-  const recorded = held
+  const review = verdict.decision === "REVIEW";
+  const recorded = review
     ? await audited(() =>
         deps.repository.recordClientReview({
           actor,
@@ -109,7 +109,7 @@ async function refuse(
       });
   if (isOutcome(recorded)) return recorded;
   const fields = { trace_id: recorded.trace_id, ...versions(recorded), reasons: verdict.reasons };
-  return held
+  return review
     ? { status: 200, body: envelope({ ...fields, decision: "REVIEW" }) }
     : errorOutcome("ACCESS_DENIED", fields);
 }
@@ -245,8 +245,8 @@ export async function createClient(
   return {
     status: 201,
     body: envelope({
-      // create_client records its own ALLOW audit and returns no trace, so this one is ephemeral.
-      trace_id: crypto.randomUUID(),
+      // The RPC wrote the ALLOW audit; its trace is the one /audit resolves.
+      trace_id: written.trace_id,
       ...text.versions,
       decision: "ALLOW",
       data: { client_id: written.client_id, version: written.version },
@@ -293,7 +293,8 @@ export async function updateClient(
   return {
     status: 200,
     body: envelope({
-      trace_id: crypto.randomUUID(),
+      // The RPC wrote the ALLOW audit; its trace is the one /audit resolves.
+      trace_id: written.trace_id,
       ...text.versions,
       decision: "ALLOW",
       data: { client_id: written.client_id, version: written.version },

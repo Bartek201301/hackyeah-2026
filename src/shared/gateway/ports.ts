@@ -391,7 +391,8 @@ export interface RepositoryPort {
 export type ClientOperation = "client_create" | "client_update" | "client_delete";
 /** Uniqueness is (organisation, actor, operation, key); the same key and hash replay the first result. */
 export type ClientWrite = { actor: ActorContext; idempotencyKey: string; requestSha256: string };
-export type ClientWritten = { client_id: string; version: number; replayed: boolean };
+/** trace_id is the ALLOW audit the RPC wrote (the first one on a replay), so /audit resolves it. */
+export type ClientWritten = { client_id: string; version: number; replayed: boolean; trace_id: string };
 /** review_requests row for the admin review reads; candidate_text is private review content. */
 export type ReviewRow = {
   id: string;
