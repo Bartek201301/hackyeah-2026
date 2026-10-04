@@ -6,7 +6,7 @@ InterLock is a server-side gateway that sits between an AI application and compa
 **Live instance:** https://hackyeah-2026.vercel.app (four prepared accounts; passwords are handed over in person, there is no signup).
 **Deck:** [six slides](docs/pitch/presentation.html), [one-page pitch](docs/pitch/pitch.md).
 **Demo video:** _TODO: paste the recording URL before submitting._
-**Team:** Bartosz (integrator), Julian (workbench), Maciej (detection), Nikodem (audit).
+**Team:** Bartosz (integrator), Maciej (workbench), Julian (detection), Nikodem (audit).
 
 The reference application is an internal company chat about a fictional acquisition target, AsterCloud. All data is synthetic.
 
