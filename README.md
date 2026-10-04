@@ -8,7 +8,7 @@ Measured on a 36-case held-out adversarial set committed before the run: **0 of 
 **Live instance:** https://hackyeah-2026.vercel.app (four prepared accounts; passwords handed over in person, no signup).
 **Deck:** [six slides](docs/pitch/presentation.html) · [one-page pitch](docs/pitch/pitch.md).
 **Demo video:** _TODO: paste the recording URL before submitting._
-**Team:** Bartosz (integrator), Julian (workbench), Maciej (detection), Nikodem (audit).
+**Team:** Bartosz (integrator), Maciej (workbench), Julian (detection), Nikodem (audit).
 
 The reference application is an internal company chat and client book for a fictional acquisition target, AsterCloud. All data is synthetic. The control layer is the product; the app only makes its decisions visible.
 
@@ -504,8 +504,8 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 | Person  | Role                 | Owns                                                        |
 | ------- | -------------------- | ----------------------------------------------------------- |
 | Bartosz | Integrator           | Gateway engine, database, routes, deployment, release       |
-| Julian  | Builder A, workbench | Chat, sources, upload, review, policy and export interface  |
-| Maciej  | Builder B, detection | Parsers, deterministic findings, Laya adapter, model bridge |
+| Maciej  | Builder A, workbench | Chat, sources, upload, review, policy and export interface  |
+| Julian  | Builder B, detection | Parsers, deterministic findings, Laya adapter, model bridge |
 | Nikodem | Builder C, audit     | Personal and admin dashboards, trace presentation, metrics  |
 
 ## Documentation
