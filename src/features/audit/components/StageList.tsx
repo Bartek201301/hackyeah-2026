@@ -51,6 +51,13 @@ function AssessmentBlock({ assessment }: { assessment: AssessmentView }) {
         </dl>
       )}
       {assessment.measured && <p className="text-xs text-muted">{copy.assessment.scoreHint}</p>}
+      {assessment.chatChecks?.map((check) => (
+        <div key={check.stage} className="flex flex-col gap-1 rounded-lg border border-border p-3">
+          <h5 className="text-sm font-semibold text-fg">{check.stage} assessment</h5>
+          <p className="text-xs text-muted">{check.scores}</p>
+          <p className="text-sm text-fg">{check.verification}</p>
+        </div>
+      ))}
     </div>
   );
 }

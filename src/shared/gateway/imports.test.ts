@@ -122,6 +122,9 @@ function harness(over: Partial<Opts> = {}) {
   };
 
   const repository: RepositoryPort = {
+    async updatePolicy() {
+      throw new Error("not used");
+    },
     async loadActivePolicyAndFeed() {
       return {
         policy: structuredClone(policyJson),
@@ -171,6 +174,8 @@ function harness(over: Partial<Opts> = {}) {
     },
     listSources: unused,
     listImports: unused,
+    listReviews: unused,
+    readReview: unused,
     listActivity: unused,
     readMetricsRows: unused,
     exportActivity: unused,

@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   DetectionPort,
   GenerationPort,
+  GatewayPolicy,
   Run,
   Usage,
 } from "@/shared/contracts";
@@ -15,6 +16,14 @@ export type Controls = {
   policy_version: number;
   feed_version: number;
   feed_expires_at: string;
+};
+export type PolicyWrite = {
+  actor: ActorContext;
+  idempotencyKey: string;
+  expectedVersion: number;
+  policy: GatewayPolicy;
+  requestSha256: string;
+  documentSha256: string;
 };
 export type RunRecord = {
   id: string;
@@ -155,6 +164,10 @@ export type PermittedExcerpt = {
 /** Names follow protocols.md; startRun/readRun/claimRun are additions. Every method throws GatewayError
  *  carrying the RPC's ErrorCode, or STATE_UNAVAILABLE for anything else. */
 export interface RepositoryPort {
+  /** Active admin recheck, idempotency, immutable version, head CAS and audit in one transaction. */
+  updatePolicy(
+    input: PolicyWrite,
+  ): Promise<{ trace_id: string; policy_version: number; feed_version: number }>;
   loadActivePolicyAndFeed(organisationId: string): Promise<Controls | null>;
   startRun(input: {
     actor: ActorContext;
@@ -314,7 +327,20 @@ export interface RepositoryPort {
     usage: Usage;
     event: Record<string, unknown> & { stage: string };
   }): Promise<{ trace_id: string; policy_version: number; feed_version: number }>;
+  /** Review requests of the organisation, pending first, then newest, at most `limit`. */
+  listReviews(organisationId: string, limit: number): Promise<ReviewRow[]>;
+  /** One review request of the organisation, or null when the id is not one of its own. */
+  readReview(organisationId: string, id: string): Promise<ReviewRow | null>;
 }
+/** review_requests row for the admin review reads; candidate_text is private review content. */
+export type ReviewRow = {
+  id: string;
+  version: number;
+  candidate_text: string;
+  classification: "public" | "internal" | "restricted";
+  status: "pending" | "approved" | "rejected" | "expired";
+  document_id: string;
+};
 /** null = adapter not composed → 503 before any reservation, never ALLOW. */
 export type GatewayDeps = {
   repository: RepositoryPort;

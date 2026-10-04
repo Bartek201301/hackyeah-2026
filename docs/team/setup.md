@@ -62,6 +62,8 @@ Bridge binds loopback (implementation default port 8787); only its authenticated
 
 ## G2 runtime on the Mac
 
+For stopped-service, authentication or model-pin failures, run `node scripts/model-doctor.mjs` from the project directory (or pass the private environment file path). It prints no credentials and distinguishes Laya on port 8000 from Ollama on port 11434. An already-running Ollama needs no second `ollama serve`. Public Laya `status: ok` alone is not authenticated readiness. Classifier accuracy and the optional contextual verification policy are covered in the [control assessment report](../testing/control-assessment/REPORT.md).
+
 G2 runs the app, Laya and Ollama on Julian's Mac. `createDetectionPort()` and `createGenerationPort()` call fixed loopback endpoints (Laya `127.0.0.1:8000`, Ollama `127.0.0.1:11434`) and read only `LAYA_API_KEY` from the server process environment. Without it both return `null` and the gateway answers 503 `SEMANTIC_UNAVAILABLE` before any reservation; never a fake. Durable reservation, usage and audit stay in the gateway's Postgres records; there is no Python ledger. The engine enforces the revisions in `src/shared/contracts/runtime-manifest.json`; any other value is a 503.
 
 The Mac's `.env.local` holds `LAYA_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`. Bartosz types the Supabase values in person; never in chat, never committed, never printed. No model variable is `NEXT_PUBLIC_`.

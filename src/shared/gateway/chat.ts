@@ -1,9 +1,16 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import type { ActorContext, Assessment, ChatRequest, Citation, ErrorCode, Finding } from "@/shared/contracts";
+import type { ActorContext, ChatCheck, ChatRequest, Citation, ErrorCode, Finding } from "@/shared/contracts";
 import { check } from "@/shared/contracts/validate";
 import { clock, createCalls, errorStates, loadControls, openRun, readOwnRun, Stop, TERMINAL } from "./calls";
 import { decide, matchSensitive, matchSignatures, sha256Hex, utf8Bytes } from "./checks";
+import {
+  chatAssessmentGate,
+  parseSecurityVerdict,
+  verificationEnabled,
+  verificationMessages,
+  verifiedDecision,
+} from "./chat-verification";
 import {
   envelope,
   errorOutcome,
@@ -93,6 +100,7 @@ export async function executeChat(
   const overall = AbortSignal.any([signal, AbortSignal.timeout(policy.execution.max_elapsed_ms)]);
   const usage = notExecutedUsage(policy.comparison_rate.version);
   const findings: Finding[] = [];
+  const chatChecks: ChatCheck[] = [];
   // Audited as IDs and a hash only: never the question or excerpt text.
   let retrieval = null as Retrieval | null;
   let stage = "input_signature";
@@ -106,8 +114,38 @@ export async function executeChat(
     findings.push(...found);
     return t.time("deterministic_ms", () => decide(found, null, policy));
   };
-  const judge = (r: { findings: Finding[]; semantic: Assessment }) =>
-    t.time("deterministic_ms", () => decide(r.findings, r.semantic.scores, policy));
+  const judge = async (text: string, operation: "chat_input" | "chat_output"): Promise<Verdict> => {
+    const r = await calls.assess(text, operation);
+    const gate = await t.time("deterministic_ms", () =>
+      chatAssessmentGate(r.findings, r.semantic.scores, policy),
+    );
+    if (!verificationEnabled(policy)) {
+      if (!gate) throw new GatewayError("STATE_UNAVAILABLE");
+      return gate;
+    }
+    const evidence: ChatCheck = {
+      operation,
+      laya_scores: { ...r.semantic.scores },
+      text_sha256: sha256Hex(text),
+      verification: null,
+    };
+    chatChecks.push(evidence);
+    if (gate) return gate;
+
+    stage = operation === "chat_input" ? "input_verification" : "output_verification";
+    const g = await calls.generate(verificationMessages(text, operation), "security_verification_v1");
+    const verdict = g.finished && g.tool_calls.length === 0 ? parseSecurityVerdict(g.text) : null;
+    if (!verdict) throw new Stop({ error: "INCOMPLETE" });
+    evidence.verification = {
+      protocol: "qwen-context-v1",
+      model_digest: g.model_digest,
+      verdict,
+      input_tokens: g.input_tokens,
+      output_tokens: g.output_tokens,
+      duration_ms: g.duration_ms,
+    };
+    return verifiedDecision(verdict);
+  };
 
   const pipeline = async (): Promise<Ending> => {
     const { message, deal_id: dealId } = (run.input_private ?? {}) as {
@@ -123,7 +161,7 @@ export async function executeChat(
     if (!deps.generation) return { error: "MODEL_UNAVAILABLE" };
 
     stage = "input_semantic";
-    v = await judge(await calls.assess(message, "chat_input"));
+    v = await judge(message, "chat_input");
     if (v.decision !== "ALLOW") return v;
 
     // Scope is filtered in SQL before ranking; the model only ever sees this actor's permitted rows.
@@ -178,7 +216,7 @@ export async function executeChat(
     v = await signatures(answer, "output_signature");
     if (v.decision !== "ALLOW") return v;
     stage = "output_semantic";
-    v = await judge(await calls.assess(answer, "chat_output"));
+    v = await judge(answer, "chat_output");
     if (v.decision !== "ALLOW") return v;
 
     // An excerpt revoked while the answer was generated is never disclosed.
@@ -191,6 +229,7 @@ export async function executeChat(
       if (!citedIds.every((id) => ids.has(id)))
         return { decision: "BLOCK", reasons: ["citation:access_revoked"] };
     }
+    if (overall.aborted) throw new Stop({ error: "INCOMPLETE" });
 
     stage = "done";
     return { decision: "ALLOW", reasons: [], answer, citations };
@@ -209,7 +248,8 @@ export async function executeChat(
     }
   }
   if (calls.open) usage.unresolved_reservation = true;
-  const semantic = calls.semantic;
+  const semantic =
+    calls.semantic && chatChecks.length ? { ...calls.semantic, chat_checks: chatChecks } : calls.semantic;
   const { input_micro_usd_per_token: inRate, output_micro_usd_per_token: outRate } = policy.comparison_rate;
   usage.comparison_micro_usd =
     usage.generation_input_tokens === null || usage.generation_output_tokens === null
