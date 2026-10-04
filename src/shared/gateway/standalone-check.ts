@@ -110,7 +110,7 @@ export async function assessStandalone(deps: GatewayDeps, input: StandaloneInput
     } else {
       const result = await calls.assess(text, stage, { audience: actor.audience });
       const gate =
-        stage === "claude_prompt"
+        stage === "claude_prompt" || stage === "mcp_input" || stage === "mcp_output"
           ? chatAssessmentGate(findings, result.semantic.scores, policy)
           : decide(findings, result.semantic.scores, policy);
       if (gate) {
@@ -118,7 +118,7 @@ export async function assessStandalone(deps: GatewayDeps, input: StandaloneInput
         reasons = gate.reasons;
       } else {
         const generated = await calls.generate(
-          verificationMessages(text, "chat_input"),
+          verificationMessages(text, stage === "mcp_output" ? "chat_output" : "chat_input"),
           "security_verification_v1",
         );
         const verdict = parseSecurityVerdict(generated.text);

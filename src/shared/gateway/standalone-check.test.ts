@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import policyJson from "../../../docs/contracts/policy.example.json";
 import feedJson from "../../../docs/contracts/threat-feed.example.json";
 import manifest from "@/shared/contracts/runtime-manifest.json";
-import type { ActorContext, Assessment, DetectionPort } from "@/shared/contracts";
+import type { ActorContext, Assessment, DetectionPort, GenerationPort } from "@/shared/contracts";
 import { sha256Hex } from "./checks";
 import { GatewayError } from "./envelope";
 import type { GatewayDeps, RepositoryPort } from "./ports";
@@ -45,14 +45,20 @@ function harness(
     finalDecision?: "ALLOW" | "BLOCK";
     replay?: boolean;
     opVersion?: number;
+    verificationEnabled?: boolean;
+    scores?: Partial<Assessment["scores"]>;
+    verifierUncertain?: boolean;
   } = {},
 ) {
   const log: string[] = [];
+  const verificationOperations: string[] = [];
   const final: Parameters<RepositoryPort["finalizeGuardCheck"]>[0][] = [];
   const repository = {
     async loadActivePolicyAndFeed() {
       return {
-        policy,
+        policy: options.verificationEnabled
+          ? { ...policy, semantic: { ...policy.semantic, chat_verification: "qwen-context-v1" } }
+          : policy,
         feed: feedJson,
         policy_version: 4,
         feed_version: 2,
@@ -113,6 +119,7 @@ function harness(
           instruction_manipulation: 0.01,
           sensitive_exposure: 0.01,
           resource_abuse: 0.01,
+          ...options.scores,
         },
         checkpoint_revision: manifest.laya_checkpoint_revision,
         windows_planned: 1,
@@ -124,8 +131,28 @@ function harness(
       return { findings: [], semantic, semantic_input_tokens: 20, semantic_ms: 10 };
     },
   };
-  const deps = { repository, detection, generation: null } as GatewayDeps;
-  return { deps, log, final };
+  const generation: GenerationPort = {
+    async generate(request) {
+      log.push("generate");
+      verificationOperations.push(JSON.parse(request.messages.at(-1)?.content ?? "{}").operation);
+      return {
+        text: JSON.stringify({
+          instruction_manipulation: false,
+          sensitive_exposure: false,
+          resource_abuse: false,
+          uncertain: options.verifierUncertain ?? false,
+        }),
+        tool_calls: [],
+        input_tokens: 40,
+        output_tokens: 20,
+        duration_ms: 50,
+        model_digest: manifest.ollama_model_digest,
+        finished: true,
+      };
+    },
+  };
+  const deps = { repository, detection, generation } as GatewayDeps;
+  return { deps, log, final, verificationOperations };
 }
 
 describe("standalone guard assessment", () => {
@@ -169,5 +196,58 @@ describe("standalone guard assessment", () => {
     const h = harness({ replay: true });
     expect((await assessStandalone(h.deps, input)).body.decision).toBe("ALLOW");
     expect(h.log).toEqual(["intent"]);
+  });
+
+  it("allows an MCP input REVIEW-band score after bounded verification allows it", async () => {
+    const h = harness({ verificationEnabled: true, scores: { instruction_manipulation: 0.4 } });
+    const result = await assessStandalone(h.deps, {
+      ...input,
+      stage: "mcp_input",
+      scope: "excerpt:search",
+    });
+    expect(result.body.decision).toBe("ALLOW");
+    expect(h.final[0]?.decision).toBe("ALLOW");
+    expect(h.verificationOperations).toEqual(["chat_input"]);
+    expect(h.log).toContain("generate");
+  });
+
+  it("keeps an MCP output in REVIEW when bounded verification is uncertain", async () => {
+    const h = harness({
+      verificationEnabled: true,
+      scores: { instruction_manipulation: 0.4 },
+      verifierUncertain: true,
+    });
+    const result = await assessStandalone(h.deps, {
+      ...input,
+      stage: "mcp_output",
+      scope: "excerpt:read",
+    });
+    expect(result.body.decision).toBe("REVIEW");
+    expect(h.final[0]?.decision).toBe("REVIEW");
+    expect(h.verificationOperations).toEqual(["chat_output"]);
+  });
+
+  it("keeps a Claude tool REVIEW-band score without calling verification", async () => {
+    const h = harness({ verificationEnabled: true, scores: { instruction_manipulation: 0.4 } });
+    const result = await assessStandalone(h.deps, {
+      ...input,
+      stage: "claude_tool",
+      scope: "guard:tool",
+    });
+    expect(result.body.decision).toBe("REVIEW");
+    expect(h.final[0]?.decision).toBe("REVIEW");
+    expect(h.log).not.toContain("generate");
+  });
+
+  it("blocks a strong Laya MCP input score without calling verification", async () => {
+    const h = harness({ verificationEnabled: true, scores: { instruction_manipulation: 0.8 } });
+    const result = await assessStandalone(h.deps, {
+      ...input,
+      stage: "mcp_input",
+      scope: "excerpt:search",
+    });
+    expect(result.body.decision).toBe("BLOCK");
+    expect(h.final[0]?.decision).toBe("BLOCK");
+    expect(h.log).not.toContain("generate");
   });
 });
