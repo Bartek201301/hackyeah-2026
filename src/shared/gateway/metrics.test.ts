@@ -211,6 +211,19 @@ describe("the usage totals", () => {
     expect(mixed.comparison_rate_version).toBe("mixed");
   });
 
+  it("prices a window whose other rows priced nothing (rate none, zero cost)", () => {
+    const total = aggregateUsage([row(), row({ usage: notExecutedUsage() }), row()], []);
+    expect(total.comparison_micro_usd).toBe(92);
+    expect(total.comparison_rate_version).toBe("illustrative-v1");
+    // A "none" row that does carry a price is still a different rate.
+    const odd = aggregateUsage([row(), row({ usage: usage({ comparison_rate_version: "none" }) })], []);
+    expect(odd.comparison_rate_version).toBe("mixed");
+    // Only unpriced rows: zero under "none".
+    const idle = aggregateUsage([row({ usage: notExecutedUsage() })], []);
+    expect(idle.comparison_micro_usd).toBe(0);
+    expect(idle.comparison_rate_version).toBe("none");
+  });
+
   it("counts only reservations that are still outstanding, and never adds them to actual use", () => {
     const reservations: MetricsReservationRow[] = [
       { unit: "generation_tokens", amount: 4096, state: "reserved" },

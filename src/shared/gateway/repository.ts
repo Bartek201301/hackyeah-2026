@@ -509,8 +509,10 @@ export function createSupabaseRepository(db: SupabaseClient = createSupabaseAdmi
        */
       let reservationQuery = db
         .from("reservations")
-        .select("unit, amount, state, operations!inner(actor_id, created_at)")
+        .select("unit, amount, state, operations!inner(actor_id, operation, created_at)")
         .eq("organisation_id", organisationId)
+        // Same exclusion as windowActivity: test:db reservations (some charged on purpose) are not usage.
+        .neq("operations.operation", "db_test")
         .gte("operations.created_at", from)
         .lte("operations.created_at", to);
       if (ownActorId !== null) {
