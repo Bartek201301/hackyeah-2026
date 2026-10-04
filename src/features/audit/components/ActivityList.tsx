@@ -80,7 +80,7 @@ export function ActivityList({
   olderFailed = false,
 }: ActivityListProps) {
   return (
-    <Card>
+    <Card className="animate-enter" style={{ animationDelay: "120ms" }}>
       <CardHeader title={copy.activity.title} description={copy.activity.description} />
       {/*
        * Said out loud, because the day selector sits directly above this card: a reader would

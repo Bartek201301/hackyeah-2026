@@ -69,7 +69,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
         eventsCapped={eventsCapped}
         serverMessage={serverMessage}
       />
-      <StageList rows={stageRows(trace.events)} />
+      <StageList rows={stageRows(trace.events, trace.usage)} />
     </div>
   );
 }

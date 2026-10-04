@@ -51,6 +51,7 @@ export const copy = {
     noReservationOperation: "No reservation was recorded for this operation.",
     noReservation: "No reservation is outstanding.",
     unknownHint: "No value was recorded. Unknown use is not zero use.",
+    onRequest: "Shown on the request total",
   },
   decision: {
     allow: "Allowed",

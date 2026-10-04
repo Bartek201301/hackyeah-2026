@@ -17,19 +17,21 @@ export function ControlsPanel({ view }: { view: MetricsView }) {
   const captions = view.controls.filter((card) => card.hint !== null);
 
   return (
-    <section className="flex flex-col gap-4" aria-labelledby="audit-controls">
+    <section className="flex animate-enter flex-col gap-4" aria-labelledby="audit-controls">
       <h2 id="audit-controls" className="text-sm font-semibold uppercase tracking-wider text-muted">
         {copy.metrics.controlsTitle}
       </h2>
       <div className="grid gap-4 sm:grid-cols-2">
         {view.controls.map((card, index) => (
-          <StatCard
-            key={card.label}
-            icon={icons[index] ?? Activity}
-            label={card.label}
-            value={card.value}
-            highlight={card.label === copy.metrics.blockedAttempts}
-          />
+          // Single-child grid keeps the card stretched to the row height while it fades in.
+          <div key={card.label} className="grid animate-enter" style={{ animationDelay: `${index * 40}ms` }}>
+            <StatCard
+              icon={icons[index] ?? Activity}
+              label={card.label}
+              value={card.value}
+              highlight={card.label === copy.metrics.blockedAttempts}
+            />
+          </div>
         ))}
       </div>
       <ul className="flex flex-col gap-1">
@@ -50,7 +52,11 @@ export function ControlsPanel({ view }: { view: MetricsView }) {
  */
 export function ResourcesPanel({ view }: { view: MetricsView }) {
   return (
-    <section className="flex flex-col gap-4" aria-labelledby="audit-resources">
+    <section
+      className="flex animate-enter flex-col gap-4"
+      style={{ animationDelay: "80ms" }}
+      aria-labelledby="audit-resources"
+    >
       <h2 id="audit-resources" className="text-sm font-semibold uppercase tracking-wider text-muted">
         {copy.metrics.resourcesTitle}
       </h2>
