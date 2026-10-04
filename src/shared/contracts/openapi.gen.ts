@@ -107,6 +107,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Authenticated: create a pending Act-mode run that turns one message into at most one governed client action. */
+    post: operations["action_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/exports": {
     parameters: {
       query?: never;
@@ -564,6 +581,14 @@ export interface components {
             /** Format: uuid */
             client_id: string;
             version: number;
+          }
+        | {
+            /** @enum {unknown} */
+            action: "create" | "update" | "delete" | "none";
+            /** Format: uuid */
+            client_id: string | null;
+            /** Format: uuid */
+            client_trace_id: string | null;
           };
       error: null | {
         /** @enum {string} */
@@ -617,6 +642,9 @@ export interface components {
       query: string;
       /** Format: uuid */
       deal_id?: string;
+    };
+    ActionRequest: {
+      message: string;
     };
     ChatRequest: {
       message: string;
@@ -1549,6 +1577,113 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ChatRequest"];
+      };
+    };
+    responses: {
+      /** @description Governed outcome. Inspect decision and error; HTTP success alone is not approval. */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description See protocols.md for error semantics. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+    };
+  };
+  action_start: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ActionRequest"];
       };
     };
     responses: {
