@@ -16,9 +16,59 @@ The reference application is an internal company chat and client book for a fict
 
 ---
 
-## For the judges: run it
+## For the judges
 
-Everything in this block runs on a clean clone with **no credentials and no model services**. Verified from a fresh worktree with no `.env.local` present.
+Two ways in. Use the **hosted instance** to see the product; use the **repository** to verify the tests. Please do not try to boot the web app locally: it needs our Supabase project and two locally hosted models, so `npm run dev` on your machine will not give you a working app. The two paths below cover everything.
+
+### 1. The hosted instance, no setup
+
+**https://hackyeah-2026.vercel.app/login**
+
+Four prepared sign-ins are handed over with this submission. There is no signup and every record is synthetic. The reference app is an internal company chat and client book for a fictional acquisition target called AsterCloud. What is being judged is the control layer every request passes through, not the chat.
+
+| Role         | Access                                                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| **employee** | Internal content. No deal access. Cannot create or edit clients.                                                           |
+| **analyst**  | Member of deal ASTER, so restricted deal material is in scope. Can create clients and change fees up to 20%.               |
+| **admin**    | Policy and feed, review queue, fee changes up to 50%. Member of no deal, so being an admin does not imply deal access.     |
+| **reviewer** | Outside party. Public content only. Cannot list clients at all: the request returns the same 404 as a non-existent record. |
+
+Four roles exist because the same question returns different results depending on who asks, and because identity comes from trusted server records, never from the request body and never from the model.
+
+After signing in you land on **Ask**. The sidebar:
+
+| Screen                          | What it is                                                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Ask**                         | The chat. Every message goes through the gateway before a model sees it.                                                  |
+| **Sources**                     | Document import. Untrusted input, assessed per line and quarantined.                                                      |
+| **Public summary**              | PDF export, restricted to public-classified content.                                                                      |
+| **Activity**                    | The audit trail. Look up any `trace_id` here.                                                                             |
+| **Clients**                     | The client book. Writes are role-limited and reviewed.                                                                    |
+| **Review**, **Policy and feed** | Admin only. Visible to the admin role, and the gateway refuses the calls for anyone else regardless of what any UI shows. |
+
+#### What we would like you to try
+
+1. **Attack it by hand.** Any ad-hoc prompt is welcome: jailbreaks, forged authority, encoded instructions, or an injection pasted inside a document under Sources. The answer is buffered and checked before you see it, and retrieval was already scoped in SQL by role and deal membership, so a prompt that defeats our classifier still finds nothing to leak.
+2. **Follow a trace.** Every attempt returns a `trace_id`. Paste it into Activity to see which stage decided, the reason code, and what it cost.
+3. **Compare roles.** Ask as the analyst and then as the employee the same question about AsterCloud's FY2026 forecast.
+4. **Try to escalate.** Put a `role` or `actor_id` field in a request body. It is rejected as invalid input rather than honoured.
+5. **Change the controls.** As the admin, open Policy and feed. Switching `mode` to `strict` turns every REVIEW into a BLOCK on the very next request, with no redeploy. The same change over the API is `PUT /api/v1/policy`, which takes the full document, an `Idempotency-Key` and an `expected_version`, and applies it with an optimistic version check.
+
+What you **cannot** do is weaken the layer below its floor. The schema's maxima are hard ceilings a policy may lower but never raise, cross-field relationships are re-validated (`review < block`, each per-actor budget at or under its per-organisation budget, context budget arithmetic), the version must be exactly `expected_version + 1`, and SQL re-checks admin membership and locks the head so two concurrent edits cannot both win. A rejected policy leaves the active one untouched. See [the sample policy](docs/contracts/policy.example.json), [its schema](docs/contracts/policy.schema.json) and `src/shared/gateway/policy-update.ts`.
+
+#### Known gaps, stated up front
+
+The threat-feed **push** endpoint is not in this build: `GET /feeds` works, `POST` and `PUT` answer 503. Review approval is not implemented. PDF import is refused, because multi-window semantic scanning is specified and verified but not shipped here. Chat answers are withheld rather than partially redacted; redaction exists on import only. There is no configurable model allowlist, and PII detection covers email addresses but not phone, IBAN, PESEL or card numbers. `npm run test:controls` prints that list itself.
+
+The MCP server and the guard over Claude Code are **built and unit-tested but not activated**: both endpoints return `POLICY_UNAVAILABLE` until policy v4 carries `client_guard`. See [MCP: the layer works in both directions](#mcp-the-layer-works-in-both-directions).
+
+**If a request returns 503 `SEMANTIC_UNAVAILABLE`, that is the intended behaviour.** A required control being unavailable withholds the operation rather than falling back to an unchecked answer. The classifier runs on a team machine. If you see this persistently rather than occasionally, please tell us and we will bring it back up.
+
+### 2. The repository, needs nothing
+
+**https://github.com/Bartek201301/hackyeah-2026**
+
+Runs on a clean clone with no credentials and no model services. Verified from a fresh worktree with no `.env.local` present.
 
 ```
 git clone https://github.com/Bartek201301/hackyeah-2026.git
@@ -35,14 +85,14 @@ Then the one command that answers the brief directly:
 npm run test:controls
 ```
 
-One row per control area named in the task PDF, the test that proves the allowed path, the test that proves the BLOCK, REVIEW or 503 path, and a verdict. It runs offline in a few seconds with no `.env.local`. Current result: **15 of 15 rows PASS, 304 tests across 18 files**, plus a second table of five items that are honestly **not** implemented. That table never changes the exit code, because we would rather hand you the gaps than have you find them. The full matrix is printed under [Control matrix](#control-matrix) below.
+One row per control area named in the task PDF, the test that proves the allowed path, the test that proves the BLOCK, REVIEW or 503 path, and a verdict. It runs offline in a few seconds. Current result: **15 of 15 rows PASS, 304 tests across 18 files**, plus a second table of five items that are honestly **not** implemented. That table never changes the exit code, because we would rather hand you the gaps than have you find them. The full matrix is printed under [Control matrix](#control-matrix) below.
 
-Just the control decisions, in under a second:
+Just the control decisions, in about 300 ms:
 
 ```
 npx vitest run src/shared/gateway/checks.test.ts src/shared/gateway/chat.test.ts \
                src/shared/gateway/client-rules.test.ts src/shared/gateway/client-act.test.ts
-# 120 tests in 4 files, about 300 ms
+# 120 tests in 4 files
 ```
 
 | Suite                              | Command                                                                                                                                                                                    | Needs                                                                                  | Proves                                                                                                                                                                                     |
@@ -56,20 +106,7 @@ npx vitest run src/shared/gateway/checks.test.ts src/shared/gateway/chat.test.ts
 | Live model gate                    | `npx vitest run --config scripts/live/vitest.config.mts`                                                                                                                                   | Laya + Qwen                                                                            | The whole hybrid gate with real models and an in-memory repository.                                                                                                                        |
 | Runtime preflight                  | `npm run verify:release`                                                                                                                                                                   | full env                                                                               | Env names, database, active policy and feed, pinned classifier revision, pinned model digest, app reachability. Fails on any missing service; skips nothing.                               |
 
-**Try to break it by hand.** Any ad-hoc prompt is welcome. The gateway buffers the answer and checks it before you see it, so a successful jailbreak still has to get a protected value past the output check, and the records it would need were never retrieved. Every attempt returns a `trace_id`; open it in the UI to see the stage, reason code and usage.
-
-**Change the configuration and watch it adjust.** Policy is a single versioned document, live-updatable by an administrator with an optimistic version check:
-
-```
-curl -s -X PUT https://hackyeah-2026.vercel.app/api/v1/policy \
-  -H 'content-type: application/json' -H 'idempotency-key: <uuid>' \
-  -b '<admin session>' \
-  -d '{"expected_version":3,"policy":{ ...full document with "version":4, "mode":"strict" ... }}'
-```
-
-The next request decides under the new version, with no redeploy. Set `"mode":"strict"` and every REVIEW becomes a BLOCK. Lower a threshold and more content is withheld. What you **cannot** do is weaken the layer below its floor: the schema's maxima are hard ceilings a policy may lower but never raise, cross-field relationships are re-validated (`review < block`, budgets per actor at or under per organisation, context budget arithmetic), the version must be exactly `expected_version + 1`, and SQL re-checks admin membership and locks the head so two concurrent edits cannot both win. A rejected policy leaves the active one untouched. See [the sample policy](docs/contracts/policy.example.json), [its schema](docs/contracts/policy.schema.json) and `src/shared/gateway/policy-update.ts`.
-
-Honest gap: the threat-feed **push** endpoint is not in this build. `GET /feeds` reads the active feed; `POST`/`PUT` answer 503. Policy is the live configuration path.
+Read on from here for the nine-stage decision pipeline with the file that implements each stage, the full benchmark results including the four attacks that were answered named individually, the Laya section, an OWASP LLM Top 10 mapping with the gaps marked, and a measured honest-limits section.
 
 ---
 
