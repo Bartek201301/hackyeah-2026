@@ -8,7 +8,7 @@ import { meta as featureWorkbenchMeta } from "@/features/workbench";
 import { meta as featureAuditMeta } from "@/features/audit";
 // new-feature:imports
 
-export const APP_NAME = "AI Control Gateway";
+export const APP_NAME = "InterLock";
 
 const workbench = `/${featureWorkbenchMeta.slug}`;
 
