@@ -108,7 +108,7 @@ begin
   -- A key first used for a request that was not allowed has no client to return.
   if (v_op ->> 'replay')::boolean then
     select jsonb_build_object('client_id', a.payload -> 'client_id', 'version', a.payload -> 'version',
-      'replayed', true)
+      'replayed', true, 'trace_id', a.trace_id)
     into v_result from public.audit_events a
     where a.organisation_id = p_organisation_id and a.operation_id = (v_op ->> 'operation_id')::uuid
       and a.event_type = 'decision' and a.payload ->> 'decision' = 'ALLOW' and a.payload ? 'client_id';
@@ -135,7 +135,8 @@ begin
   values (v_trace, p_organisation_id, p_actor_id, 'client_create', 'completed', 'ALLOW', '[]'::jsonb,
     v_usage, (v_op ->> 'policy_version')::int, (v_op ->> 'feed_version')::int);
 
-  return jsonb_build_object('client_id', v_id, 'version', 1, 'replayed', false);
+  return jsonb_build_object('client_id', v_id, 'version', 1, 'replayed', false,
+    'trace_id', v_trace);
 end;
 $$;
 
@@ -186,7 +187,7 @@ begin
   -- Replay precedes the CAS: a committed retry returns its original version even after later updates.
   if (v_op ->> 'replay')::boolean then
     select jsonb_build_object('client_id', a.payload -> 'client_id', 'version', a.payload -> 'version',
-      'replayed', true)
+      'replayed', true, 'trace_id', a.trace_id)
     into v_result from public.audit_events a
     where a.organisation_id = p_organisation_id and a.operation_id = (v_op ->> 'operation_id')::uuid
       and a.event_type = 'decision' and a.payload ->> 'decision' = 'ALLOW'
@@ -221,7 +222,8 @@ begin
   values (v_trace, p_organisation_id, p_actor_id, 'client_update', 'completed', 'ALLOW', '[]'::jsonb,
     v_usage, (v_op ->> 'policy_version')::int, (v_op ->> 'feed_version')::int);
 
-  return jsonb_build_object('client_id', p_client_id, 'version', v_client.version + 1, 'replayed', false);
+  return jsonb_build_object('client_id', p_client_id, 'version', v_client.version + 1,
+    'replayed', false, 'trace_id', v_trace);
 end;
 $$;
 

@@ -78,7 +78,12 @@ test("create_client writes once with an ALLOW audit free of names, notes and amo
   const args = createArgs("analyst", client);
   const first = await rpc("create_client", args);
   created.push(first.client_id);
-  assert.deepEqual(first, { client_id: first.client_id, version: 1, replayed: false });
+  assert.deepEqual(first, {
+    client_id: first.client_id,
+    version: 1,
+    replayed: false,
+    trace_id: first.trace_id,
+  });
   const row = await clientRow(first.client_id);
   assert.deepEqual(
     [row.organisation_id, row.name, row.status, row.annual_fee_usd, row.version, row.created_by],
@@ -86,6 +91,7 @@ test("create_client writes once with an ALLOW audit free of names, notes and amo
   );
 
   const { op, event, activity } = await decisionFor("client_create", args.p_idempotency_key);
+  assert.equal(event.trace_id, first.trace_id);
   assert.equal(op.state, "completed");
   assert.deepEqual(
     [event.payload.decision, event.payload.client_id, event.payload.version, event.payload.fields],
@@ -96,7 +102,7 @@ test("create_client writes once with an ALLOW audit free of names, notes and amo
     assert.ok(!text.includes(secret));
   assert.deepEqual(activity, { operation: "client_create", state: "completed", decision: "ALLOW" });
 
-  // Same key and hash: the first result, no second row. Another request under the key conflicts.
+  // Same key and hash: the first result and trace, no second row. Another request under the key conflicts.
   assert.deepEqual(await rpc("create_client", args), { ...first, replayed: true });
   const rows = must("rows", await db.from("clients").select("id").eq("name", client.name));
   assert.equal(rows.length, 1);
@@ -115,7 +121,7 @@ test("update_client compares and sets the version and changes only allowed field
   created.push(id);
   const args = updateArgs("analyst", id, 1, { annual_fee_usd: 2000, status: "paused" });
   const first = await rpc("update_client", args);
-  assert.deepEqual(first, { client_id: id, version: 2, replayed: false });
+  assert.deepEqual(first, { client_id: id, version: 2, replayed: false, trace_id: first.trace_id });
 
   // Stale version: CONFLICT and nothing changes.
   assert.equal(await errorOf("update_client", updateArgs("analyst", id, 1, { notes: "late" })), "CONFLICT");
@@ -130,6 +136,7 @@ test("update_client compares and sets the version and changes only allowed field
   );
 
   const { event } = await decisionFor("client_update", args.p_idempotency_key);
+  assert.equal(event.trace_id, first.trace_id);
   assert.deepEqual(
     [event.payload.decision, event.payload.version, event.payload.fields],
     ["ALLOW", 2, ["annual_fee_usd", "status"]],
