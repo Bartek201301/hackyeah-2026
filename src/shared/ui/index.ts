@@ -17,3 +17,4 @@ export { Notice } from "./Notice";
 export { PageHeader } from "./PageHeader";
 export { ProgressBar } from "./ProgressBar";
 export { StatCard } from "./StatCard";
+export { ThinkingIndicator } from "./ThinkingIndicator";
