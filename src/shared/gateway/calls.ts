@@ -207,7 +207,7 @@ export function createCalls({
 }: {
   deps: GatewayDeps;
   actor: ActorContext;
-  runId: string;
+  runId: string | null;
   policy: GatewayPolicy;
   op: BegunOperation;
   usage: Usage;
@@ -230,8 +230,10 @@ export function createCalls({
     if (overall.aborted) throw new Stop({ error: "INCOMPLETE" });
     // The owner's run_cancel lands between calls: one read before every reservation. A call already
     // started is kept and settled as usual.
-    const now = await t.time("persistence_ms", () => repo.readRun(actor, runId));
-    if (now?.state === "cancel_requested") throw new Stop({ error: "CANCELLED" });
+    if (runId !== null) {
+      const now = await t.time("persistence_ms", () => repo.readRun(actor, runId));
+      if (now?.state === "cancel_requested") throw new Stop({ error: "CANCELLED" });
+    }
     open = true;
     try {
       await t.time("persistence_ms", () =>

@@ -18,6 +18,7 @@
 | Required verification                            | [Acceptance](testing/acceptance.md)                                                                   |
 | Who builds what and when                         | [Implementation plan](team/implementation-plan.md)                                                    |
 | Commands, accounts and operational configuration | [Setup](team/setup.md)                                                                                |
+| MCP and restricted Claude Code release procedure | [MCP guard runbook](team/mcp-guard-runbook.md)                                                        |
 | Rationale / externally supported claims          | [Decisions](team/decisions.md) / [research](product/research-decisions.md)                            |
 | Product screens                                  | [Design contract](../DESIGN.md)                                                                       |
 | Demo / pitch                                     | [Runbook](demo/runbook.md), [pitch](pitch/pitch.md), [slides](pitch/presentation.html)                |

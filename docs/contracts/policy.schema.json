@@ -368,6 +368,48 @@
       },
       "required": ["version", "currency", "input_micro_usd_per_token", "output_micro_usd_per_token", "label"]
     },
+    "client_guard": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": { "const": "restricted-demo-v1" },
+        "prompt_assessment_required": { "const": true },
+        "allowed_tools": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 7,
+          "items": {
+            "enum": [
+              "Read",
+              "Glob",
+              "Grep",
+              "Edit",
+              "Write",
+              "mcp__interlock__search_excerpts",
+              "mcp__interlock__read_excerpt"
+            ]
+          }
+        },
+        "editable_root": { "const": "src" },
+        "editable_extensions": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 7,
+          "items": { "enum": [".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".css"] }
+        },
+        "max_prompt_bytes": { "type": "integer", "minimum": 1, "maximum": 6000 },
+        "max_edit_bytes": { "type": "integer", "minimum": 1, "maximum": 2000 }
+      },
+      "required": [
+        "profile",
+        "prompt_assessment_required",
+        "allowed_tools",
+        "editable_root",
+        "editable_extensions",
+        "max_prompt_bytes",
+        "max_edit_bytes"
+      ]
+    },
     "retention": {
       "type": "object",
       "additionalProperties": false,

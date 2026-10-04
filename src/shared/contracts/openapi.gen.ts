@@ -417,10 +417,42 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/guard/check": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Hook token only: assess one Claude prompt or proposed tool action before effect. */
+    post: operations["guard_check"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    GuardCheckRequest:
+      | {
+          /** @constant */
+          event_type: "prompt";
+          event_id: string;
+          prompt: string;
+        }
+      | {
+          /** @constant */
+          event_type: "tool";
+          event_id: string;
+          tool_name: string;
+          relative_path?: string;
+          proposed_text?: string;
+        };
     /** @enum {string} */
     Decision: "ALLOW" | "REDACT" | "REVIEW" | "BLOCK";
     Usage: {
@@ -879,6 +911,26 @@ export interface components {
         output_micro_usd_per_token: number;
         /** @constant */
         label: "Illustrative commercial equivalent; not an invoice";
+      };
+      client_guard?: {
+        /** @constant */
+        profile: "restricted-demo-v1";
+        /** @constant */
+        prompt_assessment_required: true;
+        allowed_tools: (
+          | "Read"
+          | "Glob"
+          | "Grep"
+          | "Edit"
+          | "Write"
+          | "mcp__interlock__search_excerpts"
+          | "mcp__interlock__read_excerpt"
+        )[];
+        /** @constant */
+        editable_root: "src";
+        editable_extensions: (".ts" | ".tsx" | ".js" | ".jsx" | ".json" | ".md" | ".css")[];
+        max_prompt_bytes: number;
+        max_edit_bytes: number;
       };
       retention: {
         raw_days: number;
@@ -3968,6 +4020,75 @@ export interface operations {
         };
       };
       /** @description See protocols.md for error semantics. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+    };
+  };
+  guard_check: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["GuardCheckRequest"];
+      };
+    };
+    responses: {
+      /** @description Durably assessed ALLOW. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description Invalid or oversized request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description Missing or invalid bearer token. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description Blocked action or wrong scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description Request body exceeds the byte limit. */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Response"];
+        };
+      };
+      /** @description Required guard state, model or audit is unavailable. */
       503: {
         headers: {
           [name: string]: unknown;

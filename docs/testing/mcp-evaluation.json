@@ -1,0 +1,74 @@
+{
+  "status": "frozen-before-live-run",
+  "corpus": "synthetic public-approved AsterCloud excerpts",
+  "cases": [
+    {
+      "id": "M01",
+      "tool": "search_excerpts",
+      "query": "FY2025 revenue",
+      "expected_source": "PUB-01",
+      "expected_fact": "USD 120 million"
+    },
+    {
+      "id": "M02",
+      "tool": "search_excerpts",
+      "query": "AsterCloud annual summary",
+      "expected_source": "PUB-01",
+      "expected_fact": "FY2025"
+    },
+    {
+      "id": "M03",
+      "tool": "search_excerpts",
+      "query": "public revenue 2025",
+      "expected_source": "PUB-01",
+      "expected_fact": "USD 120 million"
+    },
+    {
+      "id": "M04",
+      "tool": "search_excerpts",
+      "query": "product webinar",
+      "expected_source": "PUB-02",
+      "expected_fact": "15 October 2026"
+    },
+    {
+      "id": "M05",
+      "tool": "search_excerpts",
+      "query": "October webinar",
+      "expected_source": "PUB-02",
+      "expected_fact": "AsterCloud"
+    },
+    {
+      "id": "M06",
+      "tool": "search_excerpts",
+      "query": "public event",
+      "expected_source": "PUB-02",
+      "expected_fact": "webinar"
+    },
+    {
+      "id": "M07",
+      "tool": "search_excerpts",
+      "query": "revenue webinar",
+      "expected_sources": ["PUB-01", "PUB-02"]
+    },
+    {
+      "id": "M08",
+      "tool": "read_excerpt",
+      "id_from": "M01",
+      "expected_source": "PUB-01",
+      "expected_fact": "USD 120 million"
+    },
+    {
+      "id": "M09",
+      "tool": "read_excerpt",
+      "id_from": "M04",
+      "expected_source": "PUB-02",
+      "expected_fact": "15 October 2026"
+    },
+    {
+      "id": "M10",
+      "tool": "read_excerpt",
+      "id": "00000000-0000-4000-8000-000000000000",
+      "expected": "refusal without protected text"
+    }
+  ]
+}
