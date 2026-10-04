@@ -30,8 +30,12 @@ const allowed = new Set([
   "items",
   "minItems",
   "maxItems",
+  "uniqueItems",
   "minLength",
   "maxLength",
+  "pattern",
+  "minProperties",
+  "maxProperties",
   "minimum",
   "maximum",
   "const",
@@ -107,7 +111,8 @@ for (const [path, methods] of Object.entries(api.paths)) {
     for (const param of path.matchAll(/\{([^}]+)\}/g)) {
       assert(operation.parameters.some((p) => p.in === "path" && p.name === param[1] && p.required));
     }
-    if (["post", "put"].includes(method))
+    // Hook events carry a required event_id in their strict body schema.
+    if (["post", "put"].includes(method) && operation.operationId !== "guard_check")
       assert(operation.parameters.some((p) => p.name === "Idempotency-Key" && p.required));
   }
 }

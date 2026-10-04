@@ -85,22 +85,23 @@ const usage = {
   comparison_micro_usd: 0,
   comparison_rate_version: "test",
 };
-async function finalize(f, { role = "service_role", decision = "ALLOW", unknown = false } = {}) {
+async function finalize(
+  f,
+  { role = "service_role", decision = "ALLOW", unknown = false, scope = "guard:prompt" } = {},
+) {
   const result = await asRole(role, () =>
-    db.query(
-      "select finalize_guard_check($1,$2,$3,$4,'guard:prompt',$5,$6::jsonb,$7::jsonb,$8::jsonb,$9) as result",
-      [
-        f.operation,
-        f.org,
-        f.actor,
-        f.token,
-        decision,
-        JSON.stringify([]),
-        JSON.stringify(usage),
-        JSON.stringify({ stage: "claude_prompt", semantic_status: "complete" }),
-        unknown,
-      ],
-    ),
+    db.query("select finalize_guard_check($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::jsonb,$10) as result", [
+      f.operation,
+      f.org,
+      f.actor,
+      f.token,
+      scope,
+      decision,
+      JSON.stringify([]),
+      JSON.stringify(usage),
+      JSON.stringify({ stage: "claude_prompt", semantic_status: "complete" }),
+      unknown,
+    ]),
   );
   return result.rows[0].result;
 }
@@ -140,6 +141,15 @@ test("revoked token, changed policy and unknown provider usage cannot approve", 
   assert.equal(
     (await db.query("select state from operations where id=$1", [unresolved.operation])).rows[0].state,
     "unknown",
+  );
+});
+
+test("a hook operation cannot be finalized under an excerpt scope", async () => {
+  const f = await fixture();
+  await assert.rejects(finalize(f, { scope: "excerpt:read" }), /ACCESS_DENIED/);
+  assert.equal(
+    (await db.query("select state from operations where id=$1", [f.operation])).rows[0].state,
+    "intent",
   );
 });
 

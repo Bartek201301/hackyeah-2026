@@ -30,6 +30,7 @@ begin
   if p_operation_id is null or p_organisation_id is null or p_actor_id is null or p_token_id is null
      or coalesce(p_scope, '') not in ('excerpt:search', 'excerpt:read', 'guard:prompt', 'guard:tool')
      or p_decision is null or p_decision not in ('ALLOW', 'BLOCK', 'REVIEW')
+     or p_unknown is null
      or jsonb_typeof(p_reasons) is distinct from 'array'
      or jsonb_typeof(p_usage) is distinct from 'object'
      or jsonb_typeof(p_payload) is distinct from 'object'
@@ -50,6 +51,11 @@ begin
     and o.operation in ('mcp_input', 'mcp_output', 'claude_prompt', 'claude_tool')
   for update;
   if not found then raise exception 'NOT_FOUND' using detail = 'guard operation unavailable'; end if;
+  if (v_op.operation in ('mcp_input', 'mcp_output') and p_scope not in ('excerpt:search', 'excerpt:read'))
+     or (v_op.operation = 'claude_prompt' and p_scope <> 'guard:prompt')
+     or (v_op.operation = 'claude_tool' and p_scope <> 'guard:tool') then
+    raise exception 'ACCESS_DENIED' using detail = 'scope does not match guard operation';
+  end if;
   select a.trace_id into v_trace from public.audit_events a
   where a.organisation_id = p_organisation_id and a.operation_id = v_op.id
     and a.event_type = 'intent';

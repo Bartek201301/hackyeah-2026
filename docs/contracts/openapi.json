@@ -3714,6 +3714,46 @@
           }
         ]
       }
+    },
+    "/guard/check": {
+      "post": {
+        "operationId": "guard_check",
+        "summary": "Hook token only: assess one Claude prompt or proposed tool action before effect.",
+        "tags": ["guard"],
+        "security": [{ "scopedToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/GuardCheckRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Durably assessed ALLOW.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Response" } } }
+          },
+          "400": {
+            "description": "Invalid or oversized request.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Response" } } }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Response" } } }
+          },
+          "403": {
+            "description": "Blocked action or wrong scope.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Response" } } }
+          },
+          "413": {
+            "description": "Request body exceeds the byte limit.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Response" } } }
+          },
+          "503": {
+            "description": "Required guard state, model or audit is unavailable.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Response" } } }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3727,10 +3767,51 @@
       "scopedToken": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Server-hashed, expiring and revocable MCP/feed token; scope and actor resolved server-side."
+        "description": "Server-hashed, expiring and revocable MCP/guard/feed token; scope and actor resolved server-side."
       }
     },
     "schemas": {
+      "GuardCheckRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "event_type": { "const": "prompt" },
+              "event_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]+$"
+              },
+              "prompt": { "type": "string", "minLength": 1, "maxLength": 6000 }
+            },
+            "required": ["event_type", "event_id", "prompt"]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "event_type": { "const": "tool" },
+              "event_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]+$"
+              },
+              "tool_name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9_]+$"
+              },
+              "relative_path": { "type": "string", "maxLength": 300 },
+              "proposed_text": { "type": "string", "maxLength": 2000 }
+            },
+            "required": ["event_type", "event_id", "tool_name"]
+          }
+        ]
+      },
       "Decision": {
         "type": "string",
         "enum": ["ALLOW", "REDACT", "REVIEW", "BLOCK"]

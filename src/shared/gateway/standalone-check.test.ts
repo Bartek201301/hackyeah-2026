@@ -44,6 +44,7 @@ function harness(
     auditFails?: boolean;
     finalDecision?: "ALLOW" | "BLOCK";
     replay?: boolean;
+    opVersion?: number;
   } = {},
 ) {
   const log: string[] = [];
@@ -64,7 +65,7 @@ function harness(
         operation_id: "op",
         state: "intent",
         replay: options.replay ?? false,
-        policy_version: 4,
+        policy_version: options.opVersion ?? 4,
         feed_version: 2,
       };
     },
@@ -160,6 +161,9 @@ describe("standalone guard assessment", () => {
     expect((await assessStandalone(unavailable.deps, input)).body.error?.code).toBe("AUDIT_UNAVAILABLE");
     const changed = harness({ finalDecision: "BLOCK" });
     expect((await assessStandalone(changed.deps, input)).body.decision).toBe("BLOCK");
+    const stale = harness({ opVersion: 5 });
+    expect((await assessStandalone(stale.deps, input)).body.error?.code).toBe("POLICY_UNAVAILABLE");
+    expect(stale.log).toEqual(["intent", "finalize"]);
   });
   it("replays a completed decision without a second provider call", async () => {
     const h = harness({ replay: true });

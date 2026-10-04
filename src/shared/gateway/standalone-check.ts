@@ -62,8 +62,24 @@ export async function assessStandalone(deps: GatewayDeps, input: StandaloneInput
       body: envelope({ ...saved, semantic: SEMANTIC_UNAVAILABLE }),
     };
   }
-  if (op.policy_version !== versions.policy_version || op.feed_version !== versions.feed_version)
+  if (op.policy_version !== versions.policy_version || op.feed_version !== versions.feed_version) {
+    try {
+      await deps.repository.finalizeGuardCheck({
+        operationId: op.operation_id,
+        actor,
+        tokenId,
+        scope,
+        decision: "BLOCK",
+        reasons: ["policy:changed"],
+        usage,
+        event: { stage },
+        unknown: false,
+      });
+    } catch {
+      return errorOutcome("AUDIT_UNAVAILABLE", { trace_id: traceId, ...versions });
+    }
     return errorOutcome("POLICY_UNAVAILABLE", { trace_id: traceId, ...versions });
+  }
 
   const findings: Finding[] = [];
   // The command hook has a 20-second HTTP deadline; leave room to finalize and answer.
