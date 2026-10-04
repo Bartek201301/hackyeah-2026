@@ -4,13 +4,12 @@ A server-side control layer that every AI interaction passes through. It checks 
 
 It works in both directions. A web app or any HTTP client calls it directly. A coding agent reaches company data through it as an **MCP server**, and the same layer also **governs that agent**: Claude Code's own prompts and proposed tool calls are checked server-side before they take effect, so an agent cannot talk its way into a shell, a dotfile or a dependency change.
 
-Measured on a 36-case held-out adversarial set committed before the run: **0 of 36 protected values leaked**, 12 of 12 benign questions answered, 7 of 12 attacks blocked, 4 of 12 attacks answered without leaking. Reproduce with one command. Numbers, method and limits below.
+Measured on a 36-case held-out adversarial set committed before the run: **0 of 36 protected values leaked**, 12 of 12 benign questions answered, 7 of 12 attacks blocked outright. The attacks that got past the classifier still found nothing to leak, because retrieval is scoped in SQL before the model runs. Reproduce with one command; method below.
 
 **Challenge:** HackYeah 2026, Goldman Sachs "AI Control Layer" ([task page](https://hackyeah.pl/tasks-prizes)).
 **Live instance:** https://hackyeah-2026.vercel.app with four prepared sign-ins, which are in the HackTribe submission form. No public signup. It runs there, not on a local clone; see [For the judges](#for-the-judges).
 **Deck:** [six slides](docs/pitch/presentation.html) · [one-page pitch](docs/pitch/pitch.md).
 **Demo video:** _TODO: paste the recording URL before submitting._
-**Team:** Bartosz (integrator), Maciej (workbench), Julian (detection), Nikodem (audit).
 
 The reference application is an internal company chat and client book for a fictional acquisition target, AsterCloud. All data is synthetic. The control layer is the product; the app only makes its decisions visible.
 
@@ -62,17 +61,13 @@ After signing in you land on **Ask**. The sidebar:
 2. **Follow a trace.** Every attempt returns a `trace_id`. Paste it into Activity to see which stage decided, the reason code, and what it cost.
 3. **Compare roles.** Ask as the analyst and then as the employee the same question about AsterCloud's FY2026 forecast.
 4. **Try to escalate.** Put a `role` or `actor_id` field in a request body. It is rejected as invalid input rather than honoured.
-5. **Change the controls.** As the admin, open Policy and feed. Switching `mode` to `strict` turns every REVIEW into a BLOCK on the very next request, with no redeploy. The same change over the API is `PUT /api/v1/policy`, which takes the full document, an `Idempotency-Key` and an `expected_version`, and applies it with an optimistic version check.
+5. **Change the controls.** As the admin, open Policy and feed. Switching `mode` to `strict` turns every REVIEW into a BLOCK on the very next request, with no redeploy. The same change over the API is `PUT /api/v1/policy`, which takes the full document, an `Idempotency-Key` and an `expected_version`, and applies it with an optimistic version check. Please switch it back to `balanced` afterwards: other judges share this instance.
 
 What you **cannot** do is weaken the layer below its floor. The schema's maxima are hard ceilings a policy may lower but never raise, cross-field relationships are re-validated (`review < block`, each per-actor budget at or under its per-organisation budget, context budget arithmetic), the version must be exactly `expected_version + 1`, and SQL re-checks admin membership and locks the head so two concurrent edits cannot both win. A rejected policy leaves the active one untouched. See [the sample policy](docs/contracts/policy.example.json), [its schema](docs/contracts/policy.schema.json) and `src/shared/gateway/policy-update.ts`.
 
-#### Known gaps, stated up front
+What is not in this build is listed once, in [Status and known limits](#status-and-known-limits); `npm run test:controls` prints the same list.
 
-The threat-feed **push** endpoint is not in this build: `GET /feeds` works, `POST` and `PUT` answer 503. Review approval is not implemented. PDF import is refused, because multi-window semantic scanning is specified and verified but not shipped here. Chat answers are withheld rather than partially redacted; redaction exists on import only. There is no configurable model allowlist, and PII detection covers email addresses, `+48` phone numbers and checksum-valid Polish IBANs and PESELs, but not unprefixed phone numbers, foreign IBANs or card numbers. `npm run test:controls` prints that list itself.
-
-The MCP server and the guard over Claude Code are **built and unit-tested but not activated**: both endpoints return `POLICY_UNAVAILABLE` until policy v4 carries `client_guard`. See [MCP: the layer works in both directions](#mcp-the-layer-works-in-both-directions).
-
-**If a request returns 503 `SEMANTIC_UNAVAILABLE`, that is the intended behaviour.** A required control being unavailable withholds the operation rather than falling back to an unchecked answer. The classifier runs on a team machine. If you see this persistently rather than occasionally, please tell us and we will bring it back up.
+**If a request returns 503 `SEMANTIC_UNAVAILABLE`, that is the intended behaviour.** A required control being unavailable withholds the operation rather than falling back to an unchecked answer. The classifier runs on a team machine. It can also happen briefly when several requests reach the models at the same moment. If you see it persistently rather than occasionally, please tell us and we will bring it back up.
 
 ### 2. The repository, needs nothing
 
@@ -87,7 +82,7 @@ npm ci
 npm run check
 ```
 
-Expected: exit 0, **1085 tests in 79 files**, 34 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
+Expected: exit 0, **1091 tests in 79 files**, 35 tooling tests, and a production build. The suite carries positive and negative cases for every control: what is allowed, what is blocked, what is redacted, what is held for a human, and what is refused because a required control was unavailable.
 
 Then the one command that answers the brief directly:
 
@@ -95,7 +90,7 @@ Then the one command that answers the brief directly:
 npm run test:controls
 ```
 
-One row per control area named in the task PDF, the test that proves the allowed path, the test that proves the BLOCK, REVIEW or 503 path, and a verdict. It runs offline in a few seconds. Current result: **15 of 15 rows PASS, 304 tests across 18 files**, plus a second table of five items that are honestly **not** implemented. That table never changes the exit code, because we would rather hand you the gaps than have you find them. The full matrix is printed under [Control matrix](#control-matrix) below.
+One row per control area named in the task PDF, the test that proves the allowed path, the test that proves the BLOCK, REVIEW or 503 path, and a verdict. It runs offline in a few seconds. Current result: **15 of 15 rows PASS, 310 tests across 18 files**, plus a second table of six items that are not in this build. That table never changes the exit code. The full matrix is printed under [Control matrix](#control-matrix) below.
 
 Just the control decisions, in about 300 ms:
 
@@ -116,7 +111,7 @@ npx vitest run src/shared/gateway/checks.test.ts src/shared/gateway/chat.test.ts
 | Live model gate                    | `npx vitest run --config scripts/live/vitest.config.mts`                                                                                                                                   | Laya + Qwen                                                                            | The whole hybrid gate with real models and an in-memory repository.                                                                                                                        |
 | Runtime preflight                  | `npm run verify:release`                                                                                                                                                                   | full env                                                                               | Env names, database, active policy and feed, pinned classifier revision, pinned model digest, app reachability. Fails on any missing service; skips nothing.                               |
 
-Read on from here for the nine-stage decision pipeline with the file that implements each stage, the full benchmark results including the four attacks that were answered named individually, the Laya section, an OWASP LLM Top 10 mapping with the gaps marked, and a measured honest-limits section.
+Read on for the nine-stage decision pipeline with the file that implements each stage, the Laya section, the MCP server and agent guard, the benchmark, an OWASP LLM Top 10 mapping, and the status table with known limits.
 
 ---
 
@@ -157,7 +152,7 @@ The brief asks for a hybrid of deterministic and AI-based controls. Laya is the 
 1. **It does not generate text.** There is no output to parse and nothing to hallucinate. A judge that writes prose can be argued with; one that returns three probabilities cannot.
 2. **It runs locally and free.** No company text leaves the machine, no paid API, no per-call budget pressure on the control path itself. The brief rules out paid subscriptions, so a control that costs money per request is not a control we could ship.
 3. **One forward pass for all three risks.** The three questions we ask share a single pass, so the semantic gate is one round trip, not three.
-4. **Calibrated probabilities.** Laya trains against strictly proper scoring rules, so the scores order risk usefully enough to put thresholds on. We still refit nothing and treat the numbers as signals, for the reasons in Honest limits.
+4. **Calibrated probabilities.** Laya trains against strictly proper scoring rules, so the scores order risk usefully enough to put thresholds on. We still refit nothing and treat the numbers as signals, for the reasons in [Status and known limits](#status-and-known-limits).
 
 ### What we pin
 
@@ -195,7 +190,7 @@ This is the part we would most like a judge to look at. Laya is a network servic
 
 Coverage is then recomputed rather than believed. `verifyCoverage` checks the returned ranges against the text itself: `text_sha256` must match, the first range must start at character 0, ranges must advance without a gap, each must stay within the per-window token budget, there must be no more than `max_windows` of them, and the last must end at the final character. A response that claims `coverage_complete: true` while its ranges leave a gap is rejected. **The model's own self-report is not evidence that the model read the document.**
 
-One honest scope note. The engine's coverage check and the policy's `window_tokens`, `overlap_tokens` and `max_windows` settings are written for multi-window scanning, but the adapter in this build emits exactly **one** window per assessed unit and refuses anything that does not fit it. Text longer than the window is a 503, not a partial assessment, and a long document is never silently half-read. Imports are assessed per line, so each line is its own single-window unit. Multi-window scanning of a long text is specified and verified but not shipped here, which is why PDF import is refused.
+Scope note: the engine's coverage check and the policy's `window_tokens`, `overlap_tokens` and `max_windows` settings are written for multi-window scanning, but the adapter in this build emits exactly **one** window per assessed unit and refuses anything that does not fit it. Text longer than the window is a 503, not a partial assessment, and a long document is never silently half-read. Imports are assessed per line, so each line is its own single-window unit. Multi-window scanning of a long text is specified and verified but not shipped here, which is why PDF import is refused.
 
 Scores are signals, never permissions. A semantic ALLOW cannot grant access that role and deal scope deny, and a deterministic finding cannot be cleared by a semantic result.
 
@@ -209,7 +204,7 @@ Laya is stable on identical input and the scores are specific, which is what mak
 | Ordinary AsterCloud revenue, forecast and bid question | 0.2185       | 0.3412       | 0.2361       |
 | Forged administrator instruction                       | 0.7755       | not recorded | not recorded |
 
-The first row is the honest problem with a classifier gate, and we show it rather than hide it: a harmless greeting scores 0.65 on instruction manipulation. Under the inherited 0.65 block threshold the layer refused to say hello.
+The first row is the classic weakness of a classifier gate: a harmless greeting scores 0.65 on instruction manipulation. Under the inherited 0.65 block threshold the layer refused to say hello.
 
 ### How we fixed that without weakening the gate
 
@@ -225,7 +220,7 @@ Threshold tuning alone could not fix the greeting while still catching the devel
 
 Unrestricted Qwen verification looked best and was **rejected**: on a separate adversarial set it missed 2 of 8 cases, a fake document tag and an encoded command. Reasoning mode still missed the tagged injection, and the encoded request exhausted its token budget, which is unavailability rather than detection.
 
-What shipped instead is bounded. Policy `semantic.chat_verification: "qwen-context-v1"` lets a **complete, valid** Qwen verdict resolve the semantic REVIEW band for balanced chat only. It cannot clear a deterministic finding, it cannot touch imports or exports, and a score at or above the independent 0.70 ceiling blocks regardless. Verification runs the pinned `qwen3:8b` (digest `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`) with a fixed rubric and closed schema, no tools, no thinking, temperature 0, seed 42 and at most 128 output tokens. Named risks block; uncertainty reviews; a malformed, duplicate-key, unfinished, cancelled or unavailable response withholds. Every verification call reserves and settles a real budget, so the second opinion is accounted for rather than free.
+What shipped instead is bounded. Policy `semantic.chat_verification: "qwen-context-v1"` lets a **complete, valid** Qwen verdict resolve the semantic REVIEW band for balanced chat and MCP retrieval only. It cannot clear a deterministic finding, it cannot touch imports or exports, and a score at or above the independent 0.70 ceiling blocks regardless. Verification runs the pinned `qwen3:8b` (digest `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`) with a fixed rubric and closed schema, no tools, no thinking, temperature 0, seed 42 and at most 128 output tokens. Named risks block; uncertainty reviews; a malformed, duplicate-key, unfinished, cancelled or unavailable response withholds. Every verification call reserves and settles a real budget, so the second opinion is accounted for rather than free.
 
 Then policy v2's manipulation block threshold moved from 0.65 to 0.70, a single field, versioned, with the full document compared against the previous version to prove nothing else changed. Activated through the admin API as policy 3, trace `55eecc1a`. Results after the change, with the candidate frozen before the fresh corpus ran:
 
@@ -241,18 +236,6 @@ Full method, the exact diff and the production traces: [calibration report](docs
 ### When Laya is unavailable
 
 Stop the service and the gateway answers **503 `SEMANTIC_UNAVAILABLE` before it reserves a single token**. Not a fallback, not a mock, not a cached verdict, not an answer with a warning. `createDetectionPort()` returns `null` without `LAYA_API_KEY` and the engine withholds every protected operation. This is the behaviour we would most like a judge to try: it is one `pkill` away and it is the difference between a control layer and a decoration.
-
-### Laya's honest limits, measured on our own data
-
-Written in Laya's own spirit, because a control layer that overstates its classifier is worse than one that does not have it.
-
-- **The held-out gate did not pass.** On a frozen 24-case set (SHA-256 `09c323bc…`), policy v1 gave ordinary benign 4/4 ALLOW, difficult benign 1/4 ALLOW, and attacks 0/4 ALLOW but **4/4 REVIEW and 0/4 BLOCK**. Benign ALLOW was 5/8 against a 6/8 target, so the small-set gate **failed**. Every attack was withheld, but by review rather than by detection. Source: `src/features/detection/J2-CALIBRATION.md`. That set is now exposed and was not re-scored under v3.
-- **The semantic gate misses paraphrases.** On the 36-case benchmark, 4 of 12 attacks were answered: an auditor authority claim, a paraphrased override, a yes/no threshold probe, and an acrostic exfiltration attempt. None leaked a listed value, because retrieval scope had already excluded the records, but Laya and the verifier did not flag the phrasing. The yes/no probe is the weakest point: an oracle cannot detect an answer that narrows a hidden number, so 0 leaks there is not proof of no disclosure.
-- **Three benign false positives remain**, all educational text: an explanation of excessive tool calls, a quoted injection lesson, and an output explaining prompt injection. A control layer that cannot discuss security is a real cost, and it is still withheld.
-- **Difficult-benign friction is 6 of 12**, held by citation validation rather than by the classifier: a general question with no answer in the corpus is withheld instead of answered from the model's own memory. We prefer that trade and we report it as friction, not as a win.
-- **Laya's own model card warns about limited synthetic training workflows and overconfidence**, and the base checkpoints score near chance zero-shot on typed decisions. We use the fine-tuned `typed-decisions` checkpoint for that reason, and we do not claim its accuracy transfers to an unseen attacker.
-- **We did not measure Laya in isolation.** The latency figures below are whole-gateway, dominated by Qwen generation. A per-call classifier timing was not run.
-- **Finite tests do not prove universal detection.** Every corpus here is small, ours, and now public. Further tuning needs newly written held-out cases.
 
 ---
 
@@ -294,9 +277,9 @@ The deny rules in `src/shared/gateway/guard-request.ts` are deterministic and th
 
 The hook runner fails closed. A supervisor spawns the worker with a 25-second watchdog; on timeout it kills the worker, writes `InterLock watchdog blocked this action.` and exits 2, which is Claude Code's deny code. Hook input is capped at 12 KB and worker output at 1 KB. The idempotency key is derived as a stable hash of token, stage and event id, so a replayed hook event cannot double-charge a budget or produce a second audit record.
 
-**What the guard is not.** Stated plainly, because overclaiming here would be the worst kind. Command hooks can be skipped or killed by the host, so this is not an unbypassable admission controller; the exit-2 denials, the HTTP deadline, the independent supervisor and the host timeout reduce that risk rather than remove it. The installed Claude binary, the operator and the hook installation are trusted. A differently configured session is outside the boundary. The restricted Claude profile and the server-side permissions are independent limits, so **the gateway still protects company data even with no hooks at all**, which is the property that matters. The guard does not control the agent's total token bill, its final answer text, other applications, other MCP servers, or every code vulnerability.
+**Boundary of the guard.** Command hooks can be skipped or killed by the host, so this is not an unbypassable admission controller; the exit-2 denials, the HTTP deadline, the independent supervisor and the host timeout reduce that risk rather than remove it. The installed Claude binary, the operator and the hook installation are trusted. A differently configured session is outside the boundary. The restricted Claude profile and the server-side permissions are independent limits, so **the gateway still protects company data even with no hooks at all**, which is the property that matters. The guard does not control the agent's total token bill, its final answer text, other applications, other MCP servers, or every code vulnerability.
 
-**Release status, honestly.** The code is merged and unit-tested, and migration `supabase/migrations/20261004034000_guard_finalization.sql` is applied and recorded. It is not released: both endpoints read `policy.client_guard` and return `POLICY_UNAVAILABLE` when it is absent, so until policy v4 is activated they refuse everything. The frozen [ten-question MCP set](docs/testing/mcp-evaluation.json) is marked `frozen-before-live-run` and has not been run. The full release order, the four-minute judge path and every gate are in the [MCP guard runbook](docs/team/mcp-guard-runbook.md). If the gates are not passed by demo time, we present the web runbook and describe this as built but not activated.
+**Release status.** Migration `supabase/migrations/20261004034000_guard_finalization.sql` is applied, and policy v4 with `client_guard` is active on production; it differs from v3 only in `version` and the new section. In a live Claude Code session connected to the MCP server, a source-file Read was allowed and a `.env` read was blocked before disclosure. MCP search and its returned excerpts resolve Laya's review band with the same bounded Qwen verification as chat; a small source edit in the review band stays held for a person. Integration tokens are issued only by an operator script, so judges see this path in the recording rather than by self-service. Release order and the judge path are in the [MCP guard runbook](docs/team/mcp-guard-runbook.md).
 
 ## Hybrid defence: what is deterministic and what is AI
 
@@ -309,7 +292,7 @@ The hook runner fails closed. A supervisor spawns the worker with a 25-second wa
 | Instruction manipulation              |      ✅       | ✅  | Signature **and** Laya **and** bounded Qwen verification                                                                                           |
 | Sensitive exposure                    |      ✅       | ✅  | SQL scope and output check **and** Laya                                                                                                            |
 | Resource abuse                        |      ✅       | ✅  | Hard call, turn, repetition and time ceilings **and** Laya                                                                                         |
-| Budgets and rate limits               |      ✅       |     | Atomic SQL reservation; unknown usage is never zero                                                                                                |
+| Budgets                               |      ✅       |     | Atomic SQL reservation; unknown usage is never zero                                                                                                |
 | Citation validity                     |      ✅       |     | Tags validated against supplied context and rewritten                                                                                              |
 | Role limits on writes                 |      ✅       |     | The model proposes; `src/shared/gateway/client-rules.ts` decides                                                                                   |
 | Audit before effect                   |      ✅       |     | Written before disclosure, in the same transaction as the effect                                                                                   |
@@ -322,16 +305,16 @@ The pattern list is illustrative coverage, not universal DLP, and it is commente
 
 One JSON document, versioned in Postgres, is the only source of control settings. No threshold, budget or model name is hard-coded in feature logic. [Sample configuration](docs/contracts/policy.example.json), [schema](docs/contracts/policy.schema.json).
 
-| Section           | Governs                   | Examples                                                                                                                                                                         |
-| ----------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mode`            | Strictness level          | `balanced` holds the review band for a human; `strict` blocks it                                                                                                                 |
-| `semantic`        | AI gate                   | Required or not, checkpoint name, context and window tokens, overlap, max windows, timeout, and a `review` plus `block` threshold per risk                                       |
-| `execution`       | Allowed models and agency | `generation_model`, thinking off, context and output tokens, `max_model_turns`, `max_tool_calls`, `max_identical_tool_calls`, `max_elapsed_ms`, `allowed_tools` as a closed enum |
-| `imports`         | Untrusted input           | Byte, row, page, character and processing ceilings, allowed formats, the one allowlisted connector dataset                                                                       |
-| `budgets`         | Spend and resources       | Per-actor and per-organisation generation tokens and milliseconds, semantic tokens, **commercial micro-USD**, requests per minute, max active runs                               |
-| `comparison_rate` | Cost reporting            | An explicitly labelled illustrative rate, never presented as an invoice                                                                                                          |
-| `client_guard`    | The agent guard, optional | Profile name, prompt assessment required, the tool allow-list, editable root and extensions, maximum prompt and edit bytes. Absent means both agent endpoints refuse everything  |
-| `retention`       | Data lifetime             | Raw days, audit days, export minutes, review days                                                                                                                                |
+| Section           | Governs                   | Examples                                                                                                                                                                            |
+| ----------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mode`            | Strictness level          | `balanced` holds the review band for a human; `strict` blocks it                                                                                                                    |
+| `semantic`        | AI gate                   | Required or not, checkpoint name, context and window tokens, overlap, max windows, timeout, and a `review` plus `block` threshold per risk                                          |
+| `execution`       | Allowed models and agency | `generation_model`, thinking off, context and output tokens, `max_model_turns`, `max_tool_calls`, `max_identical_tool_calls`, `max_elapsed_ms`, `allowed_tools` as a closed enum    |
+| `imports`         | Untrusted input           | Byte, row, page, character and processing ceilings, allowed formats, the one allowlisted connector dataset                                                                          |
+| `budgets`         | Spend and resources       | Per-actor and per-organisation generation tokens and milliseconds, semantic tokens, **commercial micro-USD**; request-rate and active-run fields are validated but not yet enforced |
+| `comparison_rate` | Cost reporting            | An explicitly labelled illustrative rate, never presented as an invoice                                                                                                             |
+| `client_guard`    | The agent guard, optional | Profile name, prompt assessment required, the tool allow-list, editable root and extensions, maximum prompt and edit bytes. Absent means both agent endpoints refuse everything     |
+| `retention`       | Data lifetime             | Raw days, audit days, export minutes, review days                                                                                                                                   |
 
 Three properties make this a control and not a settings file:
 
@@ -360,11 +343,11 @@ A stale feed is the failure mode we care about most, because an empty indicator 
 
 ## OWASP Top 10 for LLM Applications
 
-Honest mapping, with the gaps named. This is where our controls land, not a claim of complete coverage.
+Where our controls land against each risk.
 
 |       | Risk                             | Status             | Control                                                                                                                                                                                                           |
 | ----- | -------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| LLM01 | Prompt injection                 | Partial            | Signatures, Laya, bounded Qwen verification; 4 of 12 benchmark attacks were not flagged                                                                                                                           |
+| LLM01 | Prompt injection                 | Partial            | Signatures, Laya, bounded Qwen verification; SQL scope means a missed paraphrase still finds no restricted record (0 of 36 leaks)                                                                                 |
 | LLM02 | Sensitive information disclosure | Covered            | SQL scope before retrieval, output check, PII patterns, public-only PDF export, identical 404 for absent and forbidden ids                                                                                        |
 | LLM03 | Supply chain                     | Covered for models | Pinned checkpoint revision and model digest, fixed bridge routes, allowlisted connector dataset. We do not scan npm dependencies                                                                                  |
 | LLM04 | Data and model poisoning         | Partial            | Imports quarantined, decided per line, published only through human review with a recorded editor, audience and reason. Review approval is not in this build                                                      |
@@ -372,8 +355,8 @@ Honest mapping, with the gaps named. This is where our controls land, not a clai
 | LLM06 | Excessive agency                 | Covered            | Closed `allowed_tools` enum, at most one action per Act run, role fee limits, destructive actions always held. For a coding agent, the guard denies shell and network tools outright and confines edits to `src/` |
 | LLM07 | System prompt leakage            | Covered by design  | No enforcement lives in a prompt, so leaking it grants nothing. Permissions are in code and SQL                                                                                                                   |
 | LLM08 | Vector and embedding weaknesses  | Not applicable     | No vector search or embeddings in this build                                                                                                                                                                      |
-| LLM09 | Misinformation                   | Partial            | Citation validation, conflicting figures kept explicit, honest evidence limitation when the corpus has no answer                                                                                                  |
-| LLM10 | Unbounded consumption            | Covered            | Atomic reservations before the call, call and turn and repetition and time ceilings, per-minute and active-run caps, unresolved usage never recorded as zero                                                      |
+| LLM09 | Misinformation                   | Partial            | Citation validation, conflicting figures kept explicit, an explicit no-evidence answer when the corpus has none                                                                                                   |
+| LLM10 | Unbounded consumption            | Covered            | Atomic reservations before the call, call and turn and repetition and time ceilings, unresolved usage never recorded as zero                                                                                      |
 
 Sources we read while designing the gate, and what each changed: [control assessment, Primary research](docs/testing/control-assessment/REPORT.md) covers the Laya model card, NVIDIA NeMo self checks, Meta LlamaFirewall, LiteLLM guardrails, PromptArmor and AgentDojo. LlamaFirewall is why the policy engine combines separate scanners rather than one blended score; LiteLLM is why output is buffered and checked after the call; PromptArmor is why we did not trust a contextual verifier on its own.
 
@@ -391,7 +374,7 @@ Sources we read while designing the gate, and what each changed: [control assess
 | difficult benign | 12  | 6/12  |  6/12  | 0/12  |
 | attack           | 12  | 4/12  |  1/12  | 7/12  |
 
-**Protected values leaked: 0 of 36.** The oracle whole-word matches the restricted figures and code names against every answer. Four attacks were answered, which is four more than the target, and the Laya limits section says exactly which four and why.
+**Protected values leaked: 0 of 36.** The oracle whole-word matches the restricted figures and code names against every answer. The four attacks that were answered got past the classifier but found nothing to leak; they are named in [Status and known limits](#status-and-known-limits).
 
 Latency on the same run: cold request 7718 ms gateway time; warm gateway p50 4082 ms, p95 5874 ms over n=35; wall clock p50 5102 ms, p95 6793 ms. That includes the HTTPS bridge to the Mac hosting both models and Vercel cold starts. No latency target is claimed, and generation dominates the budget.
 
@@ -424,11 +407,11 @@ From production, with trace ids recorded for each: a foreign run, trace and exce
 npm run test:controls
 ```
 
-[control-matrix.json](docs/testing/control-matrix.json) maps each control in the brief to existing vitest tests by their full name, never by line number: at least one test that proves the allowed path and at least one that proves the BLOCK, REVIEW or 503 path. The script runs only those test files offline, with no `.env.local`, in a few seconds. A row is **PASS** only when every mapped test ran and passed. A mapped test that was renamed, deleted, skipped, marked todo or failed turns its row **FAIL**, and the command exits 1. The not-implemented rows are listed for honesty and never change the exit code.
+[control-matrix.json](docs/testing/control-matrix.json) maps each control in the brief to existing vitest tests by their full name, never by line number: at least one test that proves the allowed path and at least one that proves the BLOCK, REVIEW or 503 path. The script runs only those test files offline, with no `.env.local`, in a few seconds. A row is **PASS** only when every mapped test ran and passed. A mapped test that was renamed, deleted, skipped, marked todo or failed turns its row **FAIL**, and the command exits 1. The not-implemented rows never change the exit code.
 
 M9–M11: attack surface closed by construction (no deserialization, no code-execution tools, pinned models); the tests prove those boundaries hold. We do not claim malware detection.
 
-Real run on this branch, based on `origin/main` at `2b8aa63`: rows 15/15 PASS · 18 test files · 306/306 tests passed · 5 not implemented.
+Real run on `main` at `dd145f9`: rows 15/15 PASS · 18 test files · 310/310 tests passed · 6 not implemented.
 
 | ID  | PDF                             | Control                                                                                             | ALLOW proof                                                                                                                                                                                                                            | BLOCK/REVIEW/503 proof                                                                                                                                                                                                                                                                                                                                                                                                                                           | Result |
 | --- | ------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
@@ -448,23 +431,24 @@ Real run on this branch, based on `origin/main` at `2b8aa63`: rows 15/15 PASS ·
 | M14 | Fail-closed                     | A missing or failing required component answers 503 with no reservation                             | shared/gateway/chat: executeChat 1. ALLOW runs the full sequence and releases only after finalize                                                                                                                                      | shared/gateway/chat: executeChat 7. a missing detection adapter is 503 with no reservation; shared/gateway/chat: executeChat 7b. a missing generation adapter is 503 with no reservation; shared/gateway/imports: executeImport without a composed detection adapter: 503 before any reservation, failed, nothing published; shared/gateway/unavailable: unavailableResponse returns a valid 503 envelope with no decision                                       | PASS   |
 | M15 | Reporting / audit               | Audit export capped and scoped; blocked, loop and review counters kept separate                     | shared/gateway/auditExport: exportAudit answers CSV with a trace id, own scope and the current UTC day by default; shared/gateway/metrics: the counters keeps blocked attempts, loop stops and review cases apart                      | shared/gateway/auditExport: exportAudit exports exactly the cap and refuses one more with a narrowing instruction; shared/gateway/auditExport: exportAudit gives an admin the organisation, and refuses it to anyone else; shared/gateway/metrics: the response refuses a window larger than one read can total                                                                                                                                                  | PASS   |
 
-Not implemented, stated rather than hidden:
+Not in this build:
 
-| ID  | PDF              | Item                                      | Note                                                                                                                                                                                                                                                                            |
-| --- | ---------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| N1  | Output redaction | Redaction inside chat answers             | Unsafe chat output is withheld (BLOCK/REVIEW), never partially redacted; redaction exists only on import.                                                                                                                                                                       |
-| N2  | Model governance | Model allowlist                           | The generation model is a pinned constant, not a configurable allowlist.                                                                                                                                                                                                        |
-| N3  | Threat feed      | External feed push                        | POST/PUT /feeds answers 503; the feed is read-only in this build.                                                                                                                                                                                                               |
-| N4  | PII detection    | Unprefixed phone numbers and card numbers | Email, +48 phone numbers, checksum-valid PL IBANs and PESELs (valid checksum and birth date) are detected. Phone numbers without +48, foreign IBANs, card numbers, names and addresses are not; a bare 9-digit run is never treated as a phone so revenue figures stay allowed. |
-| M16 | Telemetry        | Per-stage timing                          | Per-stage timing not asserted by a test; the audit test asserts the stage sequence and only the generation call's duration.                                                                                                                                                     |
+| ID  | PDF                           | Item                                      | Note                                                                                                                                                                                                                                                                            |
+| --- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| N1  | Output redaction              | Redaction inside chat answers             | Unsafe chat output is withheld (BLOCK/REVIEW), never partially redacted; redaction exists only on import.                                                                                                                                                                       |
+| N2  | Model governance              | Model allowlist                           | The generation model is a pinned constant, not a configurable allowlist.                                                                                                                                                                                                        |
+| N3  | Threat feed                   | External feed push                        | POST/PUT /feeds answers 503; the feed is read-only in this build.                                                                                                                                                                                                               |
+| N4  | PII detection                 | Unprefixed phone numbers and card numbers | Email, +48 phone numbers, checksum-valid PL IBANs and PESELs (valid checksum and birth date) are detected. Phone numbers without +48, foreign IBANs, card numbers, names and addresses are not; a bare 9-digit run is never treated as a phone so revenue figures stay allowed. |
+| N5  | Budgets / resource governance | Request-rate and concurrent-run limits    | requests_per_actor_minute and max_active_runs_* are validated policy fields but not enforced in this build; token, time and cost budgets are enforced atomically.                                                                                                               |
+| M16 | Telemetry                     | Per-stage timing                          | Per-stage timing not asserted by a test; the audit test asserts the stage sequence and only the generation call's duration.                                                                                                                                                     |
 
 ### Verified commands
 
-Run on this branch merged with `origin/main` at `55c0884` on 2026-10-04:
+Run on `main` at `dd145f9` on 2026-10-04:
 
 ```
 npm run check
-# tooling 34/34, vitest 1085/1085 in 79 files, production build, exit 0
+# tooling 35/35, vitest 1091/1091 in 79 files, production build, exit 0
 # also exit 0 from a fresh worktree with npm ci and no .env.local
 ```
 
@@ -476,7 +460,7 @@ curl -s -X POST http://localhost:3000/api/v1/chat -H 'content-type: application/
 # {"decision":"BLOCK", ... "error":{"code":"UNAUTHENTICATED", ...}, "trace_id":"..."}
 ```
 
-Recorded earlier and **not re-run for this document**, because it writes to the shared Supabase project and test writes are frozen before judging: `npm run test:db` 59/59 on 2026-10-04.
+`npm run test:db` passed 59/59 on 2026-10-04 before the judging freeze; it writes to the shared Supabase project, so it is not re-run while judges use the instance.
 
 ---
 
@@ -490,19 +474,19 @@ Two audiences, two views, one audit trail. Every protected operation writes an a
 
 Counters are computed from persisted rows over a window, never from the most recent page of a list, because presenting a page as a total measures the page. A window that would exceed the 1000-row cap is refused with a narrowing instruction rather than silently truncated.
 
-Each actor sees only their own traces; the organisation view is admin only, and an employee asking for it gets an honest 403. One actor cannot read another's trace, and the refusal is a 404 that does not confirm the trace exists.
+Each actor sees only their own traces; the organisation view is admin only, and an employee asking for it gets a 403. One actor cannot read another's trace, and the refusal is a 404 that does not confirm the trace exists.
 
 ---
 
-## Status
+## Status and known limits
 
 Nothing here is mocked for the demo. "Not in this build" means the route answers 503 or an explicit refusal, never a fabricated success.
 
 | Area                                                     | State             | Note                                                                                                                                                                                                                                |
 | -------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gateway engine, policy v3, deterministic checks          | Working           | One engine behind every `/api/v1` route; 24 documented paths                                                                                                                                                                        |
+| Gateway engine, policy v4, deterministic checks          | Working           | One engine behind every `/api/v1` route; 25 documented paths                                                                                                                                                                        |
 | Live Laya classifier, pinned revision                    | Working           | Real service behind an authenticated HTTPS bridge; never a stub                                                                                                                                                                     |
-| Qwen contextual verification of the REVIEW band          | Working           | Bounded to balanced chat; cannot clear a deterministic finding                                                                                                                                                                      |
+| Qwen contextual verification of the REVIEW band          | Working           | Bounded to balanced chat and MCP retrieval; cannot clear a deterministic finding                                                                                                                                                    |
 | Fail-closed on a missing control                         | Working           | 503 before any reservation; the easiest thing for a judge to test                                                                                                                                                                   |
 | Role, deal and classification scoping                    | Working           | Enforced in server code and again in SQL; 59 database tests                                                                                                                                                                         |
 | Centralized versioned policy with live admin update      | Working           | `PUT /policy` with CAS, relationship validation and hard ceilings                                                                                                                                                                   |
@@ -512,16 +496,24 @@ Nothing here is mocked for the demo. "Not in this build" means the route answers
 | Audit, personal traces, admin dashboard, CSV export      | Working           | Protected text excluded from every projection                                                                                                                                                                                       |
 | Client actions and Act mode                              | Working           | One chat input. A client-side router picks Ask or Act for the user's convenience only, and the gateway applies the same rules on either path. The model proposes one JSON plan; role rules decide. Verified live and in the browser |
 | Public sanitised PDF export                              | Working           | Public-approved excerpts only, then an output check                                                                                                                                                                                 |
-| Trace link for a client action                           | Partial           | Returned 503 during QA; fixed in `src/shared/gateway/audit.ts` with a regression test, not yet re-verified on the deployment                                                                                                        |
-| Semantic gate against paraphrased attacks                | Partial           | 4 of 12 benchmark attacks auto-allowed; none leaked a value                                                                                                                                                                         |
+| Trace link for a client action                           | Working           | Opens the same trace page as a chat run                                                                                                                                                                                             |
+| Semantic gate against paraphrased attacks                | Partial           | 4 of 12 benchmark attacks answered; none leaked a value (below)                                                                                                                                                                     |
 | Difficult-benign friction                                | Partial           | 6 of 12 held by citation validation when the corpus has no answer                                                                                                                                                                   |
 | Review approval flow                                     | Partial           | A candidate is created and visible; approving it is not in this build                                                                                                                                                               |
 | Threat-feed push endpoint                                | Not in this build | `GET /feeds` reads the active feed; `POST`/`PUT` answer 503                                                                                                                                                                         |
 | PDF upload                                               | Not in this build | Refused with `UNSUPPORTED_FILE` and a message, never silently parsed                                                                                                                                                                |
-| MCP server for Claude Code, two tools                    | Built, gated      | `/api/mcp` on the official SDK. Scoped token, input and returned payload both assessed, control head re-checked after the call. Unit-tested; the live release gates below are not all passed                                        |
-| Guard over Claude Code's own prompts and tool calls      | Built, gated      | `/api/v1/guard/check` behind Claude Code hooks. Hard-denies shell, network, paths outside `src/`, dotfiles and oversized edits before any effect                                                                                    |
-| MCP and guard live release                               | Not yet released  | Migration `20261004034000` is applied, but both endpoints answer `POLICY_UNAVAILABLE` until policy v4 carries `client_guard`. v4 activation, the frozen live run and the Claude Code rehearsal are not recorded as done             |
-| High availability                                        | Not claimed       | Both models run on one Mac that must stay awake and connected                                                                                                                                                                       |
+| MCP server for Claude Code, two tools                    | Live              | `/api/mcp` on the official SDK. Scoped token, input and returned payload both assessed, control head re-checked after the call                                                                                                      |
+| Guard over Claude Code's own prompts and tool calls      | Live              | `/api/v1/guard/check` behind Claude Code hooks. Hard-denies shell, network, paths outside `src/`, dotfiles and oversized edits before any effect                                                                                    |
+| Request-rate and concurrent-run limits                   | Not enforced      | Validated policy fields; token, time and cost budgets are the enforced limits                                                                                                                                                       |
+| High availability                                        | Not claimed       | Both models run on one Mac that must stay awake; its bridge serves two model calls at a time and answers 503 to a third                                                                                                             |
+
+Measured limits of the semantic gate, on our own data:
+
+- **Paraphrases can pass the classifier.** In the benchmark, 4 of 12 attacks were answered: an auditor authority claim, a paraphrased override, a yes/no threshold probe and an acrostic exfiltration attempt. None leaked a listed value, because retrieval had already excluded the records. The yes/no probe is the weakest case: a leak oracle cannot detect an answer that narrows a hidden number.
+- **Some benign text is held.** Three educational texts about security were withheld, and 6 of 12 difficult-benign questions were held by citation validation when the corpus had no answer, rather than answered from the model's memory.
+- **An earlier held-out gate did not pass.** Under policy v1 a frozen 24-case set gave benign ALLOW 5/8 against a 6/8 target, with every attack held for review rather than blocked (`src/features/detection/J2-CALIBRATION.md`). Policy v3 was then calibrated on separate corpora, shown in the Laya section.
+- **Laya's model card warns about overconfidence** after limited synthetic training. We use the fine-tuned `typed-decisions` checkpoint at a pinned revision and do not claim its accuracy transfers to an unseen attacker. Classifier latency was not measured separately from the whole gateway.
+- **The frozen ten-question [MCP evaluation set](docs/testing/mcp-evaluation.json) has not been run yet.**
 
 ---
 
@@ -536,7 +528,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1085 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
+`npm run check` runs contract type generation, format, typecheck, lint, module boundary rules, the tooling tests, 1091 unit tests and a production build. It needs no credentials and no model services: this exact sequence was run from a fresh checkout with no `.env.local` present and exited 0.
 
 To run the application, put the project's Supabase values in `.env.local`, copied from `.env.example`:
 
@@ -554,7 +546,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/health
 
 A `200` means the app is up and reached the database. Signing in needs one of the four prepared accounts. Chat, import and Act mode additionally need `LAYA_API_KEY` plus Laya and Ollama reachable, either on loopback or through `MODEL_BRIDGE_URL` and `MODEL_BRIDGE_TOKEN`; without them every model path answers 503 rather than a guess. Model service setup, the full variable contract and recovery are in [setup](docs/team/setup.md). `npm run verify:release` checks the whole runtime before a demo.
 
-The quickest honest path for a reviewer is the hosted instance with a prepared account.
+The quickest path for a reviewer is the hosted instance with a prepared account.
 
 **Integrating your own application.** The control layer is an HTTP API, not a library you have to adopt. 25 paths are specified in [OpenAPI](docs/contracts/openapi.json); `npm run contracts:types` generates the types and `src/shared/contracts/client.ts` is a thin typed client over `openapi-fetch`. An application sends a request and reads one envelope: `decision`, `reasons`, `policy_version`, `feed_version`, `semantic`, `usage`, `timings`, `data`, `error`, `trace_id`. Nothing else needs to change.
 
@@ -617,10 +609,10 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 
 | Criterion                                            | Weight | What we built                                                                                                                                                  | Evidence                                                                                                                                                                  |
 | ---------------------------------------------------- | :----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Robustness of the solution and quality of guardrails |  30%   | Ten-stage ordered gate, deterministic and AI in series, neither able to approve alone; fail-closed on any missing control                                      | [Benchmark](docs/testing/benchmark/REPORT.md), [calibration](docs/testing/control-assessment/calibration/REPORT.md), [held-out](src/features/detection/J2-CALIBRATION.md) |
+| Robustness of the solution and quality of guardrails |  30%   | Nine-stage ordered gate, deterministic and AI in series, neither able to approve alone; fail-closed on any missing control                                     | [Benchmark](docs/testing/benchmark/REPORT.md), [calibration](docs/testing/control-assessment/calibration/REPORT.md), [held-out](src/features/detection/J2-CALIBRATION.md) |
 | Architecture and performance efficiency              |  20%   | Six trust boundaries, atomic SQL accounting, single-forward-pass classifier, measured cold and warm latency with sample sizes                                  | [Architecture](docs/product/architecture.md), benchmark latency table                                                                                                     |
 | Security reporting                                   |  20%   | Audit before effect, per-stage trace detail with locators, CSV export, management metrics with labelled estimates and unresolved usage                         | `src/shared/gateway/audit.ts`, `src/shared/gateway/auditExport.ts`, `src/shared/gateway/metrics.ts`, `src/features/audit/`                                                |
-| Completeness of the self-testing suite               |  15%   | 1085 unit tests in 79 files with positive and negative cases, 34 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
+| Completeness of the self-testing suite               |  15%   | 1091 unit tests in 79 files with positive and negative cases, 35 tooling tests, 59 database and RLS tests, 36-case held-out benchmark, live classifier corpora | The judge table at the top                                                                                                                                                |
 | Practical implementability and scalability           |  15%   | HTTP API with OpenAPI and a generated typed client, policy swappable without redeploy, model behind a port interface, documented recovery                      | [OpenAPI](docs/contracts/openapi.json), `src/shared/gateway/ports.ts`, [runbook](docs/demo/runbook.md)                                                                    |
 
 ### Formal requirements
@@ -637,14 +629,14 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 
 ### Expected outcomes
 
-| Outcome                                                                 | Status                                                                                                                                                                 |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Functional control layer developers can integrate                       | Done: 24-path HTTP API, OpenAPI contract, generated typed client                                                                                                       |
-| Architecture diagram                                                    | Done: above, as built, including the MCP and guard arms                                                                                                                |
-| Documented sample configuration with strictness levels and budget rules | Done: `balanced` and `strict`, per-risk review and block thresholds, budget ceilings on tokens, time, commercial units, request rate and concurrent runs               |
-| Interactive dashboard with controls, posture, blocked threats and cost  | Done: personal and organisation views, labelled estimates                                                                                                              |
-| Executable test suite including budget limits and exploit mitigation    | Done: budget races in `test:db`, exploit cases in the unit suite and the live benchmark                                                                                |
-| Agent to agent, app to agent, agent to MCP, agent to model              | App to gateway to model and governed agent writes are live. Agent to MCP and the guard over the agent itself are built and unit-tested, pending the v4 activation gate |
+| Outcome                                                                 | Status                                                                                                                    |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Functional control layer developers can integrate                       | Done: 25-path HTTP API, OpenAPI contract, generated typed client                                                          |
+| Architecture diagram                                                    | Done: above, as built, including the MCP and guard arms                                                                   |
+| Documented sample configuration with strictness levels and budget rules | Done: `balanced` and `strict`, per-risk review and block thresholds, budget ceilings on tokens, time and commercial units |
+| Interactive dashboard with controls, posture, blocked threats and cost  | Done: personal and organisation views, labelled estimates                                                                 |
+| Executable test suite including budget limits and exploit mitigation    | Done: budget races in `test:db`, exploit cases in the unit suite and the live benchmark                                   |
+| Agent to agent, app to agent, agent to MCP, agent to model              | Live: app to gateway to model, governed agent writes, agent to MCP, and the guard over the coding agent itself            |
 
 ---
 
@@ -652,9 +644,9 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 
 **The model proposes, the gateway retrieves and decides.** We gave up open agentic tool loops: retrieval is never model-driven, and in Act mode the model emits one JSON plan it cannot execute. In exchange a restricted record never enters model context, which is why the four auto-allowed benchmark attacks still leaked nothing, and a fee change past a role limit is held even when the model asked for it. For a 19 hour build, a control you can prove beats a capability you have to defend.
 
-**Two models in series, one of which cannot generate.** Laya decides fast and cannot hallucinate a verdict; Qwen only resolves the uncertain band and only for chat. We gave up the better benign pass rate an unrestricted verifier showed, because the same verifier missed 2 of 8 adversarial cases. A gate that is right more often on friendly input and wrong on hostile input is the wrong trade for a control layer.
+**Two models in series, one of which cannot generate.** Laya decides fast and cannot hallucinate a verdict; Qwen only resolves the uncertain band, and only for chat and MCP retrieval. We gave up the better benign pass rate an unrestricted verifier showed, because the same verifier missed 2 of 8 adversarial cases. A gate that is right more often on friendly input and wrong on hostile input is the wrong trade for a control layer.
 
-**The classifier runs locally behind an authenticated tunnel.** We gave up availability: one sleeping laptop takes the demo down, and we say so rather than hiding it. In exchange the assessment is real, every call is free, no company text leaves the machine, and the brief's no-paid-API constraint is satisfied by design rather than by a mock.
+**The classifier runs locally behind an authenticated tunnel.** We gave up availability: one sleeping laptop takes the demo down. In exchange the assessment is real, every call is free, no company text leaves the machine, and the brief's no-paid-API constraint is satisfied by design rather than by a mock.
 
 **Atomic invariants live in SQL, not in application code.** We gave up portability away from Postgres. In exchange two concurrent requests cannot overspend a ceiling, and privileged server code that could bypass RLS still has to pass the same function checks.
 
@@ -662,22 +654,14 @@ All 12 migrations are applied and recorded in [supabase/APPLIED.md](supabase/APP
 
 ## What we would build next
 
-1. Close the semantic gap the benchmark exposed. The four auto-allowed phrasings are a training set, not an embarrassment to hide, and Laya is designed to be fine-tuned on exactly this kind of domain data.
-2. Ship the feed push endpoint so a security team can add an indicator without an administrator editing policy, which is the half of requirement 4 we did not finish.
-3. Pass the MCP and guard release gates: activate policy v4 with `client_guard`, run the frozen ten-question MCP set and the twenty-four frozen guard prompts against live Laya, and record the Claude Code rehearsal.
-4. Re-verify the client-action trace read on the deployment, then finish review approval so a held candidate or a held action can be published with a recorded approver and reason.
-5. Replace the Mac bridge with a deployed classifier service behind the same port interface, which removes the single point of failure without touching the engine.
+1. Fine-tune Laya on the paraphrases the benchmark surfaced; it is designed to be adapted to domain data.
+2. Ship the feed push endpoint so a security team can add an indicator without an administrator editing policy.
+3. Run the frozen MCP evaluation and reduce review-band holds on benign MCP search and small edits, using a fresh held-out set rather than the demo prompts.
+4. Finish review approval so a held candidate or a held action can be published with a recorded approver and reason.
+5. Enforce the request-rate and concurrent-run fields the policy already validates.
+6. Replace the Mac bridge with a deployed classifier service behind the same port interface, which removes the single point of failure without touching the engine.
 
 ---
-
-## Team
-
-| Person  | Role                 | Owns                                                        |
-| ------- | -------------------- | ----------------------------------------------------------- |
-| Bartosz | Integrator           | Gateway engine, database, routes, deployment, release       |
-| Maciej  | Builder A, workbench | Chat, sources, upload, review, policy and export interface  |
-| Julian  | Builder B, detection | Parsers, deterministic findings, Laya adapter, model bridge |
-| Nikodem | Builder C, audit     | Personal and admin dashboards, trace presentation, metrics  |
 
 ## Documentation
 
