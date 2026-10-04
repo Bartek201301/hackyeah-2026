@@ -76,6 +76,16 @@ describe("checkCitations", () => {
     expect(out.hasRejected).toBe(true);
   });
 
+  it("labels each citation with the marker the answer text uses, even past a rejection", () => {
+    const out = checkCitations(
+      [devCitation({ excerpt_id: OTHER }), devCitation(), devCitation({ excerpt_version: 2 })],
+      [PERMITTED],
+    );
+    // The answer says [2] and [3]; renumbering the accepted list would call them [1] and [2].
+    expect(out.accepted.map((c) => c.marker)).toEqual(["[2]", "[3]"]);
+    expect(out.rejected.map((c) => c.marker)).toEqual(["[1]"]);
+  });
+
   it("handles an empty citation list", () => {
     const out = checkCitations([], [PERMITTED]);
     expect(out.accepted).toEqual([]);
