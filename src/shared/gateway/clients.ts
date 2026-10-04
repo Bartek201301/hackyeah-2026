@@ -242,7 +242,7 @@ export async function createClient(
   const same = (name: string) => name.trim().toLowerCase() === client.name.trim().toLowerCase();
   const existing = await deps.repository.listClients(actor.organisation_id, CLIENT_LIMIT);
   if (existing.some((r) => same(r.name))) {
-    const duplicate = { decision: "REVIEW", reasons: ["action:duplicate_client"] } as const;
+    const duplicate: ActionVerdict = { decision: "REVIEW", reasons: ["action:duplicate_client"] };
     return refuse(deps, actor, operation, key, sha, duplicate, { fields });
   }
 
