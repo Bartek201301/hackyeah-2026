@@ -88,6 +88,10 @@
         {
           "file": "src/shared/gateway/checks.test.ts",
           "test": "matchSensitive finds nothing in a benign sentence or a word that only contains a prefix"
+        },
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSensitive ignores unprefixed numbers, UUID tails and invalid IBAN/PESEL checksums or dates"
         }
       ],
       "block": [
@@ -102,6 +106,10 @@
         {
           "file": "src/shared/gateway/checks.test.ts",
           "test": "matchSensitive covers each conventional prefix and survives a zero-width split"
+        },
+        {
+          "file": "src/shared/gateway/checks.test.ts",
+          "test": "matchSensitive finds +48 phones, checksum-valid PL IBANs and PESELs as personal data"
         }
       ]
     },
@@ -419,8 +427,8 @@
     {
       "id": "N4",
       "pdf_ref": "PII detection",
-      "item": "PII beyond email",
-      "note": "Phone, IBAN, PESEL and card numbers are not detected; only email contact data is."
+      "item": "Unprefixed phone numbers and card numbers",
+      "note": "Email, +48 phone numbers, checksum-valid PL IBANs and PESELs (valid checksum and birth date) are detected. Phone numbers without +48, foreign IBANs, card numbers, names and addresses are not; a bare 9-digit run is never treated as a phone so revenue figures stay allowed."
     },
     {
       "id": "M16",

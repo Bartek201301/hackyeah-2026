@@ -40,9 +40,27 @@ export function matchSignatures(text: string, feed: ThreatFeed, stage: string): 
     }));
 }
 
+// ISO 13616: country code and check digits move to the end, letters become numbers (P=25, L=21), mod 97 == 1.
+const plIbanValid = (m: string) => {
+  const s = m.replace(/ /g, "");
+  let r = 0;
+  for (const c of s.slice(4) + "2521" + s.slice(2, 4)) r = (r * 10 + Number(c)) % 97;
+  return r === 1;
+};
+// PESEL: weighted checksum plus a plausible birth date (month 01-12 shifted by 20s per century, day 01-31).
+const peselValid = (m: string) => {
+  const d = [...m].map(Number);
+  const sum = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3].reduce((acc, w, i) => acc + w * d[i], 0);
+  const month = Number(m.slice(2, 4)) % 20;
+  const day = Number(m.slice(4, 6));
+  return (10 - (sum % 10)) % 10 === d[10] && month >= 1 && month <= 12 && day >= 1 && day <= 31;
+};
+
 // Conservative secret/contact patterns (technical-spec §3): illustrative coverage, not universal DLP.
 // A token prefix must not continue a word, so "task-management" is not an `sk-` token.
-const SENSITIVE = [
+// Number patterns need a +48 prefix or a valid checksum (PESEL also a valid date), so revenue figures,
+// invoice numbers and UUID tails do not match. `valid` patterns are global and checked per match.
+const SENSITIVE: { code: string; category: string; re: RegExp; valid?: (m: string) => boolean }[] = [
   { code: "PEM_KEY", category: "secret", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
   {
     code: "SECRET_TOKEN",
@@ -55,13 +73,23 @@ const SENSITIVE = [
     category: "personal",
     re: /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/,
   },
+  { code: "CONTACT_PHONE", category: "personal", re: /(?<![\d+])\+48[ -]?\d{3}[ -]?\d{3}[ -]?\d{3}(?!\d)/ },
+  {
+    code: "BANK_ACCOUNT",
+    category: "personal",
+    re: /(?<![A-Za-z0-9])PL\d{2}(?: ?\d{4}){6}(?!\d)/g,
+    valid: plIbanValid,
+  },
+  { code: "NATIONAL_ID", category: "personal", re: /(?<![\d-])\d{11}(?![\d-])/g, valid: peselValid },
 ];
 
 /** Secret and contact findings with category and code only; the matched value never leaves. */
 export function matchSensitive(text: string, stage: string): Finding[] {
   // Case is kept (AKIA is upper case); compatibility forms and zero-width characters cannot split a match.
   const t = text.normalize("NFKC").replace(/\p{Cf}/gu, "");
-  return SENSITIVE.filter((p) => p.re.test(t)).map((p) => ({
+  const hit = ({ re, valid }: (typeof SENSITIVE)[number]) =>
+    valid ? [...t.matchAll(re)].some((m) => valid(m[0])) : re.test(t);
+  return SENSITIVE.filter(hit).map((p) => ({
     code: p.code,
     category: p.category,
     severity: "block",
