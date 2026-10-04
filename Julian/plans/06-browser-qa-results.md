@@ -704,3 +704,68 @@ the panel test that pins the stage to one occurrence and asserts the server's st
 Public · Upload` is still listed — an audit export that was uploaded back in as a source. Both are on
 the pre-rehearsal cleanup list. The deal selector still shows a raw UUID rather than a deal name (B6:
 no server-side deal-label projection), on both Sources and Public summary.
+
+---
+
+# Run 8 — the authorised S05 upload on production
+
+| Target  | <https://hackyeah-2026.vercel.app>, main `e8bc364` (#89 and #90 live) |
+| ------- | --------------------------------------------------------------------- |
+| Who     | Analyst, ASTER deal `…0101`, classification **restricted**            |
+| File    | `docs/demo/uploads/MIX-01.csv`                                        |
+| Trace   | `c1964fad-2944-40c5-ba5c-1e2494482086`                                |
+| Outcome | **Held for review** — nothing published                               |
+
+Authorised by Bartosz after P09's live S05 run. One upload, as agreed.
+
+## What the screen showed
+
+The stage line ran first — **"Running checks"** under the pulsing dot, which is the shared
+`ThinkingIndicator` fed by the polled run, and the first live confirmation of it. Then:
+
+> **Held for review** — "Separation was uncertain, so an administrator must review the candidate."
+> Reasons: `semantic:sensitive_exposure` `import_signature:CONTACT_EMAIL`
+> `import_signature:SECRET_TOKEN` `import_signature:SIG-001` `import_signature:SIG-002`
+> **View the audited trace**
+
+Both lists refreshed by themselves: `MIX-01.csv · Restricted · Upload` joined Configured sources, and
+a second `Held for review · Restricted` row joined Imports, each row linking to its own trace. The
+outcome notice and the new import row carry the **same** trace id, which is what makes the row
+identifiable at all.
+
+**No value from any removed line appears anywhere on the screen** — no address, no token, no
+injected instruction, and not the 176 figure. That was the thing to check, and it holds.
+
+## The count Bartosz asked for is not on screen, and cannot be
+
+The brief was "held for review, the removed-line count, no values". The first and third are there;
+the count is not, and no workbench change can add it: `executeImport` puts `counts`
+(`units / approved / review / removed`) into the **audit event only**, never into the response
+envelope. The envelope carries `decision` and `reasons`, and the reasons are bare codes with no
+locators — four codes here, but only **three** lines were removed, because `row:1:line:4` tripped two
+of them. Counting reason codes would therefore print the wrong number.
+
+The trace page does carry the evidence, per line, codes and locators only:
+
+| Finding       | Category         | Locator        |
+| ------------- | ---------------- | -------------- |
+| CONTACT_EMAIL | personal         | `row:1:line:2` |
+| SECRET_TOKEN  | secret           | `row:1:line:3` |
+| SIG-001       | prompt_injection | `row:1:line:4` |
+| SIG-002       | exfiltration     | `row:1:line:4` |
+
+Three distinct lines, which matches P09's "3 unsafe lines removed". Policy version 3, feed version 1,
+Laya 217 tokens / 325 ms, assessment complete with sensitive exposure 0.365.
+
+**For the demo as it stands:** say "three lines were removed — their locators are in the audit
+record", and click through to the trace. It is a stronger story than a number on the upload screen
+anyway, because the trace shows _which_ lines and _why_. If someone wants the count on screen before
+the freeze, it is an audit-feature change (render the `counts` the event already stores), not a
+workbench one.
+
+## Housekeeping, now worse
+
+`MIX-01.csv` appears **three** times in Configured sources and Imports has **two** `Held for review`
+rows, because this run re-imported a file P09 had already imported. That was expected and authorised;
+it is on the cleanup list. The rehearsal checklist in the judge script has been corrected to say
+MIX-01 is already imported, so nobody plans a live upload assuming a clean slate.
