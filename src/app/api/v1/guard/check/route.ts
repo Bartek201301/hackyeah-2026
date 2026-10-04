@@ -17,7 +17,7 @@ export async function POST(request: Request): Promise<Response> {
     return toResponse(errorOutcome("STATE_UNAVAILABLE"));
   }
   if (
-    new URL(request.url).host !== origin.host ||
+    new URL(request.url).origin !== origin.origin ||
     (request.headers.get("origin") && request.headers.get("origin") !== origin.origin)
   )
     return toResponse(errorOutcome("ACCESS_DENIED"));

@@ -43,56 +43,60 @@ async function callTool(
   argument: string,
   operation: "search" | "read",
 ) {
-  const identity = await resolveIntegrationToken(request.headers.get("authorization"), scope);
-  if (!identity) return refusal("ACCESS_DENIED");
-  const deps = gatewayDeps();
-  if (operation === "search") {
-    const input = await assessStandalone(deps, {
+  try {
+    const identity = await resolveIntegrationToken(request.headers.get("authorization"), scope);
+    if (!identity) return refusal("ACCESS_DENIED");
+    const deps = gatewayDeps();
+    if (operation === "search") {
+      const input = await assessStandalone(deps, {
+        ...identity,
+        scope,
+        stage: "mcp_input",
+        text: argument,
+        idempotencyKey: randomUUID(),
+      });
+      if (input.body.decision !== "ALLOW")
+        return refusal(input.body.error?.code ?? "POLICY_BLOCK", input.body.trace_id);
+    }
+    const result =
+      operation === "search"
+        ? await searchExcerpts(deps, identity.actor, { query: argument }, randomUUID())
+        : await readExcerpt(deps, identity.actor, argument);
+    if (result.body.decision !== "ALLOW" || !result.body.data)
+      return refusal(result.body.error?.code ?? "NOT_FOUND", result.body.trace_id);
+    const payload = JSON.stringify(result.body.data);
+    const output = await assessStandalone(deps, {
       ...identity,
       scope,
-      stage: "mcp_input",
-      text: argument,
+      stage: "mcp_output",
+      text: payload,
       idempotencyKey: randomUUID(),
     });
-    if (input.body.decision !== "ALLOW")
-      return refusal(input.body.error?.code ?? "POLICY_BLOCK", input.body.trace_id);
+    if (output.body.decision !== "ALLOW")
+      return refusal(output.body.error?.code ?? "POLICY_BLOCK", output.body.trace_id);
+    const current = await resolveIntegrationToken(request.headers.get("authorization"), scope);
+    const controls = current ? await loadControls(deps, current.actor) : null;
+    if (
+      !current ||
+      !controls ||
+      controls.versions.policy_version !== output.body.policy_version ||
+      controls.versions.feed_version !== output.body.feed_version
+    )
+      return refusal("STATE_CHANGED");
+    const structured = {
+      data: result.body.data,
+      trace_id: output.body.trace_id,
+      retrieval_trace_id: result.body.trace_id,
+      policy_version: output.body.policy_version,
+      feed_version: output.body.feed_version,
+    };
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(structured) }],
+      structuredContent: structured,
+    };
+  } catch {
+    return refusal("STATE_UNAVAILABLE");
   }
-  const result =
-    operation === "search"
-      ? await searchExcerpts(deps, identity.actor, { query: argument }, randomUUID())
-      : await readExcerpt(deps, identity.actor, argument);
-  if (result.body.decision !== "ALLOW" || !result.body.data)
-    return refusal(result.body.error?.code ?? "NOT_FOUND", result.body.trace_id);
-  const payload = JSON.stringify(result.body.data);
-  const output = await assessStandalone(deps, {
-    ...identity,
-    scope,
-    stage: "mcp_output",
-    text: payload,
-    idempotencyKey: randomUUID(),
-  });
-  if (output.body.decision !== "ALLOW")
-    return refusal(output.body.error?.code ?? "POLICY_BLOCK", output.body.trace_id);
-  const current = await resolveIntegrationToken(request.headers.get("authorization"), scope);
-  const controls = current ? await loadControls(deps, current.actor) : null;
-  if (
-    !current ||
-    !controls ||
-    controls.versions.policy_version !== output.body.policy_version ||
-    controls.versions.feed_version !== output.body.feed_version
-  )
-    return refusal("STATE_CHANGED");
-  const structured = {
-    data: result.body.data,
-    trace_id: output.body.trace_id,
-    retrieval_trace_id: result.body.trace_id,
-    policy_version: output.body.policy_version,
-    feed_version: output.body.feed_version,
-  };
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(structured) }],
-    structuredContent: structured,
-  };
 }
 
 async function serve(request: Request): Promise<Response> {
@@ -105,7 +109,7 @@ async function serve(request: Request): Promise<Response> {
   }
   const requestUrl = new URL(request.url);
   if (
-    requestUrl.host !== origin.host ||
+    requestUrl.origin !== origin.origin ||
     (request.headers.get("origin") && request.headers.get("origin") !== origin.origin)
   )
     return new Response("Forbidden", { status: 403 });
@@ -146,7 +150,13 @@ async function serve(request: Request): Promise<Response> {
     },
     { legacy: "stateless", maxRequestBodySize: 8192 },
   );
-  return handler.fetch(request);
+  try {
+    const response = await handler.fetch(request);
+    response.headers.set("Cache-Control", "no-store");
+    return response;
+  } catch {
+    return new Response("Unavailable", { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 }
 
 export const POST = serve;

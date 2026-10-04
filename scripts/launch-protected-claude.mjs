@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
@@ -6,6 +7,13 @@ try {
   const workspace = process.argv[2];
   if (!path.isAbsolute(workspace)) throw new Error("Use an absolute synthetic workspace path");
   const directory = path.join(workspace, ".interlock");
+  const manifest = JSON.parse(await readFile(path.join(directory, "manifest.json"), "utf8"));
+  if (manifest.owner !== "InterLock restricted demo v1") throw new Error("Profile identity mismatch");
+  for (const name of ["guard-config.json", "mcp.json", "settings.json"]) {
+    const contents = await readFile(path.join(directory, name));
+    if (createHash("sha256").update(contents).digest("hex") !== manifest.hashes[name])
+      throw new Error("Profile configuration changed");
+  }
   const config = JSON.parse(await readFile(path.join(directory, "guard-config.json"), "utf8"));
   if (config.workspace_root !== workspace) throw new Error("Workspace configuration mismatch");
   const info = await stat(config.credentials_file);
