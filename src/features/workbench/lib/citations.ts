@@ -10,6 +10,8 @@ import type { Citation } from "@/shared/contracts";
 
 export type CitationView = {
   key: string;
+  /** The marker the answer text uses for this source, e.g. "[2]". */
+  marker: string;
   /** "Label — FY2025 (2026-03-15) · row 4 · v2" */
   display: string;
   excerptId: string;
@@ -27,9 +29,15 @@ export function formatCitation(c: Citation): string {
   return `${c.source_label} — ${c.period} (${c.source_date}) · ${c.locator} · v${c.excerpt_version}`;
 }
 
-export function toCitationView(c: Citation): CitationView {
+/**
+ * `position` is the citation's 1-based place in the response's own citation array, which is exactly
+ * what `rewriteCitations` turned into the `[n]` marker in the answer text. It is taken from the
+ * response and never renumbered here, so a rejected citation does not relabel the others.
+ */
+export function toCitationView(c: Citation, position: number): CitationView {
   return {
     key: citationKey(c),
+    marker: `[${position}]`,
     display: formatCitation(c),
     excerptId: c.excerpt_id,
     excerptVersion: c.excerpt_version,
@@ -74,8 +82,8 @@ export function checkCitations(
   const rejected: CitationView[] = [];
   const seen = new Set<string>();
 
-  for (const c of citations) {
-    const view = toCitationView(c);
+  for (const [i, c] of citations.entries()) {
+    const view = toCitationView(c, i + 1);
     if (seen.has(view.key)) continue;
     seen.add(view.key);
     if (isWellFormed(c) && permitted.has(c.excerpt_id)) accepted.push(view);

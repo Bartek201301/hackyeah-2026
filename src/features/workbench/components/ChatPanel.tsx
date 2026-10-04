@@ -298,8 +298,10 @@ export function ChatPanel({ role }: { role?: ActorContext["role"] }) {
                 ) : (
                   <ul className="flex flex-col gap-1.5">
                     {citations.map((c) => (
-                      <li key={c.key} className="text-sm text-muted">
-                        {c.display}
+                      <li key={c.key} className="flex gap-2 text-sm text-muted">
+                        {/* The same marker the answer text carries, so a reader matches it without counting. */}
+                        <span className="font-medium text-fg tabular-nums">{c.marker}</span>
+                        <span>{c.display}</span>
                       </li>
                     ))}
                   </ul>
