@@ -1,12 +1,15 @@
 import type {
   ActorContext,
   ApiResponse,
+  ClientCreate,
+  ClientUpdate,
   DetectionPort,
   GenerationPort,
   GatewayPolicy,
   Run,
   Usage,
 } from "@/shared/contracts";
+import type { ClientRow } from "./client-rules";
 
 export type BudgetUnit = "generation_tokens" | "generation_ms" | "semantic_tokens" | "commercial_micro_usd";
 /** Raw head snapshot; the engine validates policy/feed before use. */
@@ -363,7 +366,20 @@ export interface RepositoryPort {
   listReviews(organisationId: string, limit: number): Promise<ReviewRow[]>;
   /** One review request of the organisation, or null when the id is not one of its own. */
   readReview(organisationId: string, id: string): Promise<ReviewRow | null>;
+  /** Clients of the organisation with every editor column, newest first, at most `limit`. */
+  listClients(organisationId: string, limit: number): Promise<ClientRow[]>;
+  /** One client of the organisation, or null when the id is not one of its own. */
+  readClient(organisationId: string, id: string): Promise<ClientRow | null>;
+  /** create_client: idempotent insert and its ALLOW audit in one transaction. */
+  createClient(input: ClientWrite & { client: ClientCreate }): Promise<ClientWritten>;
+  /** update_client: a stale `expectedVersion` throws CONFLICT and writes nothing. */
+  updateClient(
+    input: ClientWrite & { clientId: string; expectedVersion: number; changes: ClientUpdate["changes"] },
+  ): Promise<ClientWritten>;
 }
+/** Uniqueness is (organisation, actor, operation, key); the same key and hash replay the first result. */
+export type ClientWrite = { actor: ActorContext; idempotencyKey: string; requestSha256: string };
+export type ClientWritten = { client_id: string; version: number; replayed: boolean };
 /** review_requests row for the admin review reads; candidate_text is private review content. */
 export type ReviewRow = {
   id: string;
