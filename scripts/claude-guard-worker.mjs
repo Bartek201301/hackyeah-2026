@@ -127,6 +127,7 @@ async function main() {
   } else throw new Error("unsupported event");
   const controller = AbortSignal.timeout(20000);
   let result;
+  let status;
   try {
     const response = await fetch(config.guard_url, {
       method: "POST",
@@ -134,7 +135,8 @@ async function main() {
       body: JSON.stringify(body),
       signal: controller,
     });
-    if (!response.ok) throw new Error("guard unavailable");
+    if (response.status !== 200 && response.status !== 403) throw new Error("guard unavailable");
+    status = response.status;
     const raw = await response.text();
     if (Buffer.byteLength(raw, "utf8") > 10000) throw new Error("guard response oversized");
     result = JSON.parse(raw);
@@ -146,7 +148,7 @@ async function main() {
     );
     return;
   }
-  if (localBlock || result?.decision !== "ALLOW" || result?.error !== null) {
+  if (status !== 200 || localBlock || result?.decision !== "ALLOW" || result?.error !== null) {
     const trace =
       typeof result?.trace_id === "string" && /^[0-9a-f-]{36}$/i.test(result.trace_id)
         ? ` Trace: ${result.trace_id}.`

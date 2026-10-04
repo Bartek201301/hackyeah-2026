@@ -22,7 +22,12 @@ before(async () => {
   server = createServer((request, response) => {
     response.setHeader("content-type", "application/json");
     if (request.url === "/bad") response.end("not json");
-    else
+    else if (request.url === "/review") {
+      response.statusCode = 403;
+      response.end(
+        JSON.stringify({ decision: "REVIEW", error: null, trace_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }),
+      );
+    } else
       response.end(
         JSON.stringify({ decision: "ALLOW", error: null, trace_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }),
       );
@@ -148,4 +153,26 @@ test("network failure, malformed response, missing worker configuration and prom
   );
   assert.equal(failed.code, 2);
   assert.match(failed.stderr, /blocked locally; central audit unavailable/);
+});
+
+test("audited REVIEW blocks with its trace instead of claiming the guard is unavailable", async () => {
+  const reviewed = path.join(temp, "review-config.json");
+  await writeFile(
+    reviewed,
+    JSON.stringify({
+      workspace_root: workspace,
+      credentials_file: path.join(temp, "credentials.json"),
+      guard_url: `${endpoint.replace(/\/guard$/, "")}/review`,
+    }),
+  );
+  const result = await run(
+    { hook_event_name: "UserPromptSubmit", prompt_id: "reviewed", prompt: "A safe test prompt" },
+    reviewed,
+  );
+  assert.equal(result.code, 2);
+  assert.match(
+    result.stderr,
+    /InterLock blocked this action\. Trace: bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\./,
+  );
+  assert.doesNotMatch(result.stderr, /guard unavailable/);
 });
